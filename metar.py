@@ -1,44 +1,85 @@
-#!/usr/bin/env python3
-
-# Import standard libraries
-import time  # For delay/sleep functionality
-import logging  # For logging application activities and errors
-
-# Import third-party libraries
-import requests  # For making HTTP requests to fetch weather data
-from neopixel import NeoPixel  # For controlling WS2811 LEDs
-import board  # For identifying GPIO pins (specific to Raspberry Pi)
-
-# Import custom configuration
+import json
+import time
+import signal
+import sys
+import board
+import neopixel
 from config import *
+import weather
 
-# Setting up logging configuration
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
 
-# Initialize NeoPixel object with the LED_ORDER
-pixels = NeoPixel(
-    getattr(board, PIXEL_PIN), 
-    NUM_PIXELS, 
-    brightness=BRIGHTNESS, 
-    auto_write=False, 
-    pixel_order=getattr(NeoPixel, LED_ORDER)
-)
+# Initialize NeoPixel object using full module reference
+pixels = neopixel.NeoPixel(getattr(board, PIXEL_PIN), NUM_PIXELS, brightness=BRIGHTNESS, auto_write=False)
 
-logging.info("NeoPixel strip initialized on GPIO %s with %d LEDs in %s order.", PIXEL_PIN, NUM_PIXELS, LED_ORDER)
+def cleanup(signal, frame):
+    """Turn off all LEDs and exit."""
+    pixels.fill((0, 0, 0))  # Turn off all LEDs
+    pixels.show()
+    sys.exit(0)
 
-# Function to read airport identifiers when needed
-def get_airports():
-    """Read the airport identifiers from the file."""
+# Attach the signal handler to SIGINT (Ctrl+C)
+signal.signal(signal.SIGINT, cleanup)
+
+def read_weather_data():
+    """Read and return the weather data from weather.json."""
     try:
-        with open(AIRPORTS_FILE, 'r') as file:
-            return [line.strip() for line in file.readlines()]
+        with open('weather.json', 'r') as json_file:
+            return json.load(json_file)
     except Exception as e:
-        logging.error("Failed to read the airport file: %s", e)
-        return []
+        print(f"Failed to read weather.json: {e}")
+        return {}
 
-# Example usage of reading the airport identifiers
-airport_identifiers = get_airports()
-logging.info("Loaded %d airport identifiers.", len(airport_identifiers))
+def get_airport_weather(airport_code, weather_data):
+    """Retrieve and format weather data for a given airport."""
+    airport_weather = weather_data.get(airport_code, {})
+    flt_cat = airport_weather.get('flt_cat', 'MISSING')
+    wind_speed = airport_weather.get('wind_speed', 0)  # Default to 0 if missing
+    wind_gust = airport_weather.get('wind_gust', 0)    # Default to 0 if missing
+    return flt_cat, wind_speed, wind_gust
+
+def update_leds():
+    """Update LEDs based on flt_cat from weather data."""
+    weather_data = read_weather_data()
+
+    # Get list of airports, including "SKIP" entries
+    airport_list = weather.get_airports_with_skip(AIRPORTS_FILE)
+
+    # Print header
+    print(f"{'Airport':<10} {'Flight Cat':<12} {'Wind Speed':<12} {'Wind Gust':<12}")
+    print("-" * 50)  # Separator line for better readability
+
+    # Update LEDs based on flt_cat and print details
+    for index, airport_code in enumerate(airport_list):
+        if airport_code == "SKIP":
+            pixels[index] = (0, 0, 0)  # Turn off LED if airport is SKIP
+        else:
+            # Get flight category and wind data for the airport
+            flt_cat, wind_speed, wind_gust = get_airport_weather(airport_code, weather_data)
+
+            # Print each airport, flight category, wind speed, and wind gust with formatted columns
+            print(f"{airport_code:<10} {flt_cat:<12} {str(wind_speed) + ' kt':<12} {str(wind_gust) + ' kt':<12}")
+
+            # Update LED colors based on flt_cat
+            if flt_cat == 'VFR':
+                pixels[index] = VFR_COLOR
+            elif flt_cat == 'MVFR':
+                pixels[index] = MVFR_COLOR
+            elif flt_cat == 'IFR':
+                pixels[index] = IFR_COLOR
+            elif flt_cat == 'LIFR':
+                pixels[index] = LIFR_COLOR
+            else:
+                pixels[index] = MISSING_COLOR
+
+    pixels.show()
+
+
+
+
+
+
+
+# Main loop
+while True:
+    update_leds()
+    time.sleep(60)  # Update every 60 seconds
