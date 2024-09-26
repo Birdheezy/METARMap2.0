@@ -75,9 +75,12 @@ def update_leds():
     # Get list of airports, including "SKIP" entries
     airport_list = weather.get_airports_with_skip(AIRPORTS_FILE)
 
+    # Detect windy airports
+    windy_airports = get_windy_airports(weather_data)
+
     # Print header
-    print(f"{'Airport':<10} {'Flight Cat':<12} {'Wind Speed':<12} {'Wind Gust':<12}")
-    print("-" * 50)  # Separator line for better readability
+    print(f"{'Airport':<10} {'Flight Cat':<12} {'Wind Speed':<12} {'Wind Gust':<12} {'Windy':<6}")
+    print("-" * 60)  # Separator line for better readability
 
     # Update LEDs based on flt_cat and print details
     for index, airport_code in enumerate(airport_list):
@@ -86,9 +89,12 @@ def update_leds():
         else:
             # Get flight category and wind data for the airport
             flt_cat, wind_speed, wind_gust = get_airport_weather(airport_code, weather_data)
+            
+            # Check if the airport is in the windy_airports dictionary
+            is_windy = "Yes" if airport_code in windy_airports else "No"
 
-            # Print each airport, flight category, wind speed, and wind gust with formatted columns
-            print(f"{airport_code:<10} {flt_cat:<12} {str(wind_speed) + ' kt':<12} {str(wind_gust) + ' kt':<12}")
+            # Print each airport, flight category, wind speed, wind gust, and whether it is windy
+            print(f"{airport_code:<10} {flt_cat:<12} {str(wind_speed) + ' kt':<12} {str(wind_gust) + ' kt':<12} {is_windy:<6}")
 
             # Update LED colors based on flt_cat
             if flt_cat == 'VFR':
