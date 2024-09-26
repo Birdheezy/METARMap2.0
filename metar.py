@@ -36,6 +36,37 @@ def get_airport_weather(airport_code, weather_data):
     wind_speed = airport_weather.get('wind_speed', 0)  # Default to 0 if missing
     wind_gust = airport_weather.get('wind_gust', 0)    # Default to 0 if missing
     return flt_cat, wind_speed, wind_gust
+    
+def get_flt_cat_color(flt_cat):
+    """Return the color corresponding to the flight category."""
+    if flt_cat == 'VFR':
+        return VFR_COLOR
+    elif flt_cat == 'MVFR':
+        return MVFR_COLOR
+    elif flt_cat == 'IFR':
+        return IFR_COLOR
+    elif flt_cat == 'LIFR':
+        return LIFR_COLOR
+    else:
+        return MISSING_COLOR
+
+def get_windy_airports(weather_data):
+    """Detect and return a dictionary of windy airports with their corresponding colors."""
+    windy_airports = {}
+    for airport_code, weather_info in weather_data.items():
+        wind_speed = weather_info.get('wind_speed', 0)
+        wind_gust = weather_info.get('wind_gust', 0)
+        flt_cat = weather_info.get('flt_cat', 'MISSING')
+
+        # Check if wind speed or wind gust exceeds the threshold
+        if wind_speed > WIND_THRESHOLD or wind_gust > WIND_THRESHOLD:
+            # Get the color based on flight category
+            flt_cat_color = get_flt_cat_color(flt_cat)
+            
+            # Add airport and color to windy_airports dictionary
+            windy_airports[airport_code] = flt_cat_color
+
+    return windy_airports
 
 def update_leds():
     """Update LEDs based on flt_cat from weather data."""
