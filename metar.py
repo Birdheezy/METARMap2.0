@@ -9,8 +9,7 @@ import weather
 
 
 # Initialize NeoPixel object using full module reference
-#pixels = neopixel.NeoPixel(getattr(board, PIXEL_PIN), NUM_PIXELS, brightness=BRIGHTNESS, auto_write=False)
-pixels = neopixel.NeoPixel(LED_PIN, LED_COUNT, brightness = LED_BRIGHTNESS_DIM if (ACTIVATE_DAYTIME_DIMMING and bright == False) else LED_BRIGHTNESS, pixel_order = LED_ORDER, auto_write = False)
+pixels = neopixel.NeoPixel(getattr(board, PIXEL_PIN), NUM_PIXELS, brightness=BRIGHTNESS, auto_write=False)
 
 def cleanup(signal, frame):
     """Turn off all LEDs and exit."""
@@ -25,10 +24,14 @@ signal.signal(signal.SIGINT, cleanup)
 
 def animate_lightning_airports(lightning_airports, weather_data):
     """Animate the airports with detected lightning by flashing the LEDs."""
+    # Scale white color by BRIGHTNESS to maintain consistent brightness
+    scaled_lightning_color = tuple(int(c * BRIGHTNESS) for c in (255, 255, 255))
+
     for _ in range(2):  # Flash twice
         for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
             if airport_code in lightning_airports:
-                pixels[index] = LIGHTENING_COLOR  # Flash white
+                # Set LED to scaled white color for flash
+                pixels[index] = scaled_lightning_color
         pixels.show()
         time.sleep(0.1)  # Short delay for rapid flash
 
@@ -37,17 +40,18 @@ def animate_lightning_airports(lightning_airports, weather_data):
                 # Revert back to flt_cat color
                 flt_cat, _, _, _ = weather.get_airport_weather(airport_code, weather_data)
                 if flt_cat == 'VFR':
-                    pixels[index] = VFR_COLOR
+                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in VFR_COLOR)
                 elif flt_cat == 'MVFR':
-                    pixels[index] = MVFR_COLOR
+                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in MVFR_COLOR)
                 elif flt_cat == 'IFR':
-                    pixels[index] = IFR_COLOR
+                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in IFR_COLOR)
                 elif flt_cat == 'LIFR':
-                    pixels[index] = LIFR_COLOR
+                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in LIFR_COLOR)
                 else:
-                    pixels[index] = MISSING_COLOR
+                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in MISSING_COLOR)
         pixels.show()
         time.sleep(0.2)  # Short delay before the next flash
+
 
 def animate_windy_airports(windy_airports, weather_data):
     """Animate the windy airports by dimming and brightening LEDs."""
@@ -81,11 +85,36 @@ def animate_windy_airports(windy_airports, weather_data):
         pixels.show()
         time.sleep(step_delay)
 
+def animate_snowy_airports(snowy_airports, weather_data):
+    """Animate the snowy airports with a twinkling white effect."""
+    # Use a dim white color to represent snow
+    snowy_color = tuple(int(c * BRIGHTNESS) for c in (128, 128, 128))  # Dim white color
+
+    # Twinkling effect: alternate between on and off state
+    for _ in range(SNOW_BLINK_COUNT):  # Use SNOW_BLINK_COUNT for the number of twinkles
+        for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
+            if airport_code in snowy_airports:
+                # Set LED to snowy color
+                pixels[index] = snowy_color
+        pixels.show()
+        time.sleep(SNOW_BLINK_PAUSE)  # Use SNOW_BLINK_PAUSE for twinkle on duration
+
+        for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
+            if airport_code in snowy_airports:
+                # Turn off LED to create a twinkling effect
+                pixels[index] = (0, 0, 0)
+        pixels.show()
+        time.sleep(SNOW_BLINK_PAUSE)  # Use SNOW_BLINK_PAUSE for twinkle off duration
+
+    # Revert back to the original flight category colors after animation
+    for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
+        if airport_code in snowy_airports:
+            flt_cat, _, _, _ = weather.get_airport_weather(airport_code, weather_data)
+            pixels[index] = tuple(int(c * BRIGHTNESS) for c in weather.get_flt_cat_color(flt_cat))
+    pixels.show()
 
 
-
-
-from config import BRIGHTNESS  # Import BRIGHTNESS from config.py
+#from config import BRIGHTNESS  # Import BRIGHTNESS from config.py
 
 def update_leds(weather_data):
     """Update LEDs based on flt_cat from weather data."""
@@ -124,20 +153,27 @@ def update_leds(weather_data):
     pixels.show()
 
 
-
-
 # Main loop
 while True:
     # Read the weather data and update the LEDs
     weather_data = weather.read_weather_data()
     update_leds(weather_data)
 
-    
     time.sleep(ANIMATION_PAUSE)
-    # Check for lightning airports and animate if any
-    lightning_airports = weather.get_lightning_airports(weather_data)
-    windy_airports = weather.get_windy_airports(weather_data)
-    if lightning_airports:
-        animate_lightning_airports(lightning_airports, weather_data)
-    if windy_airports:
-        animate_windy_airports(windy_airports, weather_data)
+
+    # Check for lightning airports and animate if any, if LIGHTENING_ANIMATION is True
+    if LIGHTENING_ANIMATION:
+        lightning_airports = weather.get_lightning_airports(weather_data)
+        if lightning_airports:
+            animate_lightning_airports(lightning_airports, weather_data)
+
+    # Check for windy airports and animate if any, if WIND_ANIMATION is True
+    if WIND_ANIMATION:
+        windy_airports = weather.get_windy_airports(weather_data)
+        if windy_airports:
+            animate_windy_airports(windy_airports, weather_data)
+
+    # Check for snowy airports and animate if any
+    snowy_airports = weather.get_snowy_airports(weather_data)
+    if snowy_airports:
+        animate_snowy_airports(snowy_airports, weather_data)  # We'll define this function next

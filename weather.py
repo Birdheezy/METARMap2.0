@@ -93,6 +93,26 @@ def get_lightning_airports(weather_data):
 
     return lightning_airports
 
+SNOW_KEYWORDS = ["SN", "BLSN", "DRSN"]  # Add this line near the top with the other keyword definitions
+
+def get_snowy_airports(weather_data):
+    """Detect and return a dictionary of airports with snow and their corresponding colors."""
+    snowy_airports = {}
+    for airport_code, weather_info in weather_data.items():
+        # Use raw_observation as the standard key name
+        raw_observation = weather_info.get('raw_observation', '')
+        flt_cat = weather_info.get('flt_cat', 'MISSING')
+
+        # Check for snow using the imported keywords
+        if any(keyword in raw_observation for keyword in SNOW_KEYWORDS):
+            # Get the color based on flight category
+            flt_cat_color = get_flt_cat_color(flt_cat)
+            
+            # Add airport and color to snowy_airports dictionary
+            snowy_airports[airport_code] = flt_cat_color
+
+    return snowy_airports
+
 
 def get_flt_cat_color(flt_cat):
     """Return the color corresponding to the flight category."""
