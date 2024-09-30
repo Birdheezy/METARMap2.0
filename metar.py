@@ -1,5 +1,6 @@
 import json
 import time
+import os
 import signal
 import sys
 import board
@@ -152,28 +153,37 @@ def update_leds(weather_data):
 
     pixels.show()
 
+# Path to weather.json file
+weather_file = 'weather.json'
 
-# Main loop
+# Get the initial modification time of the file
+last_modified_time = os.path.getmtime(weather_file)
+
 while True:
-    # Read the weather data and update the LEDs
-    weather_data = weather.read_weather_data()
+    # Check if the file's modification time has changed
+    current_modified_time = os.path.getmtime(weather_file)
+    
+    if current_modified_time != last_modified_time:
+        # If the file has been updated, read the new weather data
+        weather_data = weather.read_weather_data()
+        last_modified_time = current_modified_time  # Update the stored modification time
+    
+    # Update the LEDs and perform animations
     update_leds(weather_data)
-
     time.sleep(ANIMATION_PAUSE)
 
-    # Check for lightning airports and animate if any, if LIGHTENING_ANIMATION is True
-    if LIGHTENING_ANIMATION:
-        lightning_airports = weather.get_lightning_airports(weather_data)
-        if lightning_airports:
-            animate_lightning_airports(lightning_airports, weather_data)
+    # Check for lightning airports and animate if any
+    lightning_airports = weather.get_lightning_airports(weather_data)
+    if LIGHTENING_ANIMATION and lightning_airports:
+        animate_lightning_airports(lightning_airports, weather_data)
 
-    # Check for windy airports and animate if any, if WIND_ANIMATION is True
-    if WIND_ANIMATION:
-        windy_airports = weather.get_windy_airports(weather_data)
-        if windy_airports:
-            animate_windy_airports(windy_airports, weather_data)
+    # Check for windy airports and animate if any
+    windy_airports = weather.get_windy_airports(weather_data)
+    if WIND_ANIMATION and windy_airports:
+        animate_windy_airports(windy_airports, weather_data)
 
     # Check for snowy airports and animate if any
     snowy_airports = weather.get_snowy_airports(weather_data)
     if snowy_airports:
-        animate_snowy_airports(snowy_airports, weather_data)  # We'll define this function next
+        animate_snowy_airports(snowy_airports, weather_data)
+
