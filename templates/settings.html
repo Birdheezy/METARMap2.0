@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Settings</title>
+    <link href="{{ url_for('static', filename='css/settings.css') }}" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="#brightness">Brightness</a>
+        <a href="#time-settings">Time Settings</a>
+        <a href="#animation">Animation Settings</a>
+        <a href="#airports">Airports</a>
+    </nav>
+
+    <div class="container">
+        <form method="POST">
+            <!-- Brightness Section -->
+            <section id="brightness">
+                <h2>Brightness Settings</h2>
+                <div class="mb-3">
+                    <label for="brightness">Brightness (0.01 to 1.0):</label>
+                    <input type="text" class="form-control input-small" name="brightness" value="{{ config.BRIGHTNESS }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="dim_brightness">Dim Brightness (0.01 to 1.0):</label>
+                    <input type="text" class="form-control input-small" name="dim_brightness" value="{{ config.DIM_BRIGHTNESS }}">
+                </div>
+            </section>
+
+            <!-- Time Settings Section -->
+            <section id="time-settings">
+                <h2>Time Settings</h2>
+                <div class="mb-3">
+                    <label for="bright_time_start">Bright Time Start (HH:MM):</label>
+                    <select name="bright_time_start_hour" class="form-select inline-input">
+                        {% for hour in range(0, 24) %}
+                            <option value="{{ hour }}" {% if config.BRIGHT_TIME_START.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                        {% endfor %}
+                    </select> :
+                    <select name="bright_time_start_minute" class="form-select inline-input">
+                        {% for minute in range(0, 60, 5) %}
+                            <option value="{{ minute }}" {% if config.BRIGHT_TIME_START.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="dim_time_start">Dim Time Start (HH:MM):</label>
+                    <select name="dim_time_start_hour" class="form-select inline-input">
+                        {% for hour in range(0, 24) %}
+                            <option value="{{ hour }}" {% if config.DIM_TIME_START.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                        {% endfor %}
+                    </select> :
+                    <select name="dim_time_start_minute" class="form-select inline-input">
+                        {% for minute in range(0, 60, 5) %}
+                            <option value="{{ minute }}" {% if config.DIM_TIME_START.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </section>
+
+            <!-- Animation Settings Section -->
+            <section id="animation">
+                <h2>Animation Settings</h2>
+                <div class="mb-3">
+                    <label for="wind_threshold">Wind Threshold:</label>
+                    <input type="text" class="form-control input-small" name="wind_threshold" value="{{ config.WIND_THRESHOLD }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="wind_fade_time">Wind Fade Time (in seconds):</label>
+                    <input type="text" class="form-control input-small" name="wind_fade_time" value="{{ config.WIND_FADE_TIME }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="wind_pause">Wind Pause Time (in seconds):</label>
+                    <input type="text" class="form-control input-small" name="wind_pause" value="{{ config.WIND_PAUSE }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="animation_pause">Animation Pause Time (in seconds):</label>
+                    <input type="text" class="form-control input-small" name="animation_pause" value="{{ config.ANIMATION_PAUSE }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="num_steps">Number of Animation Steps:</label>
+                    <input type="text" class="form-control input-small" name="num_steps" value="{{ config.NUM_STEPS }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="snow_blink_count">Snow Blink Count:</label>
+                    <input type="text" class="form-control input-small" name="snow_blink_count" value="{{ config.SNOW_BLINK_COUNT }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="snow_blink_pause">Snow Blink Pause (in seconds):</label>
+                    <input type="text" class="form-control input-small" name="snow_blink_pause" value="{{ config.SNOW_BLINK_PAUSE }}">
+                </div>
+
+                <!-- Boolean Animations (Toggles) -->
+                <div class="toggle-container">
+                    <div class="toggle-switch mb-3">
+                        <input type="checkbox" id="wind_animation" name="wind_animation" class="toggle-input" {% if config.WIND_ANIMATION %}checked{% endif %}>
+                        <label for="wind_animation" class="toggle-label">Enable Wind Animation</label>
+                    </div>
+
+                    <div class="toggle-switch mb-3">
+                        <input type="checkbox" id="lightening_animation" name="lightening_animation" class="toggle-input" {% if config.LIGHTENING_ANIMATION %}checked{% endif %}>
+                        <label for="lightening_animation" class="toggle-label">Enable Lightning Animation</label>
+                    </div>
+
+                    <div class="toggle-switch mb-3">
+                        <input type="checkbox" id="snowy_animation" name="snowy_animation" class="toggle-input" {% if config.SNOWY_ANIMATION %}checked{% endif %}>
+                        <label for="snowy_animation" class="toggle-label">Enable Snowy Animation</label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Airports Section -->
+            <section id="airports">
+                <h2>Airports</h2>
+                <label for="airports">Edit Airports (one per line):</label>
+                <textarea class="form-control" name="airports" rows="10">{{ airports }}</textarea>
+            </section>
+
+            <!-- Submit Button -->
+            <div class="mt-4">
+                <button type="submit" class="btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+
+</body>
+</html>
