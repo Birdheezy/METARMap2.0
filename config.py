@@ -36,3 +36,14 @@ LIGHTENING_COLOR = (255, 255, 255)  # White
 WIND_ANIMATION = True           # Turn windy animation on or off
 LIGHTENING_ANIMATION = True     # Turn lightening animation on or off
 SNOWY_ANIMATION = True          # Turn snowy animation on or off
+VFR_COLOR = (255, 0, 0)             # Green 
+MVFR_COLOR = (0, 0, 255)            # Blue 
+IFR_COLOR = (0, 255, 0)             # Red 
+LIFR_COLOR = (0, 255, 255)          # Magenta
+MISSING_COLOR = (165, 255, 0)       # Orange
+LIGHTENING_COLOR = (255, 255, 255)  # White
+
+
+WIND_ANIMATION = True           # Turn windy animation on or off
+LIGHTENING_ANIMATION = True     # Turn lightening animation on or off
+SNOWY_ANIMATION = True          # Turn snowy animation on or off
