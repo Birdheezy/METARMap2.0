@@ -18,6 +18,7 @@
 
     <div class="container">
         <form method="POST">
+
             <!-- Brightness Section -->
             <section id="brightness">
                 <h2>Brightness Settings</h2>
@@ -26,10 +27,6 @@
                     <input type="text" class="form-control input-small" name="brightness" value="{{ config.BRIGHTNESS }}">
                 </div>
 
-                <div class="mb-3">
-                    <label for="dim_brightness">Dim Brightness (0.01 to 1.0):</label>
-                    <input type="text" class="form-control input-small" name="dim_brightness" value="{{ config.DIM_BRIGHTNESS }}">
-                </div>
             </section>
 
             <!-- Time Settings Section -->
@@ -67,6 +64,10 @@
             <!-- Animation Settings Section -->
             <section id="animation">
                 <h2>Animation Settings</h2>
+                <div class="mb-3">
+                    <label for="dim_brightness">Dim Brightness (0.01 to 1.0):</label>
+                    <input type="text" class="form-control input-small" name="dim_brightness" value="{{ config.DIM_BRIGHTNESS }}">
+                </div>
                 <div class="mb-3">
                     <label for="wind_threshold">Wind Threshold:</label>
                     <input type="text" class="form-control input-small" name="wind_threshold" value="{{ config.WIND_THRESHOLD }}">
@@ -121,16 +122,52 @@
                 </div>
             </section>
 
-            <!-- Airports Section -->
+            <!-- Airports Section with Line Numbers -->
             <section id="airports">
                 <h2>Airports</h2>
-                <label for="airports">Edit Airports (one per line):</label>
-                <textarea class="form-control" name="airports" rows="10">{{ airports }}</textarea>
+                <label for="airportsText">Edit Airports (one per line):</label>
+            
+                <div class="textarea-wrapper">
+                    <!-- Line numbers -->
+                    <div class="line-numbers" id="lineNumbers">1</div>
+            
+                    <!-- Textarea for airports -->
+                    <textarea class="form-control" name="airports" id="airportsText" rows="10">{{ airports }}</textarea>
+                </div>
             </section>
 
-            <!-- Submit Button -->
+            <script>
+                const textarea = document.getElementById('airportsText');
+                const lineNumbers = document.getElementById('lineNumbers');
+            
+                // Sync scrolling between textarea and line numbers
+                textarea.addEventListener('scroll', () => {
+                    lineNumbers.scrollTop = textarea.scrollTop;  // Sync scroll position
+                });
+            
+                // Function to update line numbers dynamically
+                function updateLineNumbers() {
+                    const lines = textarea.value.split('\n').length;  // Get number of lines in textarea
+                    let lineNumbersHtml = '';
+                    for (let i = 1; i <= lines; i++) {
+                        lineNumbersHtml += i + '<br>';  // Create line numbers
+                    }
+                    lineNumbers.innerHTML = lineNumbersHtml;
+                }
+            
+                // Update line numbers on input and when the page loads
+                textarea.addEventListener('input', updateLineNumbers);  // Update on text change
+                window.addEventListener('load', updateLineNumbers);  // Update when page loads
+            </script>
+            
+        <!-- Submit Button -->
             <div class="mt-4">
                 <button type="submit" class="btn-primary">Save</button>
+            </div>
+
+            <!-- Restart METAR Service Button -->
+            <div class="mt-4">
+                <a href="{{ url_for('restart_metar') }}" class="btn-primary">Restart METAR Service</a>
             </div>
         </form>
     </div>

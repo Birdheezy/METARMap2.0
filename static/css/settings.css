@@ -17,13 +17,6 @@ body {
     text-align: center;  /* Center text and form elements */
 }
 
-/* Adds margin to space out form elements */
-.mb-3 {
-    margin-bottom: 20px; /* Adjust this value for desired spacing */
-}
-
-
-
 /* Navigation bar for a modern look */
 .navbar {
     background-color: #1f1f1f;
@@ -70,13 +63,14 @@ form label {
 
 /* Center input fields */
 .input-small {
-    width: auto;
+    width: 10%;  /* Adjust width for a balanced look */
     padding: 10px;
     border: 1px solid #555;
     background-color: #333;
     color: #fff;
     border-radius: 5px;
-    margin-right: 10px;
+    margin: 0 auto;
+    display: block;
     text-align: center;
     transition: all 0.3s ease-in-out;
 }
@@ -87,7 +81,11 @@ form label {
     box-shadow: 0px 0px 5px rgba(0, 255, 174, 0.7);
 }
 
-/* Buttons centered */
+input, select, textarea {
+    padding: 10px;  /* Adjust the padding value as needed */
+}
+
+
 /* Buttons centered with more margin at the bottom */
 .btn-primary {
     background-color: #007bff;
@@ -97,17 +95,56 @@ form label {
     font-size: 16px;
     cursor: pointer;
     border-radius: 5px;
-    margin-top: 20px;
+    margin-top: 10px;
     margin-left: auto;
     margin-right: auto;
-    margin-bottom: 40px; /* Add more space below the button */
-    display: block;
+    margin-bottom: 20px; /* Add more space below the button */
+    display: inline-block;
+    text-align: center;
     transition: background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
 }
 
 .btn-primary:hover {
     background-color: #0056b3;
     box-shadow: 0px 5px 15px rgba(0, 91, 187, 0.7);
+}
+
+/* Scrollable wrapper for the textarea and line numbers */
+.textarea-wrapper {
+    display: flex;
+    max-height: calc(1.5em * 10);  /* Set height to 10 lines */
+    width: fit-content;  /* Fit content */
+    margin: 0 auto;  /* Center the wrapper */
+    overflow: hidden;  /* Hide any extra overflow */
+}
+
+/* Line numbers */
+.line-numbers {
+    padding-right: 10px;
+    border-right: 1px solid #ddd;
+    text-align: right;
+    color: #999;
+    margin-right: 10px;
+    font-family: monospace;
+    font-size: 16px;
+    line-height: 1.5;
+    user-select: none;
+    width: 30px;
+    height: auto;  /* Adjust height to match the textarea */
+    overflow: hidden;  /* No scrolling within the line numbers */
+}
+
+/* Textarea */
+
+textarea {
+    font-family: monospace;
+    font-size: 16px;
+    line-height: 1.5;
+    white-space: pre;
+    resize: none;
+    width: 100%;  /* Shrink the textarea to 20% width */
+    margin: 0 auto;  /* Center the textarea horizontally */
+    display: inline-block;  /* Ensures the textarea behaves as a block element */
 }
 
 
@@ -118,13 +155,6 @@ form label {
     margin-left: auto;
     margin-right: auto;
     margin-bottom: 20px;
-    align-items: left;
-}
-
-.toggle-container {
-    display: flex;
-    flex-direction: column;  /* Stack the toggles vertically */
-    align-items: left; /* Align all toggle switches to the left */
 }
 
 /* Hide the default checkbox */
@@ -177,16 +207,6 @@ form label {
 /* Responsive design for smaller screens */
 @media (max-width: 768px) {
     .input-small {
-        width: 15%;  /* Full width on small screens */
+        width: 90%;  /* Full width on small screens */
     }
 }
-
-/* Ensure the hour and minute select boxes are inline */
-.inline-input {
-    display: inline-block;
-    width: auto;
-    margin-right: 10px; /* Add spacing between hour and minute */
-    vertical-align: middle;
-}
-
-
