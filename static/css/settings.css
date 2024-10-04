@@ -43,8 +43,8 @@ body {
 
 /* Form sections centered */
 form section {
-    margin-bottom: 40px;
-    padding-bottom: 20px;
+    margin-bottom: 0px;
+    padding-bottom: 0px;
     border-bottom: 1px solid #444;
     text-align: center;
 }
@@ -63,7 +63,7 @@ form label {
 
 /* Center input fields */
 .input-small {
-    width: 10%;  /* Adjust width for a balanced look */
+    width: 15%;  /* Adjust width for a balanced look */
     padding: 10px;
     border: 1px solid #555;
     background-color: #333;
@@ -88,7 +88,7 @@ input, select, textarea {
 
 /* Buttons centered with more margin at the bottom */
 .btn-primary {
-    background-color: #007bff;
+    background-color: #007bff5b;
     border: none;
     padding: 12px 25px;
     color: #ffffff;
@@ -121,6 +121,7 @@ input, select, textarea {
 /* Line numbers */
 .line-numbers {
     padding-right: 10px;
+    padding-top: 8px;
     border-right: 1px solid #ddd;
     text-align: right;
     color: #999;
@@ -142,7 +143,7 @@ textarea {
     line-height: 1.5;
     white-space: pre;
     resize: none;
-    width: 100%;  /* Shrink the textarea to 20% width */
+    width: 90%;  /* Shrink the textarea to 20% width */
     margin: 0 auto;  /* Center the textarea horizontally */
     display: inline-block;  /* Ensures the textarea behaves as a block element */
 }
@@ -207,6 +208,6 @@ textarea {
 /* Responsive design for smaller screens */
 @media (max-width: 768px) {
     .input-small {
-        width: 90%;  /* Full width on small screens */
+        width: 20%;  /* Full width on small screens */
     }
 }

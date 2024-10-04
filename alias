@@ -1,5 +1,5 @@
-alias blank='sudo /home/pi/metar/bin/python3 blank.py'
 alias metar='sudo /home/pi/metar/bin/python3 '
+alias blank='sudo /home/pi/metar/bin/python3 blank.py'
 alias startmetar='sudo systemctl start metar.service'
 alias startweather='sudo systemctl start weather.service'
 alias startsettings='sudo systemctl start settings.service'
