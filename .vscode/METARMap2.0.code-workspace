@@ -2,6 +2,10 @@
 	"folders": [
 		{
 			"path": ".."
+		},
+		{
+			"name": "SSH FS - metar_garage_local",
+			"uri": "ssh://metar_garage_local/home/pi"
 		}
 	],
 	"settings": {
