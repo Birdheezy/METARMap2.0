@@ -6,10 +6,27 @@ import board
 import neopixel
 from config import *
 import weather
+import datetime
 
 
-# Initialize NeoPixel object using full module reference
-pixels = neopixel.NeoPixel(getattr(board, PIXEL_PIN), NUM_PIXELS, brightness=BRIGHTNESS, auto_write=False)
+current_time = datetime.datetime.now().time()
+
+# Determine brightness level based on the time of day
+if DAYTIME_DIMMING:
+    if BRIGHT_TIME_START <= current_time < DIM_TIME_START:
+        brightness = BRIGHTNESS  # Use full brightness during the day
+    else:
+        brightness = DAYTIME_DIM_BRIGHTNESS  # Use dim brightness outside of daytime hours
+else:
+    brightness = BRIGHTNESS  # Default to full brightness if DAYTIME_DIMMING is disabled
+
+# Initialize NeoPixel object with the appropriate brightness level
+pixels = neopixel.NeoPixel(getattr(board, PIXEL_PIN), NUM_PIXELS, brightness=brightness, auto_write=False)
+
+if DAYTIME_DIMMING:
+    print(f"Daytime dimming is enabled. Current brightness level: {brightness}")
+else:
+    print(f"Daytime dimming is disabled. Using full brightness: {brightness}")
 
 def cleanup(signal, frame):
     """Turn off all LEDs and exit."""
@@ -144,7 +161,7 @@ def update_leds(weather_data):
             is_lightning = "Yes" if airport_code in lightning_airports else "No"  # Based on lightning detection
 
             # Print each airport, flight category, wind speed, wind gust, whether it is windy, and lightning
-            print(f"{airport_code:<10} {flt_cat:<12} {str(wind_speed) + ' kt':<12} {str(wind_gust) + ' kt':<12} {is_windy:<6} {is_lightning:<10}")
+            print(f"{airport_code:<10} {flt_cat:<12} {str(wind_speed) + ' kt':<12} {str(wind_gust) + ' kt':<12} {is_windy:<6} {is_lightning:<10} {brightness:<10}")
 
             # Update LED colors based on flt_cat, applying the BRIGHTNESS factor
             base_color = weather.get_flt_cat_color(flt_cat)
