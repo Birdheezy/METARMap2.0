@@ -1,0 +1,14 @@
+[Unit]
+Description=Run Weather Service
+After=network.target
+
+[Service]
+WorkingDirectory=/home/pi/
+ExecStart=/home/pi/metar/bin/python3 /home/pi/weather.py
+Restart=always
+#User=pi
+StandardOutput=append:/var/log/weather.log
+StandardError=append:/var/log/weather.log
+
+[Install]
+WantedBy=multi-user.target

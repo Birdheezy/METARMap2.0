@@ -1,0 +1,14 @@
+[Unit]
+Description=Run Flask App for Settings
+After=network.target
+
+[Service]
+WorkingDirectory=/home/pi/
+ExecStart=/home/pi/metar/bin/python3 /home/pi/settings.py
+Restart=10
+#User=pi
+StandardOutput=append:/var/log/settings.log
+StandardError=append:/var/log/settings.log
+
+[Install]
+WantedBy=multi-user.target
