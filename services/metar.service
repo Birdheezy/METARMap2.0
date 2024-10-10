@@ -1,12 +1,14 @@
 [Unit]
 Description=Run Metar Service
 After=network.target
+Requires=network-online.target
 
 [Service]
 WorkingDirectory=/home/pi/
 ExecStart=/home/pi/metar/bin/python3 /home/pi/metar.py
 Restart=10
-#User=pi
+#User=pi  # Ensure it runs with correct permissions
+
 StandardOutput=append:/var/log/metar.log
 StandardError=append:/var/log/metar.log
 

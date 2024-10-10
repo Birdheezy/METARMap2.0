@@ -7,6 +7,7 @@ import neopixel
 from config import *
 import weather
 import datetime
+import subprocess
 
 
 current_time = datetime.datetime.now().time()
@@ -36,6 +37,21 @@ def cleanup(signal, frame):
 
 # Attach the signal handler to SIGINT (Ctrl+C)
 signal.signal(signal.SIGINT, cleanup)
+
+def check_lights_off():
+    """Check if the current time is within the lights off period and run blank.py if needed."""
+    current_time = datetime.datetime.now().time()  # Get the current time
+
+    # Check if the lights off feature is enabled and the current time is within the off period
+    if ENABLE_LIGHTS_OFF:
+        # Adjust the condition to correctly cover the lights off period
+        if LIGHTS_OFF_TIME <= current_time < LIGHTS_ON_TIME:
+            # Time is between LIGHTS_OFF_TIME and LIGHTS_ON_TIME, so run blank.py
+            subprocess.run(["sudo", "/home/pi/metar/bin/python3", "/home/pi/blank.py"])
+            print("Lights turned off due to time restrictions.")
+            return True  # Indicate that lights are off
+    return False  # Indicate that lights should remain on
+
 
 #######------ ANIMATIONS ------#######
 
@@ -135,6 +151,11 @@ def animate_snowy_airports(snowy_airports, weather_data):
 
 def update_leds(weather_data):
     """Update LEDs based on flt_cat from weather data."""
+    
+    if check_lights_off():
+            # If lights are off, skip updating the LEDs
+        return
+        
     # Get list of airports, including "SKIP" entries
     airport_list = weather.get_airports_with_skip(AIRPORTS_FILE)
 
@@ -178,19 +199,20 @@ while True:
 
     time.sleep(ANIMATION_PAUSE)
 
+    # Check for windy airports and animate if any, if WIND_ANIMATION is True
+    if WIND_ANIMATION:
+        windy_airports = weather.get_windy_airports(weather_data)
+        if windy_airports:
+            animate_windy_airports(windy_airports, weather_data)
+            
     # Check for lightning airports and animate if any, if LIGHTENING_ANIMATION is True
     if LIGHTENING_ANIMATION:
         lightning_airports = weather.get_lightning_airports(weather_data)
         if lightning_airports:
             animate_lightning_airports(lightning_airports, weather_data)
 
-    # Check for windy airports and animate if any, if WIND_ANIMATION is True
-    if WIND_ANIMATION:
-        windy_airports = weather.get_windy_airports(weather_data)
-        if windy_airports:
-            animate_windy_airports(windy_airports, weather_data)
-
     # Check for snowy airports and animate if any
-    snowy_airports = weather.get_snowy_airports(weather_data)
-    if snowy_airports:
-        animate_snowy_airports(snowy_airports, weather_data)  # We'll define this function next
+    if SNOWY_ANIMATION:
+        snowy_airports = weather.get_snowy_airports(weather_data)
+        if snowy_airports:
+            animate_snowy_airports(snowy_airports, weather_data)  # We'll define this function next
