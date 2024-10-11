@@ -13,21 +13,33 @@ import subprocess
 current_time = datetime.datetime.now().time()
 
 # Determine brightness level based on the time of day
-if DAYTIME_DIMMING:
-    if BRIGHT_TIME_START <= current_time < DIM_TIME_START:
-        brightness = BRIGHTNESS  # Use full brightness during the day
+def get_current_brightness():
+    """Determine the current brightness level based on the time."""
+    current_time = datetime.datetime.now().time()
+    if DAYTIME_DIMMING:
+        if BRIGHT_TIME_START <= current_time < DIM_TIME_START:
+            return BRIGHTNESS  # Full brightness during the day
+        else:
+            return DAYTIME_DIM_BRIGHTNESS  # Dim brightness outside of daytime hours
     else:
-        brightness = DAYTIME_DIM_BRIGHTNESS  # Use dim brightness outside of daytime hours
-else:
-    brightness = BRIGHTNESS  # Default to full brightness if DAYTIME_DIMMING is disabled
+        return BRIGHTNESS  # Full brightness if daytime dimming is disabled
+
+def update_led_brightness(pixels):
+    """Check the time and update LED brightness if needed."""
+    new_brightness = get_current_brightness()
+    if pixels.brightness != new_brightness:
+        pixels.brightness = new_brightness
+        pixels.show()  # Update LEDs to reflect the brightness change
+        print(f"Brightness updated to {new_brightness} based on time.")
+
 
 # Initialize NeoPixel object with the appropriate brightness level
-pixels = neopixel.NeoPixel(getattr(board, PIXEL_PIN), NUM_PIXELS, brightness=brightness, auto_write=False)
+pixels = neopixel.NeoPixel(getattr(board, PIXEL_PIN), NUM_PIXELS, brightness=BRIGHTNESS, auto_write=False)
 
 if DAYTIME_DIMMING:
-    print(f"Daytime dimming is enabled. Current brightness level: {brightness}")
+    print(f"Daytime dimming is enabled. Current brightness level: {get_current_brightness()}")
 else:
-    print(f"Daytime dimming is disabled. Using full brightness: {brightness}")
+    print(f"Daytime dimming is disabled. Using full brightness: {get_current_brightness()}")
 
 def cleanup(signal, frame):
     """Turn off all LEDs and exit."""
@@ -42,14 +54,23 @@ def check_lights_off():
     """Check if the current time is within the lights off period and run blank.py if needed."""
     current_time = datetime.datetime.now().time()  # Get the current time
 
-    # Check if the lights off feature is enabled and the current time is within the off period
+    # Check if the lights off feature is enabled
     if ENABLE_LIGHTS_OFF:
-        # Adjust the condition to correctly cover the lights off period
-        if LIGHTS_OFF_TIME <= current_time < LIGHTS_ON_TIME:
-            # Time is between LIGHTS_OFF_TIME and LIGHTS_ON_TIME, so run blank.py
+        # Case 1: LIGHTS_OFF_TIME is earlier in the day than LIGHTS_ON_TIME (e.g., 19:05 to 17:05 overnight)
+        if LIGHTS_OFF_TIME > LIGHTS_ON_TIME:
+            if current_time >= LIGHTS_OFF_TIME or current_time < LIGHTS_ON_TIME:
+                # Current time is either later than LIGHTS_OFF_TIME or earlier than LIGHTS_ON_TIME
+                subprocess.run(["sudo", "/home/pi/metar/bin/python3", "/home/pi/blank.py"])
+                print("Lights turned off due to time restrictions.")
+                return True  # Indicate that lights are off
+        
+        # Case 2: LIGHTS_OFF_TIME is earlier in the day than LIGHTS_ON_TIME (e.g., 06:00 to 19:00)
+        elif LIGHTS_OFF_TIME <= current_time < LIGHTS_ON_TIME:
+            # Current time is within the regular lights off time period
             subprocess.run(["sudo", "/home/pi/metar/bin/python3", "/home/pi/blank.py"])
             print("Lights turned off due to time restrictions.")
             return True  # Indicate that lights are off
+
     return False  # Indicate that lights should remain on
 
 
@@ -60,7 +81,7 @@ def animate_lightning_airports(lightning_airports, weather_data):
     # Scale white color by BRIGHTNESS to maintain consistent brightness
     scaled_lightning_color = tuple(int(c * BRIGHTNESS) for c in (255, 255, 255))
 
-    for _ in range(2):  # Flash twice
+    for _ in range(LIGHTNING_FLASH_COUNT):  # Flash twice
         for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
             if airport_code in lightning_airports:
                 # Set LED to scaled white color for flash
@@ -88,12 +109,11 @@ def animate_lightning_airports(lightning_airports, weather_data):
 
 def animate_windy_airports(windy_airports, weather_data):
     """Animate the windy airports by dimming and brightening LEDs."""
-    num_steps = 100  # Number of steps for the animation
-    step_delay = WIND_FADE_TIME / num_steps  # Calculate delay per step
+    step_delay = WIND_FADE_TIME / NUM_STEPS  # Calculate delay per step
 
     # Step 1: Gradual fade to DIM_BRIGHTNESS
-    for step in range(num_steps):
-        brightness = BRIGHTNESS - (BRIGHTNESS - DIM_BRIGHTNESS) * (step / num_steps)
+    for step in range(NUM_STEPS):
+        brightness = BRIGHTNESS - (BRIGHTNESS - DIM_BRIGHTNESS) * (step / NUM_STEPS)
         for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
             if airport_code in windy_airports:
                 flt_cat, _, _, _ = weather.get_airport_weather(airport_code, weather_data)
@@ -107,8 +127,8 @@ def animate_windy_airports(windy_airports, weather_data):
     time.sleep(WIND_PAUSE)
 
     # Step 2: Gradual fade back to full BRIGHTNESS
-    for step in range(num_steps):
-        brightness = DIM_BRIGHTNESS + (BRIGHTNESS - DIM_BRIGHTNESS) * (step / num_steps)
+    for step in range(NUM_STEPS):
+        brightness = DIM_BRIGHTNESS + (BRIGHTNESS - DIM_BRIGHTNESS) * (step / NUM_STEPS)
         for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
             if airport_code in windy_airports:
                 flt_cat, _, _, _ = weather.get_airport_weather(airport_code, weather_data)
@@ -153,7 +173,9 @@ def update_leds(weather_data):
     """Update LEDs based on flt_cat from weather data."""
     
     if check_lights_off():
-            # If lights are off, skip updating the LEDs
+        # If lights are off, skip updating the LEDs
+        pixels.fill((0,0,0))
+        pixels.show()
         return
         
     # Get list of airports, including "SKIP" entries
@@ -182,7 +204,7 @@ def update_leds(weather_data):
             is_lightning = "Yes" if airport_code in lightning_airports else "No"  # Based on lightning detection
 
             # Print each airport, flight category, wind speed, wind gust, whether it is windy, and lightning
-            print(f"{airport_code:<10} {flt_cat:<12} {str(wind_speed) + ' kt':<12} {str(wind_gust) + ' kt':<12} {is_windy:<6} {is_lightning:<10} {brightness:<10}")
+            print(f"{airport_code:<10} {flt_cat:<12} {str(wind_speed) + ' kt':<12} {str(wind_gust) + ' kt':<12} {is_windy:<6} {is_lightning:<10} {get_current_brightness():<10}")
 
             # Update LED colors based on flt_cat, applying the BRIGHTNESS factor
             base_color = weather.get_flt_cat_color(flt_cat)
@@ -196,7 +218,7 @@ while True:
     # Read the weather data and update the LEDs
     weather_data = weather.read_weather_data()
     update_leds(weather_data)
-
+    update_led_brightness(pixels)
     time.sleep(ANIMATION_PAUSE)
 
     # Check for windy airports and animate if any, if WIND_ANIMATION is True

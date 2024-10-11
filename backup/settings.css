@@ -158,34 +158,16 @@ textarea {
     margin-bottom: 20px;
 }
 
-/* Container for toggle switches (2 columns, 2 rows) */
-.toggle-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;  /* Two equal columns */
-    grid-gap: 10px;  /* Reduced space between rows and columns */
-    justify-content: space-between;  /* Keep toggles evenly spaced between columns */
-    max-width: 550px;  /* Set a max-width to prevent toggles from drifting too far apart */
-    margin: 0 auto;  /* Center the grid container */
-    margin-top: 20px;
-}
-
-/* Individual toggle wrapper */
-.toggle-wrapper {
-    position: relative;
-    padding-left: 60px;  /* Adjust to accommodate the toggle switch size */
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-}
-
-/* Custom toggle switch */
+/* Hide the default checkbox */
 .toggle-input {
-    display: none;  /* Hide the default checkbox */
+    display: none;
 }
 
 /* Custom toggle switch style */
 .toggle-label {
-    margin-left: 10px;
+    position: relative;
+    padding-left: 50px;
+    cursor: pointer;
     font-size: 16px;
     color: #eaeaea;
 }
@@ -228,91 +210,4 @@ textarea {
     .input-small {
         width: 20%;  /* Full width on small screens */
     }
-}
-
-.mb-3 {
-    margin-bottom: 10px; /* Adds space between input fields and the next section */
-}
-
-/* Flash message container */
-.flash-message {
-    padding: 10px;
-    margin-bottom: 15px;
-    border-radius: 5px;
-    font-size: 16px;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-/* Success message styling */
-.flash-message.success {
-    background-color: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-/* Error (danger) message styling */
-.flash-message.danger {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-}
-
-/* General info message styling */
-.flash-message.info {
-    background-color: #d1ecf1;
-    color: #0c5460;
-    border: 1px solid #bee5eb;
-}
-
-/* Warning message styling */
-.flash-message.warning {
-    background-color: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeeba;
-}
-
-/* Close button for flash messages */
-.flash-message .close {
-    float: right;
-    font-size: 20px;
-    font-weight: bold;
-    line-height: 1;
-    color: #000;
-    text-shadow: none;
-    opacity: 0.5;
-    cursor: pointer;
-}
-
-.flash-message .close:hover {
-    opacity: 1;
-}
-
-
-.toast {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    min-width: 200px;
-    padding: 10px;
-    background-color: #333;
-    color: #fff;
-    opacity: 0;
-    transition: opacity 0.5s, transform 0.5s;
-    transform: translateY(-20px);
-    border-radius: 5px;
-    z-index: 1000;
-}
-
-.toast.show {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.toast.success {
-    background-color: #28a745;
-}
-
-.toast.danger {
-    background-color: #dc3545;
 }

@@ -17,21 +17,8 @@
     </nav>
 
     <div class="container">
-        <form method="POST" onsubmit="saveScrollPosition()">
-<!--
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <div>
-                        {% for category, message in messages %}
-                            <div class="flash-message {{ category }}">
-                                <span class="close" onclick="this.parentElement.style.display='none';">&times;</span>
-                                {{ message }}
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            {% endwith %}
--->
+        <form method="POST">
+
             <!-- Brightness Section -->
             <section id="brightness">
                 <h2>Brightness Settings</h2>
@@ -39,46 +26,12 @@
                     <label for="brightness">Brightness (0.01 to 1.0):</label>
                     <input type="text" class="form-control input-small" name="brightness" value="{{ config.BRIGHTNESS }}">
                 </div>
-                <div class="mb-3">
-                    <label for="daytime_dim_brightness">Daytime Dim Brightness (0.01 to 1.0):</label>
-                    <input type="text" class="form-control input-small" name="daytime_dim_brightness" value="{{ config.DAYTIME_DIM_BRIGHTNESS }}">
-                </div>
 
             </section>
 
             <!-- Time Settings Section -->
             <section id="time-settings">
                 <h2>Time Settings</h2>
-                <!-- Lights Off Time -->
-                <div class="mb-3">
-                    <label for="lights_off_time">Lights Off Time (HH:MM):</label>
-                    <select name="lights_off_time_hour" class="form-select inline-input">
-                        {% for hour in range(0, 24) %}
-                            <option value="{{ hour }}" {% if config.LIGHTS_OFF_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
-                        {% endfor %}
-                    </select> :
-                    <select name="lights_off_time_minute" class="form-select inline-input">
-                        {% for minute in range(0, 60, 5) %}
-                            <option value="{{ minute }}" {% if config.LIGHTS_OFF_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Lights On Time -->
-                <div class="mb-3">
-                    <label for="lights_on_time">Lights On Time (HH:MM):</label>
-                    <select name="lights_on_time_hour" class="form-select inline-input">
-                        {% for hour in range(0, 24) %}
-                            <option value="{{ hour }}" {% if config.LIGHTS_ON_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
-                        {% endfor %}
-                    </select> :
-                    <select name="lights_on_time_minute" class="form-select inline-input">
-                        {% for minute in range(0, 60, 5) %}
-                            <option value="{{ minute }}" {% if config.LIGHTS_ON_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
                 <div class="mb-3">
                     <label for="bright_time_start">Bright Time Start (HH:MM):</label>
                     <select name="bright_time_start_hour" class="form-select inline-input">
@@ -111,11 +64,6 @@
             <!-- Animation Settings Section -->
             <section id="animation">
                 <h2>Animation Settings</h2>
-                <div class="mb-3">
-                    <label for="lightning_flash_count">Lightning Flash Count:</label>
-                    <input type="text" class="form-control input-small" name="lightning_flash_count" value="{{ config.LIGHTNING_FLASH_COUNT }}">
-                </div>
-                
                 <div class="mb-3">
                     <label for="dim_brightness">Dim Brightness (0.01 to 1.0):</label>
                     <input type="text" class="form-control input-small" name="dim_brightness" value="{{ config.DIM_BRIGHTNESS }}">
@@ -156,32 +104,18 @@
                 </div>
 
                 <!-- Boolean Animations (Toggles) -->
-                <h2>Animation and Dimming Settings</h2>
                 <div class="toggle-container">
-                    <div class="toggle-wrapper">
-                        <input type="checkbox" id="enable_lights_off" name="enable_lights_off" class="toggle-input" {% if config.ENABLE_LIGHTS_OFF %}checked{% endif %}>
-                        <label for="enable_lights_off" class="toggle-label">Enable Lights Off Time</label>
-                    </div>
-                    <!-- Daytime Dimming Toggle -->
-                    <div class="toggle-wrapper">
-                        <input type="checkbox" id="daytime_dimming" name="daytime_dimming" class="toggle-input" {% if config.DAYTIME_DIMMING %}checked{% endif %}>
-                        <label for="daytime_dimming" class="toggle-label">Enable Daytime Dimming</label>
-                    </div>
-
-                    <!-- Wind Animation Toggle -->
-                    <div class="toggle-wrapper">
+                    <div class="toggle-switch mb-3">
                         <input type="checkbox" id="wind_animation" name="wind_animation" class="toggle-input" {% if config.WIND_ANIMATION %}checked{% endif %}>
                         <label for="wind_animation" class="toggle-label">Enable Wind Animation</label>
                     </div>
 
-                    <!-- Lightning Animation Toggle -->
-                    <div class="toggle-wrapper">
+                    <div class="toggle-switch mb-3">
                         <input type="checkbox" id="lightening_animation" name="lightening_animation" class="toggle-input" {% if config.LIGHTENING_ANIMATION %}checked{% endif %}>
                         <label for="lightening_animation" class="toggle-label">Enable Lightning Animation</label>
                     </div>
 
-                    <!-- Snowy Animation Toggle -->
-                    <div class="toggle-wrapper">
+                    <div class="toggle-switch mb-3">
                         <input type="checkbox" id="snowy_animation" name="snowy_animation" class="toggle-input" {% if config.SNOWY_ANIMATION %}checked{% endif %}>
                         <label for="snowy_animation" class="toggle-label">Enable Snowy Animation</label>
                     </div>
@@ -227,8 +161,6 @@
             </script>
             
         <!-- Submit Button -->
-
-    
             <div class="mt-4">
                 <button type="submit" class="btn-primary">Save</button>
             </div>
@@ -245,48 +177,5 @@
         </form>
     </div>
 
-<script type="text/javascript">
-
-function saveScrollPosition() {
-    sessionStorage.setItem('scrollPosition', window.scrollY);
-}
-
-// Restore the scroll position after the page reloads
-document.addEventListener('DOMContentLoaded', function() {
-    const scrollPosition = sessionStorage.getItem('scrollPosition');
-    if (scrollPosition) {
-        window.scrollTo(0, parseInt(scrollPosition));
-        sessionStorage.removeItem('scrollPosition');
-    }
-});
-
-// JavaScript for toast notifications
-function showToast(message, category) {
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.innerText = message;
-    toast.classList.add(category);
-    document.body.appendChild(toast);
-    setTimeout(function() {
-        toast.classList.add('show');
-    }, 100);
-    setTimeout(function() {
-        toast.classList.remove('show');
-        document.body.removeChild(toast);
-    }, 4000);
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                showToast('{{ message }}', '{{ category }}');
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-});
-</script>
-
-    
 </body>
 </html>

@@ -6,10 +6,28 @@ import board
 import neopixel
 from config import *
 import weather
+import datetime
+import subprocess
 
 
-# Initialize NeoPixel object using full module reference
-pixels = neopixel.NeoPixel(getattr(board, PIXEL_PIN), NUM_PIXELS, brightness=BRIGHTNESS, auto_write=False)
+current_time = datetime.datetime.now().time()
+
+# Determine brightness level based on the time of day
+if DAYTIME_DIMMING:
+    if BRIGHT_TIME_START <= current_time < DIM_TIME_START:
+        brightness = BRIGHTNESS  # Use full brightness during the day
+    else:
+        brightness = DAYTIME_DIM_BRIGHTNESS  # Use dim brightness outside of daytime hours
+else:
+    brightness = BRIGHTNESS  # Default to full brightness if DAYTIME_DIMMING is disabled
+
+# Initialize NeoPixel object with the appropriate brightness level
+pixels = neopixel.NeoPixel(getattr(board, PIXEL_PIN), NUM_PIXELS, brightness=brightness, auto_write=False)
+
+if DAYTIME_DIMMING:
+    print(f"Daytime dimming is enabled. Current brightness level: {brightness}")
+else:
+    print(f"Daytime dimming is disabled. Using full brightness: {brightness}")
 
 def cleanup(signal, frame):
     """Turn off all LEDs and exit."""
@@ -19,6 +37,21 @@ def cleanup(signal, frame):
 
 # Attach the signal handler to SIGINT (Ctrl+C)
 signal.signal(signal.SIGINT, cleanup)
+
+def check_lights_off():
+    """Check if the current time is within the lights off period and run blank.py if needed."""
+    current_time = datetime.datetime.now().time()  # Get the current time
+
+    # Check if the lights off feature is enabled and the current time is within the off period
+    if ENABLE_LIGHTS_OFF:
+        # Adjust the condition to correctly cover the lights off period
+        if LIGHTS_OFF_TIME <= current_time < LIGHTS_ON_TIME:
+            # Time is between LIGHTS_OFF_TIME and LIGHTS_ON_TIME, so run blank.py
+            subprocess.run(["sudo", "/home/pi/metar/bin/python3", "/home/pi/blank.py"])
+            print("Lights turned off due to time restrictions.")
+            return True  # Indicate that lights are off
+    return False  # Indicate that lights should remain on
+
 
 #######------ ANIMATIONS ------#######
 
@@ -118,6 +151,11 @@ def animate_snowy_airports(snowy_airports, weather_data):
 
 def update_leds(weather_data):
     """Update LEDs based on flt_cat from weather data."""
+    
+    if check_lights_off():
+            # If lights are off, skip updating the LEDs
+        return
+        
     # Get list of airports, including "SKIP" entries
     airport_list = weather.get_airports_with_skip(AIRPORTS_FILE)
 
@@ -144,7 +182,7 @@ def update_leds(weather_data):
             is_lightning = "Yes" if airport_code in lightning_airports else "No"  # Based on lightning detection
 
             # Print each airport, flight category, wind speed, wind gust, whether it is windy, and lightning
-            print(f"{airport_code:<10} {flt_cat:<12} {str(wind_speed) + ' kt':<12} {str(wind_gust) + ' kt':<12} {is_windy:<6} {is_lightning:<10}")
+            print(f"{airport_code:<10} {flt_cat:<12} {str(wind_speed) + ' kt':<12} {str(wind_gust) + ' kt':<12} {is_windy:<6} {is_lightning:<10} {brightness:<10}")
 
             # Update LED colors based on flt_cat, applying the BRIGHTNESS factor
             base_color = weather.get_flt_cat_color(flt_cat)
@@ -161,19 +199,20 @@ while True:
 
     time.sleep(ANIMATION_PAUSE)
 
+    # Check for windy airports and animate if any, if WIND_ANIMATION is True
+    if WIND_ANIMATION:
+        windy_airports = weather.get_windy_airports(weather_data)
+        if windy_airports:
+            animate_windy_airports(windy_airports, weather_data)
+            
     # Check for lightning airports and animate if any, if LIGHTENING_ANIMATION is True
     if LIGHTENING_ANIMATION:
         lightning_airports = weather.get_lightning_airports(weather_data)
         if lightning_airports:
             animate_lightning_airports(lightning_airports, weather_data)
 
-    # Check for windy airports and animate if any, if WIND_ANIMATION is True
-    if WIND_ANIMATION:
-        windy_airports = weather.get_windy_airports(weather_data)
-        if windy_airports:
-            animate_windy_airports(windy_airports, weather_data)
-
     # Check for snowy airports and animate if any
-    snowy_airports = weather.get_snowy_airports(weather_data)
-    if snowy_airports:
-        animate_snowy_airports(snowy_airports, weather_data)  # We'll define this function next
+    if SNOWY_ANIMATION:
+        snowy_airports = weather.get_snowy_airports(weather_data)
+        if snowy_airports:
+            animate_snowy_airports(snowy_airports, weather_data)  # We'll define this function next

@@ -141,9 +141,6 @@ def get_airport_weather(airport_code, weather_data):
 
     return flt_cat, wind_speed, wind_gust, lightning
 
-
-
-
 def parse_weather(metar_data):
     if not metar_data or 'features' not in metar_data:
         logging.error("Invalid METAR data received for parsing.")
