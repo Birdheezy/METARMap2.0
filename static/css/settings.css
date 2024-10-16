@@ -112,40 +112,43 @@ input, select, textarea {
 /* Scrollable wrapper for the textarea and line numbers */
 .textarea-wrapper {
     display: flex;
-    max-height: calc(1.5em * 10);  /* Set height to 10 lines */
-    width: fit-content;  /* Fit content */
-    margin: 0 auto;  /* Center the wrapper */
-    overflow: hidden;  /* Hide any extra overflow */
+    align-items: flex-start;
+    position: relative;
+    max-height: 15em; /* Ensure consistent height */
+    width: 30%; /* Adjust the width as needed */
+    margin: 0 auto; /* Center the wrapper on the page */
+    border: 0px solid #ddd;
+    overflow: hidden; /* Prevent extra scrollbars */
 }
 
-/* Line numbers */
+.airports {
+    padding-bottom: 10px;
+}
+
 .line-numbers {
+    width: 40px;
     padding-right: 10px;
-    padding-top: 8px;
-    border-right: 1px solid #ddd;
     text-align: right;
     color: #999;
-    margin-right: 10px;
     font-family: monospace;
     font-size: 16px;
     line-height: 1.5;
     user-select: none;
-    width: 30px;
-    height: auto;  /* Adjust height to match the textarea */
-    overflow: hidden;  /* No scrolling within the line numbers */
+    border-right: 1px solid #ddd;
+    overflow: hidden; /* Prevent inner scrolling */
 }
-
-/* Textarea */
 
 textarea {
     font-family: monospace;
     font-size: 16px;
     line-height: 1.5;
-    white-space: pre;
     resize: none;
-    width: 90%;  /* Shrink the textarea to 20% width */
-    margin: 0 auto;  /* Center the textarea horizontally */
-    display: inline-block;  /* Ensures the textarea behaves as a block element */
+    width: calc(100% - 40px); /* Subtract line numbers width */
+    height: 15em; /* Ensure consistent height */
+    overflow-y: scroll; /* Enable scrolling */
+    border: none; /* Remove border to match wrapper */
+    margin: 0; /* Remove extra margins */
+    padding: 0; /* Ensure no extra padding */
 }
 
 
@@ -176,6 +179,7 @@ textarea {
     cursor: pointer;
     display: flex;
     align-items: center;
+    gap: 10px;
 }
 
 /* Custom toggle switch */
@@ -234,6 +238,13 @@ textarea {
     margin-bottom: 10px; /* Adds space between input fields and the next section */
 }
 
+.mt-3 {
+    margin-bottom: 10px; /* Adds space between input fields and the next section */
+}
+.mt-4 {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
 /* Flash message container */
 .flash-message {
     padding: 10px;
@@ -302,6 +313,7 @@ textarea {
     transform: translateY(-20px);
     border-radius: 5px;
     z-index: 1000;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .toast.show {
@@ -315,4 +327,27 @@ textarea {
 
 .toast.danger {
     background-color: #dc3545;
+}
+.form-control {
+    width: 100%;
+    max-width: 150px;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #333;
+    border: 1px solid #555;
+    color: white;
+    border-radius: 5px;
+}
+.form-controltextarea {
+    width: 100%;
+    max-width: 150px;
+    padding: 0px;
+    margin-bottom: 10px;
+    background-color: #333;
+    border: 1px solid #555;
+    color: white;
+    border-radius: 5px;
+}
+section {
+    margin-bottom: 30px;
 }

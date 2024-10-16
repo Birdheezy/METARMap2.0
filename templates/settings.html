@@ -14,24 +14,11 @@
         <a href="#time-settings">Time Settings</a>
         <a href="#animation">Animation Settings</a>
         <a href="#airports">Airports</a>
+        <a href="#wifi-settings">Wifi Settings</a>
     </nav>
 
     <div class="container">
-        <form method="POST" onsubmit="saveScrollPosition()">
-<!--
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <div>
-                        {% for category, message in messages %}
-                            <div class="flash-message {{ category }}">
-                                <span class="close" onclick="this.parentElement.style.display='none';">&times;</span>
-                                {{ message }}
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            {% endwith %}
--->
+        <form method="POST" action="/" onsubmit="saveScrollPosition()">
             <!-- Brightness Section -->
             <section id="brightness">
                 <h2>Brightness Settings</h2>
@@ -49,21 +36,6 @@
             <!-- Time Settings Section -->
             <section id="time-settings">
                 <h2>Time Settings</h2>
-                <!-- Lights Off Time -->
-                <div class="mb-3">
-                    <label for="lights_off_time">Lights Off Time (HH:MM):</label>
-                    <select name="lights_off_time_hour" class="form-select inline-input">
-                        {% for hour in range(0, 24) %}
-                            <option value="{{ hour }}" {% if config.LIGHTS_OFF_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
-                        {% endfor %}
-                    </select> :
-                    <select name="lights_off_time_minute" class="form-select inline-input">
-                        {% for minute in range(0, 60, 5) %}
-                            <option value="{{ minute }}" {% if config.LIGHTS_OFF_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
                 <!-- Lights On Time -->
                 <div class="mb-3">
                     <label for="lights_on_time">Lights On Time (HH:MM):</label>
@@ -78,7 +50,21 @@
                         {% endfor %}
                     </select>
                 </div>
-
+                <!-- Lights Off Time -->
+                <div class="mb-3">
+                    <label for="lights_off_time">Lights Off Time (HH:MM):</label>
+                    <select name="lights_off_time_hour" class="form-select inline-input">
+                        {% for hour in range(0, 24) %}
+                            <option value="{{ hour }}" {% if config.LIGHTS_OFF_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                        {% endfor %}
+                    </select> :
+                    <select name="lights_off_time_minute" class="form-select inline-input">
+                        {% for minute in range(0, 60, 5) %}
+                            <option value="{{ minute }}" {% if config.LIGHTS_OFF_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <!--Bright Time Start-->
                 <div class="mb-3">
                     <label for="bright_time_start">Bright Time Start (HH:MM):</label>
                     <select name="bright_time_start_hour" class="form-select inline-input">
@@ -92,7 +78,7 @@
                         {% endfor %}
                     </select>
                 </div>
-
+                <!--Dim Time Start-->
                 <div class="mb-3">
                     <label for="dim_time_start">Dim Time Start (HH:MM):</label>
                     <select name="dim_time_start_hour" class="form-select inline-input">
@@ -189,50 +175,164 @@
             </section>
 
             <!-- Airports Section with Line Numbers -->
-            <section id="airports">
+            <section id="airports" class="airports">
                 <h2>Airports</h2>
                 <label for="airportsText">Edit Airports (one per line):</label>
             
                 <div class="textarea-wrapper">
-                    <!-- Line numbers -->
-                    <div class="line-numbers" id="lineNumbers">1</div>
+                    <div class="line-numbers" id="line-numbers"></div>
+                    <textarea class="form-controltextarea" name="airports" id="airportsText" rows="10">{{ airports }}</textarea>
+                </div>
+                
+            </section>
             
-                    <!-- Textarea for airports -->
-                    <textarea class="form-control" name="airports" id="airportsText" rows="10">{{ airports }}</textarea>
+
+            <!-- WiFi Settings Section -->
+            <section id="wifi-settings">
+                <h2>WiFi Settings</h2>
+                <text style="font-size: small;">NOTE: Save settings before connecting to a new netwrok</text>
+            </br>
+                <button id="scan-button" class="btn-primary">Scan for Networks</button>
+                <div id="connection-status" class="mt-3"></div>
+                <div id="network-dropdown" class="mt-4">
+                    <select id="ssid-select" name="ssid" class="form-control">
+                        <option value="">Scan First...</option>
+                    </select>
+                </div>
+                <div id="password-input" class="mt-3">
+                    <label for="wifi-password">Password (leave blank if open):</label>
+                    <input type="text" id="wifi-password" name="wifi-password" class="form-control" placeholder="Enter password">
+                </div>
+                <div class="mt-4">
+                    <button type="button" id="connect-button" class="btn-primary">Connect to Network</button>
                 </div>
             </section>
 
-            <script>
-                const textarea = document.getElementById('airportsText');
-                const lineNumbers = document.getElementById('lineNumbers');
-            
-                // Sync scrolling between textarea and line numbers
-                textarea.addEventListener('scroll', () => {
-                    lineNumbers.scrollTop = textarea.scrollTop;  // Sync scroll position
-                });
-            
-                // Function to update line numbers dynamically
-                function updateLineNumbers() {
-                    const lines = textarea.value.split('\n').length;  // Get number of lines in textarea
-                    let lineNumbersHtml = '';
-                    for (let i = 1; i <= lines; i++) {
-                        lineNumbersHtml += i + '<br>';  // Create line numbers
-                    }
-                    lineNumbers.innerHTML = lineNumbersHtml;
+
+
+
+            <script type="text/javascript">
+                // Save scroll position on form submission
+                function saveScrollPosition() {
+                    sessionStorage.setItem('scrollPosition', window.scrollY);
                 }
             
-                // Update line numbers on input and when the page loads
-                textarea.addEventListener('input', updateLineNumbers);  // Update on text change
-                window.addEventListener('load', updateLineNumbers);  // Update when page loads
+                // Restore scroll position on page reload
+                document.addEventListener('DOMContentLoaded', function () {
+                    const scrollPosition = sessionStorage.getItem('scrollPosition');
+                    if (scrollPosition) {
+                        window.scrollTo(0, parseInt(scrollPosition));
+                        sessionStorage.removeItem('scrollPosition');
+                    }
+                });
+            
+                // Scan for networks when the "Scan" button is clicked
+                document.getElementById('scan-button').addEventListener('click', function () {
+                    let scanButton = document.getElementById('scan-button');
+                    let ssidSelect = document.getElementById('ssid-select');
+                    let connectionStatus = document.getElementById('connection-status');
+
+                    // Disable the button and show a loading message
+                    scanButton.disabled = true;
+                    connectionStatus.textContent = 'Scanning for networks...';
+
+                    fetch('/scan-networks')
+                        .then(response => response.json())
+                        .then(data => {
+                            ssidSelect.innerHTML = '<option value="">Select a network</option>';
+
+                            if (data.networks && data.networks.length > 0) {
+                                data.networks.forEach(network => {
+                                    let option = document.createElement('option');
+                                    option.value = network.ssid;
+                                    option.textContent = `${network.ssid} (Signal: ${network.signal}%)`;
+                                    ssidSelect.appendChild(option);
+                                });
+                                connectionStatus.textContent = 'Scan complete. Select a network.';
+                            } else {
+                                connectionStatus.textContent = 'No networks found. Try scanning again.';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error scanning networks:', error);
+                            connectionStatus.textContent = 'An error occurred while scanning.';
+                        })
+                        .finally(() => {
+                            // Re-enable the button after the scan completes
+                            scanButton.disabled = false;
+                        });
+                });
+
+
+            
+                // Connect to the selected network when "Connect" is clicked
+                document.getElementById('connect-button').addEventListener('click', function () {
+                    let ssid = document.getElementById('ssid-select').value;
+                    let password = document.getElementById('wifi-password').value;
+                    let connectionStatus = document.getElementById('connection-status');
+            
+                    if (!ssid) {
+                        connectionStatus.textContent = 'Please select a network.';
+                        return;
+                    }
+            
+                    fetch('/connect-to-network', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ ssid: ssid, password: password })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                connectionStatus.textContent = 'Connected successfully!';
+                            } else {
+                                connectionStatus.textContent = `Error: ${data.error}`;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error connecting to network:', error);
+                            connectionStatus.textContent = 'An error occurred while connecting.';
+                        });
+                });
+
+                document.addEventListener('DOMContentLoaded', function() {
+                    const textarea = document.getElementById('airportsText');
+                    const lineNumbers = document.getElementById('line-numbers');
+
+                    function updateLineNumbers() {
+                        const lines = textarea.value.split('\n').length;
+                        let lineNumbersHtml = '';
+                        for (let i = 1; i <= lines; i++) {
+                            lineNumbersHtml += `${i}<br>`;
+                        }
+                        lineNumbers.innerHTML = lineNumbersHtml;
+                    }
+
+                    // Sync scrolling between the textarea and the line numbers
+                    textarea.addEventListener('scroll', function () {
+                        lineNumbers.style.transform = `translateY(-${textarea.scrollTop}px)`;
+                    });
+
+                    // Update line numbers on input
+                    textarea.addEventListener('input', updateLineNumbers);
+
+                    // Initial update on page load
+                    updateLineNumbers();
+                });
+
             </script>
             
-        <!-- Submit Button -->
 
-    
+
+        <!-- Submit Button -->
             <div class="mt-4">
                 <button type="submit" class="btn-primary">Save</button>
             </div>
-
+            <div class="mt-4">
+                <a href="{{ url_for('update_weather') }}" class="btn-primary">Update Weather</a>
+            </div>
             <!-- Restart METAR Service Button -->
             <div class="mt-4">
                 <a href="{{ url_for('restart_metar') }}" class="btn-primary">Restart METAR Service</a>
@@ -273,7 +373,7 @@ function showToast(message, category) {
     setTimeout(function() {
         toast.classList.remove('show');
         document.body.removeChild(toast);
-    }, 4000);
+    }, 8000);
 }
 
 document.addEventListener('DOMContentLoaded', function() {

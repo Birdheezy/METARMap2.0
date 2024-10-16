@@ -53,13 +53,6 @@ def reload_config():
     LIGHTS_ON_TIME = config_globals['LIGHTS_ON_TIME']
     ENABLE_LIGHTS_OFF = config_globals['ENABLE_LIGHTS_OFF']
 
-    # Print statements for debugging
-    print(f"Reloaded BRIGHT_TIME_START: {BRIGHT_TIME_START}")
-    print(f"Reloaded DIM_TIME_START: {DIM_TIME_START}")
-    print(f"Reloaded LIGHTS_OFF_TIME: {LIGHTS_OFF_TIME}")
-    print(f"Reloaded LIGHTS_ON_TIME: {LIGHTS_ON_TIME}")
-
-
 @app.route('/', methods=['GET', 'POST'])
 def edit_settings():
     if request.method == 'POST':
@@ -158,7 +151,12 @@ def edit_settings():
 
             # Reload the configuration to reflect the changes
             reload_config()
+            updated_airports = request.form.get("airports")
 
+            # Write the updated list to airports.txt
+            if updated_airports is not None:
+                with open('/home/pi/airports.txt', 'w') as f:  # Replace with actual path to airports.txt
+                    f.write(updated_airports)
             flash('Configuration updated successfully!', 'success')
 
         except ValueError as e:
@@ -215,13 +213,96 @@ def stop_and_blank():
     try:
         # Run the 'stopmetar' and 'blank' commands
         subprocess.run(['sudo', 'systemctl', 'stop', 'metar.service'], check=True)
-        subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/blank.py'], check=True)  # Assuming 'blank' is the correct alias for blanking LEDs
+        subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/blank.py'], check=True)
         flash('METAR service stopped and LEDs blanked!', 'success')
     except subprocess.CalledProcessError as e:
         flash(f'Error stopping METAR service or blanking LEDs: {str(e)}', 'danger')
 
     return redirect(url_for('edit_settings'))
 
+@app.route('/update-weather')
+def update_weather():
+    try:
+        subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/weather.py'], check=True)
+        flash('Weather Has Been Updated!', 'success')
+    except subprocess.CalledProcessError as e:
+        flash(f'Weather Update Has Failed... {str(e)}', 'danger')
+    return redirect(url_for('edit_settings'))
+
+@app.route('/scan-networks', methods=['GET'])
+def scan_networks():
+    import subprocess
+    import logging
+
+    logging.basicConfig(level=logging.DEBUG)
+
+    try:
+        # Scan for WiFi networks using nmcli
+        result = subprocess.run(
+            ['nmcli', '-t', '-f', 'SSID,SIGNAL', 'dev', 'wifi', 'list'],
+            capture_output=True, text=True, check=True
+        )
+        logging.debug(f"nmcli output: {result.stdout}")
+
+        # Parse networks, filtering out empty SSIDs and keeping the strongest signal for each SSID
+        networks = {}
+        for line in result.stdout.splitlines():
+            parts = line.split(':')
+            if len(parts) >= 2 and parts[0].strip():  # Ignore empty SSIDs
+                ssid, signal = parts[0], parts[1]
+                signal = int(signal)  # Convert signal strength to integer
+
+                # Keep the entry with the highest signal strength
+                if ssid not in networks or networks[ssid] < signal:
+                    networks[ssid] = signal
+
+        # Convert the dictionary to a sorted list of networks
+        sorted_networks = sorted(
+            [{'ssid': ssid, 'signal': str(signal)} for ssid, signal in networks.items()],
+            key=lambda x: int(x['signal']), reverse=True
+        )
+        logging.debug(f"Parsed networks: {sorted_networks}")
+
+        return {'networks': sorted_networks}
+    
+    except subprocess.CalledProcessError as e:
+        logging.error(f"nmcli error: {e.stderr}")
+        return {'error': f"Failed to scan networks: {e.stderr}"}, 500
+    except Exception as e:
+        logging.error(f"General error: {str(e)}")
+        return {'error': str(e)}, 500
+
+
+@app.route('/connect-to-network', methods=['POST'])
+def connect_to_network():
+    import subprocess
+    from flask import request, jsonify
+
+    data = request.get_json()
+    ssid = data.get('ssid')
+    password = data.get('password')
+
+    if not ssid:
+        return jsonify({'success': False, 'error': 'SSID is required.'}), 400
+
+    try:
+        # Command to connect to the network
+        if password:
+            command = ['nmcli', 'dev', 'wifi', 'connect', ssid, 'password', password]
+        else:
+            command = ['nmcli', 'dev', 'wifi', 'connect', ssid]
+
+        result = subprocess.run(command, capture_output=True, text=True)
+
+        if result.returncode == 0:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': result.stderr.strip()})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # Run the Flask app
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80, debug=False)
+ 
