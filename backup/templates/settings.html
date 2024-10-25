@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Settings</title>
+    <link href="{{ url_for('static', filename='css/settings.css') }}" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="#brightness">Brightness</a>
+        <a href="#time-settings">Time Settings</a>
+        <a href="#animation">Animation Settings</a>
+        <a href="#airports">Airports</a>
+        <a href="#wifi-settings">Wifi Settings</a>
+    </nav>
+
+    <div class="container">
+        <form method="POST" action="/" onsubmit="saveScrollPosition()">
+            <!-- Brightness Section -->
+            <section id="brightness">
+                <h2>Brightness Settings</h2>
+                <div class="mb-3">
+                    <label for="brightness">Brightness (0.01 to 1.0):</label>
+                    <input type="text" class="form-control input-small" name="brightness" value="{{ config.BRIGHTNESS }}">
+                </div>
+                <div class="mb-3">
+                    <label for="daytime_dim_brightness">Daytime Dim Brightness (0.01 to 1.0):</label>
+                    <input type="text" class="form-control input-small" name="daytime_dim_brightness" value="{{ config.DAYTIME_DIM_BRIGHTNESS }}">
+                </div>
+
+            </section>
+
+            <!-- Time Settings Section -->
+            <section id="time-settings">
+                <h2>Time Settings</h2>
+                <!-- Lights On Time -->
+                <div class="mb-3">
+                    <label for="lights_on_time">Lights On Time (HH:MM):</label>
+                    <select name="lights_on_time_hour" class="form-select inline-input">
+                        {% for hour in range(0, 24) %}
+                            <option value="{{ hour }}" {% if config.LIGHTS_ON_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                        {% endfor %}
+                    </select> :
+                    <select name="lights_on_time_minute" class="form-select inline-input">
+                        {% for minute in range(0, 60, 5) %}
+                            <option value="{{ minute }}" {% if config.LIGHTS_ON_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <!-- Lights Off Time -->
+                <div class="mb-3">
+                    <label for="lights_off_time">Lights Off Time (HH:MM):</label>
+                    <select name="lights_off_time_hour" class="form-select inline-input">
+                        {% for hour in range(0, 24) %}
+                            <option value="{{ hour }}" {% if config.LIGHTS_OFF_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                        {% endfor %}
+                    </select> :
+                    <select name="lights_off_time_minute" class="form-select inline-input">
+                        {% for minute in range(0, 60, 5) %}
+                            <option value="{{ minute }}" {% if config.LIGHTS_OFF_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <!--Bright Time Start-->
+                <div class="mb-3">
+                    <label for="bright_time_start">Bright Time Start (HH:MM):</label>
+                    <select name="bright_time_start_hour" class="form-select inline-input">
+                        {% for hour in range(0, 24) %}
+                            <option value="{{ hour }}" {% if config.BRIGHT_TIME_START.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                        {% endfor %}
+                    </select> :
+                    <select name="bright_time_start_minute" class="form-select inline-input">
+                        {% for minute in range(0, 60, 5) %}
+                            <option value="{{ minute }}" {% if config.BRIGHT_TIME_START.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <!--Dim Time Start-->
+                <div class="mb-3">
+                    <label for="dim_time_start">Dim Time Start (HH:MM):</label>
+                    <select name="dim_time_start_hour" class="form-select inline-input">
+                        {% for hour in range(0, 24) %}
+                            <option value="{{ hour }}" {% if config.DIM_TIME_START.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                        {% endfor %}
+                    </select> :
+                    <select name="dim_time_start_minute" class="form-select inline-input">
+                        {% for minute in range(0, 60, 5) %}
+                            <option value="{{ minute }}" {% if config.DIM_TIME_START.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </section>
+
+            <!-- Animation Settings Section -->
+            <section id="animation">
+                <h2>Animation Settings</h2>
+                <div class="mb-3">
+                    <label for="lightning_flash_count">Lightning Flash Count:</label>
+                    <input type="text" class="form-control input-small" name="lightning_flash_count" value="{{ config.LIGHTNING_FLASH_COUNT }}">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="dim_brightness">Dim Brightness (0.01 to 1.0):</label>
+                    <input type="text" class="form-control input-small" name="dim_brightness" value="{{ config.DIM_BRIGHTNESS }}">
+                </div>
+                <div class="mb-3">
+                    <label for="wind_threshold">Wind Threshold:</label>
+                    <input type="text" class="form-control input-small" name="wind_threshold" value="{{ config.WIND_THRESHOLD }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="wind_fade_time">Wind Fade Time (in seconds):</label>
+                    <input type="text" class="form-control input-small" name="wind_fade_time" value="{{ config.WIND_FADE_TIME }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="wind_pause">Wind Pause Time (in seconds):</label>
+                    <input type="text" class="form-control input-small" name="wind_pause" value="{{ config.WIND_PAUSE }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="animation_pause">Animation Pause Time (in seconds):</label>
+                    <input type="text" class="form-control input-small" name="animation_pause" value="{{ config.ANIMATION_PAUSE }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="num_steps">Number of Animation Steps:</label>
+                    <input type="text" class="form-control input-small" name="num_steps" value="{{ config.NUM_STEPS }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="snow_blink_count">Snow Blink Count:</label>
+                    <input type="text" class="form-control input-small" name="snow_blink_count" value="{{ config.SNOW_BLINK_COUNT }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="snow_blink_pause">Snow Blink Pause (in seconds):</label>
+                    <input type="text" class="form-control input-small" name="snow_blink_pause" value="{{ config.SNOW_BLINK_PAUSE }}">
+                </div>
+
+                <!-- Boolean Animations (Toggles) -->
+                <h2>Animation and Dimming Settings</h2>
+                <div class="toggle-container">
+                    <div class="toggle-wrapper">
+                        <input type="checkbox" id="enable_lights_off" name="enable_lights_off" class="toggle-input" {% if config.ENABLE_LIGHTS_OFF %}checked{% endif %}>
+                        <label for="enable_lights_off" class="toggle-label">Enable Lights Off Time</label>
+                    </div>
+                    <!-- Daytime Dimming Toggle -->
+                    <div class="toggle-wrapper">
+                        <input type="checkbox" id="daytime_dimming" name="daytime_dimming" class="toggle-input" {% if config.DAYTIME_DIMMING %}checked{% endif %}>
+                        <label for="daytime_dimming" class="toggle-label">Enable Daytime Dimming</label>
+                    </div>
+
+                    <!-- Wind Animation Toggle -->
+                    <div class="toggle-wrapper">
+                        <input type="checkbox" id="wind_animation" name="wind_animation" class="toggle-input" {% if config.WIND_ANIMATION %}checked{% endif %}>
+                        <label for="wind_animation" class="toggle-label">Enable Wind Animation</label>
+                    </div>
+
+                    <!-- Lightning Animation Toggle -->
+                    <div class="toggle-wrapper">
+                        <input type="checkbox" id="lightening_animation" name="lightening_animation" class="toggle-input" {% if config.LIGHTENING_ANIMATION %}checked{% endif %}>
+                        <label for="lightening_animation" class="toggle-label">Enable Lightning Animation</label>
+                    </div>
+
+                    <!-- Snowy Animation Toggle -->
+                    <div class="toggle-wrapper">
+                        <input type="checkbox" id="snowy_animation" name="snowy_animation" class="toggle-input" {% if config.SNOWY_ANIMATION %}checked{% endif %}>
+                        <label for="snowy_animation" class="toggle-label">Enable Snowy Animation</label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Airports Section with Line Numbers -->
+            <section id="airports" class="airports">
+                <h2>Airports</h2>
+                <label for="airportsText">Edit Airports (one per line):</label>
+            
+                <div class="textarea-wrapper">
+                    <div class="line-numbers" id="line-numbers"></div>
+                    <textarea class="form-controltextarea" name="airports" id="airportsText" rows="10">{{ airports }}</textarea>
+                </div>
+                
+            </section>
+            
+
+            <!-- WiFi Settings Section -->
+            <section id="wifi-settings">
+                <h2>WiFi Settings</h2>
+                <text style="font-size: small;">NOTE: Save settings before connecting to a new netwrok</text>
+            </br>
+                <button id="scan-button" class="btn-primary">Scan for Networks</button>
+                <div id="connection-status" class="mt-3"></div>
+                <div id="network-dropdown" class="mt-4">
+                    <select id="ssid-select" name="ssid" class="form-control">
+                        <option value="">Scan First...</option>
+                    </select>
+                </div>
+                <div id="password-input" class="mt-3">
+                    <label for="wifi-password">Password (leave blank if open):</label>
+                    <input type="text" id="wifi-password" name="wifi-password" class="form-control" placeholder="Enter password">
+                </div>
+                <div class="mt-4">
+                    <button type="button" id="connect-button" class="btn-primary">Connect to Network</button>
+                </div>
+            </section>
+
+
+
+
+            <script type="text/javascript">
+                // Save scroll position on form submission
+                function saveScrollPosition() {
+                    sessionStorage.setItem('scrollPosition', window.scrollY);
+                }
+            
+                // Restore scroll position on page reload
+                document.addEventListener('DOMContentLoaded', function () {
+                    const scrollPosition = sessionStorage.getItem('scrollPosition');
+                    if (scrollPosition) {
+                        window.scrollTo(0, parseInt(scrollPosition));
+                        sessionStorage.removeItem('scrollPosition');
+                    }
+                });
+            
+                // Scan for networks when the "Scan" button is clicked
+                document.getElementById('scan-button').addEventListener('click', function () {
+                    let scanButton = document.getElementById('scan-button');
+                    let ssidSelect = document.getElementById('ssid-select');
+                    let connectionStatus = document.getElementById('connection-status');
+
+                    // Disable the button and show a loading message
+                    scanButton.disabled = true;
+                    connectionStatus.textContent = 'Scanning for networks...';
+
+                    fetch('/scan-networks')
+                        .then(response => response.json())
+                        .then(data => {
+                            ssidSelect.innerHTML = '<option value="">Select a network</option>';
+
+                            if (data.networks && data.networks.length > 0) {
+                                data.networks.forEach(network => {
+                                    let option = document.createElement('option');
+                                    option.value = network.ssid;
+                                    option.textContent = `${network.ssid} (Signal: ${network.signal}%)`;
+                                    ssidSelect.appendChild(option);
+                                });
+                                connectionStatus.textContent = 'Scan complete. Select a network.';
+                            } else {
+                                connectionStatus.textContent = 'No networks found. Try scanning again.';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error scanning networks:', error);
+                            connectionStatus.textContent = 'An error occurred while scanning.';
+                        })
+                        .finally(() => {
+                            // Re-enable the button after the scan completes
+                            scanButton.disabled = false;
+                        });
+                });
+
+
+            
+                // Connect to the selected network when "Connect" is clicked
+                document.getElementById('connect-button').addEventListener('click', function () {
+                    let ssid = document.getElementById('ssid-select').value;
+                    let password = document.getElementById('wifi-password').value;
+                    let connectionStatus = document.getElementById('connection-status');
+            
+                    if (!ssid) {
+                        connectionStatus.textContent = 'Please select a network.';
+                        return;
+                    }
+            
+                    fetch('/connect-to-network', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ ssid: ssid, password: password })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                connectionStatus.textContent = 'Connected successfully!';
+                            } else {
+                                connectionStatus.textContent = `Error: ${data.error}`;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error connecting to network:', error);
+                            connectionStatus.textContent = 'An error occurred while connecting.';
+                        });
+                });
+
+                document.addEventListener('DOMContentLoaded', function() {
+                    const textarea = document.getElementById('airportsText');
+                    const lineNumbers = document.getElementById('line-numbers');
+
+                    function updateLineNumbers() {
+                        const lines = textarea.value.split('\n').length;
+                        let lineNumbersHtml = '';
+                        for (let i = 1; i <= lines; i++) {
+                            lineNumbersHtml += `${i}<br>`;
+                        }
+                        lineNumbers.innerHTML = lineNumbersHtml;
+                    }
+
+                    // Sync scrolling between the textarea and the line numbers
+                    textarea.addEventListener('scroll', function () {
+                        lineNumbers.style.transform = `translateY(-${textarea.scrollTop}px)`;
+                    });
+
+                    // Update line numbers on input
+                    textarea.addEventListener('input', updateLineNumbers);
+
+                    // Initial update on page load
+                    updateLineNumbers();
+                });
+
+            </script>
+            
+
+
+        <!-- Submit Button -->
+            <div class="mt-4">
+                <button type="submit" class="btn-primary">Save</button>
+            </div>
+            <div class="mt-4">
+                <a href="{{ url_for('update_weather') }}" class="btn-primary">Update Weather</a>
+            </div>
+            <!-- Restart METAR Service Button -->
+            <div class="mt-4">
+                <a href="{{ url_for('restart_metar') }}" class="btn-primary">Restart METAR Service</a>
+            </div>
+            <!-- Button to stop METAR service and blank LEDs -->
+            <div class="mt-4">
+                <a href="{{ url_for('stop_and_blank') }}" class="btn-primary">Stop METAR</a>
+            </div>
+
+        </form>
+    </div>
+
+<script type="text/javascript">
+
+function saveScrollPosition() {
+    sessionStorage.setItem('scrollPosition', window.scrollY);
+}
+
+// Restore the scroll position after the page reloads
+document.addEventListener('DOMContentLoaded', function() {
+    const scrollPosition = sessionStorage.getItem('scrollPosition');
+    if (scrollPosition) {
+        window.scrollTo(0, parseInt(scrollPosition));
+        sessionStorage.removeItem('scrollPosition');
+    }
+});
+
+// JavaScript for toast notifications
+function showToast(message, category) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerText = message;
+    toast.classList.add(category);
+    document.body.appendChild(toast);
+    setTimeout(function() {
+        toast.classList.add('show');
+    }, 100);
+    setTimeout(function() {
+        toast.classList.remove('show');
+        document.body.removeChild(toast);
+    }, 8000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                showToast('{{ message }}', '{{ category }}');
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+});
+</script>
+
+    
+</body>
+</html>

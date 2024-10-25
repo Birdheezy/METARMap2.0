@@ -19,26 +19,13 @@ body {
 
 /* Navigation bar for a modern look */
 .navbar {
-    position: fixed; /* Keep the navbar fixed to the top */
-    top: 0; /* Align the navbar to the top of the page */
-    width: 100%; /* Make the navbar span the entire width of the screen */
     background-color: #1f1f1f;
     padding: 15px;
     display: flex;
     justify-content: center;
     border-bottom: 2px solid #007bff;
     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
-    z-index: 1000; /* Make sure the navbar stays above other elements */
 }
-
-body {
-    padding-top: 40px;
-}
-
-#brightness, #time-settings, #animation, #airports, #wifi-settings {
-    scroll-margin-top: 70px;  /* Adjust to match or exceed your navbar height */
-}
-
 
 /* Links in the navigation bar */
 .navbar a {
@@ -58,7 +45,7 @@ body {
 form section {
     margin-bottom: 0px;
     padding-bottom: 0px;
-    border: 1px solid #444;
+    border-bottom: 1px solid #444;
     text-align: center;
 }
 
@@ -176,30 +163,24 @@ textarea {
 
 /* Container for toggle switches (2 columns, 2 rows) */
 .toggle-container {
-    display: flex;  /* Change from grid to flex for centering */
-    flex-direction: column;  /* Arrange items in a column */
-    align-items: left ;  /* Center items horizontally */
-    max-width: 300px;  /* Set a max-width to prevent toggles from drifting too far apart */
-    margin: 0 auto;  /* Center the grid container within the page */
+    display: grid;
+    grid-template-columns: 1fr 1fr;  /* Two equal columns */
+    grid-gap: 10px;  /* Reduced space between rows and columns */
+    justify-content: space-between;  /* Keep toggles evenly spaced between columns */
+    max-width: 550px;  /* Set a max-width to prevent toggles from drifting too far apart */
+    margin: 0 auto;  /* Center the grid container */
     margin-top: 20px;
-    gap: 20px;  /* Space between each row */
 }
 
 /* Individual toggle wrapper */
 .toggle-wrapper {
     position: relative;
-    padding: 0 40px;  /* Add horizontal padding to prevent overlap */
+    padding-left: 60px;  /* Adjust to accommodate the toggle switch size */
     cursor: pointer;
     display: flex;
-    align-items: center; /* Space between the toggle and the text */
-    justify-content: flex-start; /* Align elements within the toggle wrapper */
+    align-items: center;
+    gap: 10px;
 }
-
-/* Adjust label to ensure proper spacing from the toggle switch */
-.toggle-label {
-    margin-left: 10px;  /* Add margin to create space between the toggle and label text */
-}
-
 
 /* Custom toggle switch */
 .toggle-input {
@@ -369,62 +350,4 @@ textarea {
 }
 section {
     margin-bottom: 30px;
-}
-
-/* Tooltip text - initially hidden */
-.tooltip-text {
-    visibility: hidden;
-    width: 200px;  /* Adjust as needed */
-    background-color: #333;
-    color: #fff;
-    text-align: center;
-    padding: 5px;
-    border-radius: 5px;
-    position: absolute;
-    z-index: 10;  /* Ensure tooltip appears above other elements */
-    top: -10px;  /* Adjust this value to place tooltip above the icon */
-    left: 50%;
-    transform: translateX(-50%);
-    opacity: 0;  /* Start hidden */
-    transition: opacity 0.3s ease, visibility 0.3s ease;
-}
-
-/* Tooltip arrow (optional) */
-.tooltip-text::after {
-    content: "";
-    position: absolute;
-    top: 100%;  /* Arrow on the bottom */
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #333 transparent transparent transparent;
-}
-
-/* Tooltip trigger - icon styling */
-.tooltip-trigger {
-    cursor: pointer;
-    font-size: 14px;
-    margin-left: 5px;
-    position: relative;
-}
-
-/* Show tooltip on hover or focus */
-.tooltip-trigger.active + .tooltip-text,
-.tooltip-trigger:hover + .tooltip-text,
-.tooltip-trigger:focus + .tooltip-text {
-    visibility: visible;
-    opacity: 1;
-}
-
-/* Show tooltip on mobile tap */
-.tooltip-trigger.active + .tooltip-text {
-    visibility: visible;
-    opacity: 1;
-}
-
-.tooltip-icon {
-    cursor: pointer;
-    font-size: 1.5em;
-    color: #007bff;
 }
