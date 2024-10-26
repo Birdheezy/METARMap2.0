@@ -21,8 +21,8 @@ SNOW_BLINK_COUNT = 3
 SNOW_BLINK_PAUSE = 0.4
 
 #Time Variables
-LIGHTS_OFF_TIME = datetime.time(22, 0)
 LIGHTS_ON_TIME = datetime.time(6, 30)
+LIGHTS_OFF_TIME = datetime.time(21, 0)
 BRIGHT_TIME_START = datetime.time(7, 15)
 DIM_TIME_START = datetime.time(18, 10)
 

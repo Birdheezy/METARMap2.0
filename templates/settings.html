@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Settings</title>
+    <title>MEARMap Settings</title>
     <link href="{{ url_for('static', filename='css/settings.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='settings.ico') }}">
 </head>
 <body>
 
@@ -18,11 +19,26 @@
 </nav>
 
 <div class="container">
-    <form method="POST" action="/" onsubmit="saveScrollPosition()">
-
-<!-- Brightness Section with Tooltips as Dropdowns -->
+<form method="POST" action="/" onsubmit="saveScrollPosition()">
+<section>
+    <div class="mb-3">
+        <div class="dropdown-container">
+            <label style="font-size: 25px;">
+                General Notes
+                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
+            </label>
+            <div class="dropdown-content" style="display: none;">
+                Thank you for checking out the settings page! </br>
+                This page contains all of the settings you need to make your map your own</br>
+                If you don't understand a certain setting, it's best to leave it to the default value
+            </div>
+        </div>
+    </div>
+</section>
 <section id="brightness">
+
     <h2>Brightness Settings</h2>
+
     <div class="mb-3">
         <div class="dropdown-container">
             <label for="brightness">Default Brightness (0.01 to 1.0)
@@ -32,8 +48,9 @@
                 Adjusts the default LED brightness between 0.01 (minimum) and 1 (maximum)
             </div>
         </div>
-        <input type="text" class="form-control input-small" name="brightness" value="{{ config.BRIGHTNESS }}">
+        <input type="text" class="form-control input-small" name="brightness" value="{{ config.BRIGHTNESS }}" placeholder="Default: 0.5">
     </div>
+
     <div class="mb-3">
         <div class="dropdown-container">
             <label for="daytime_dim_brightness">Night/Dimmed Brightness (0.01 to 1.0)
@@ -43,8 +60,9 @@
                 The LED brightness between "Dim time Start" and "Bright time start". Between 0.01 (minimum) and 1 (maximum)
             </div>
         </div>
-        <input type="text" class="form-control input-small" name="daytime_dim_brightness" value="{{ config.DAYTIME_DIM_BRIGHTNESS }}">
+        <input type="text" class="form-control input-small" name="daytime_dim_brightness" value="{{ config.DAYTIME_DIM_BRIGHTNESS }}" placeholder="Default: 0.2">
     </div>
+
     <div class="mb-3">
         <div class="dropdown-container">
             <label for="dim_brightness">Windy Dim Brightness (0.01 to 1.0)
@@ -53,17 +71,16 @@
         <div class="dropdown-content" style="display: none;">
             How dim the LED will get when executing the windy animation. Range is between 0.01 (minimum) 1 (maximum)
         </div>
-        </div>
-        <input type="text" class="form-control input-small" name="dim_brightness" value="{{ config.DIM_BRIGHTNESS }}">
+    </div>
+        <input type="text" class="form-control input-small" name="dim_brightness" value="{{ config.DIM_BRIGHTNESS }}" placeholder="Default: 0.05">
     </div>
 </section>
 
-
-
-<!-- Time Settings Section with Tooltips -->
 <section id="time-settings">
-    <h2>Time Settings</h2>
-    <!-- Lights On Time -->
+
+<h2>Time Settings</h2>
+
+<!-- Lights On Time -->
     <div class="mb-3">
         <div class="dropdown-container">
             <label for="lights_on_time">Lights On Time (HH:MM)
@@ -84,7 +101,7 @@
             {% endfor %}
         </select>
     </div>
-    <!-- Lights Off Time -->
+<!-- Lights Off Time -->
     <div class="mb-3">
         <div class="dropdown-container">
             <label for="lights_off_time">Lights Off Time (HH:MM)
@@ -105,7 +122,7 @@
             {% endfor %}
         </select>
     </div>
-    <!-- Bright Time Start -->
+<!-- Bright Time Start -->
     <div class="mb-3">
         <div class="dropdown-container">
             <label for="bright_time_start">Bright Time Start (HH:MM)
@@ -126,7 +143,7 @@
             {% endfor %}
         </select>
     </div>
-    <!-- Dim Time Start -->
+<!-- Dim Time Start -->
     <div class="mb-3">
         <div class="dropdown-container">
             <label for="dim_time_start">Dim Time Start (HH:MM)
@@ -149,54 +166,12 @@
     </div>
 </section>
 
-<!-- Animation Settings Section with Tooltips -->
-<section id="animation">
-    <h2>Animation Settings</h2>
-    <div class="mb-3">
-        <div class="dropdown-container">
-            <label for="lightning_flash_count">Lightning Flash Count
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-            </label>
-            <div class="dropdown-content" style="display: none;">
-                Sets the number of flashes that occur during the lightning animation.
-            </div>
-        </div>
-        <input type="text" class="form-control input-small" name="lightning_flash_count" value="{{ config.LIGHTNING_FLASH_COUNT }}">
-    </div>
+<!-- Animation Settings -->
 
-    <div class="mb-3">
-        <div class="dropdown-container">
-            <label for="wind_threshold">Wind Threshold
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-            </label>
-            <div class="dropdown-content" style="display: none;">
-                Any steady state or gust over this value will trigger the windy animation
-            </div>
-        </div>
-        <input type="text" class="form-control input-small" name="wind_threshold" value="{{ config.WIND_THRESHOLD }}">
-    </div>
-    <div class="mb-3">
-        <div class="dropdown-container">
-            <label for="wind_fade_time">Wind Fade Time (in seconds)
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-            </label>
-            <div class="dropdown-content" style="display: none;">
-                How long it takes the LED to fade from bright to dim/dim to bright, in seconds
-            </div>
-        </div>
-        <input type="text" class="form-control input-small" name="wind_fade_time" value="{{ config.WIND_FADE_TIME }}">
-    </div>
-    <div class="mb-3">
-        <div class="dropdown-container">
-            <label for="wind_pause">Wind Pause Time (in seconds)
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-            </label>
-            <div class="dropdown-content" style="display: none;">
-                How long the LED will be pause at the dim brigthness when executing the windy animation, in seconds
-            </div>
-        </div>
-        <input type="text" class="form-control input-small" name="wind_pause" value="{{ config.WIND_PAUSE }}">
-    </div>
+<section id="animation">
+    
+    <h2>Animation Settings</h2>
+
     <div class="mb-3">
         <div class="dropdown-container">
             <label for="animation_pause">Animation Pause Time (in seconds)
@@ -206,19 +181,57 @@
                 Sets the duration of pause between each animation cycle, in seconds.
             </div>
         </div>
-        <input type="text" class="form-control input-small" name="animation_pause" value="{{ config.ANIMATION_PAUSE }}">
+        <input type="text" class="form-control input-small" name="animation_pause" value="{{ config.ANIMATION_PAUSE }}" placeholder="Default: 15">
     </div>
+
     <div class="mb-3">
         <div class="dropdown-container">
-            <label for="num_steps">Number of Windy Animation Steps
+            <label for="wind_threshold">Wind Threshold
                 <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
             </label>
             <div class="dropdown-content" style="display: none;">
-                How smooth the windy animation is. Recommended, 100
+                Steady state or gust over this value in knots will trigger the windy animation
             </div>
         </div>
-        <input type="text" class="form-control input-small" name="num_steps" value="{{ config.NUM_STEPS }}">
+        <input type="text" class="form-control input-small" name="wind_threshold" value="{{ config.WIND_THRESHOLD }}" placeholder="Default: 15">
     </div>
+
+    <div class="mb-3">
+        <div class="dropdown-container">
+            <label for="wind_fade_time">Wind Fade Time (in seconds)
+                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
+            </label>
+            <div class="dropdown-content" style="display: none;">
+                How long it takes the LED to fade from bright to dim/dim to bright, in seconds
+            </div>
+        </div>
+        <input type="text" class="form-control input-small" name="wind_fade_time" value="{{ config.WIND_FADE_TIME }}" placeholder="Default: 0.5">
+    </div>
+
+    <div class="mb-3">
+        <div class="dropdown-container">
+            <label for="wind_pause">Wind Fade Pause Time (in seconds)
+                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
+            </label>
+            <div class="dropdown-content" style="display: none;">
+                How long the LED will be pause at the dim brigthness when executing the windy animation, in seconds
+            </div>
+        </div>
+        <input type="text" class="form-control input-small" name="wind_pause" value="{{ config.WIND_PAUSE }}" placeholder="Default: 1.0">
+    </div>
+
+    <div class="mb-3">
+        <div class="dropdown-container">
+            <label for="lightning_flash_count">Lightning Flash Count
+                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
+            </label>
+            <div class="dropdown-content" style="display: none;">
+                Sets the number of flashes that occur during the lightning animation.
+            </div>
+        </div>
+        <input type="text" class="form-control input-small" name="lightning_flash_count" value="{{ config.LIGHTNING_FLASH_COUNT }}" placeholder="Default: 2">
+    </div>
+
     <div class="mb-3">
         <div class="dropdown-container">
             <label for="snow_blink_count">Snow Blink Count
@@ -228,8 +241,9 @@
                 Sets the number of blinks during the snowy animation.
             </div>
         </div>
-        <input type="text" class="form-control input-small" name="snow_blink_count" value="{{ config.SNOW_BLINK_COUNT }}">
+        <input type="text" class="form-control input-small" name="snow_blink_count" value="{{ config.SNOW_BLINK_COUNT }}" placeholder="Default: 2">
     </div>
+
     <div class="mb-3">
         <div class="dropdown-container">
             <label for="snow_blink_pause">Snow Blink Pause (in seconds)
@@ -239,10 +253,22 @@
                 Sets the pause duration between each blink during the snow animation, in seconds.
             </div>
         </div>
-        <input type="text" class="form-control input-small" name="snow_blink_pause" value="{{ config.SNOW_BLINK_PAUSE }}">
+        <input type="text" class="form-control input-small" name="snow_blink_pause" value="{{ config.SNOW_BLINK_PAUSE }}" placeholder="Default: 0.4">
     </div>
 
-    <!-- Boolean Animations (Toggles) -->
+    <div class="mb-3">
+        <div class="dropdown-container">
+            <label for="num_steps">Number of Windy Animation Steps
+                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
+            </label>
+            <div class="dropdown-content" style="display: none;">
+                How smooth the windy animation is. Recommended, 100
+            </div>
+        </div>
+        <input type="text" class="form-control input-small" name="num_steps" value="{{ config.NUM_STEPS }}" placeholder="Default: 100">
+    </div>
+
+<!-- Boolean Animations (Toggles) -->
     
     <div class="toggle-container">
         <div class="toggle-wrapper">
@@ -300,14 +326,14 @@
     </div>
     <div id="password-input" class="mt-3">
         <label for="wifi-password">Password (leave blank if open)</label>
-        <input type="text" id="wifi-password" name="wifi-password" class="form-control" placeholder="Enter password">
+        <input type="text" id="wifi-password" name="wifi-password" class="form-control" placeholder="Enter password" placeholder="Password Here">
     </div>
     <div class="mt-4">
         <button type="button" id="connect-button" class="btn-primary">Connect</button>
     </div>
 </section>
-
-    <!-- Submit Button -->
+<section>
+        <!-- Submit Button -->
         <div class="mt-4">
             <button type="submit" class="btn-primary">Save</button>
         </div>
@@ -322,191 +348,23 @@
         <div class="mt-4">
             <a href="{{ url_for('stop_and_blank') }}" class="btn-primary">Stop METAR</a>
         </div>
+</section>
+
+
 
     </form>
 </div>
-
-
 <script type="text/javascript">
-    // Save scroll position on form submission
-    function saveScrollPosition() {
-        sessionStorage.setItem('scrollPosition', window.scrollY);
-    }
-
-    // Restore scroll position on page reload
-    document.addEventListener('DOMContentLoaded', function () {
-        const scrollPosition = sessionStorage.getItem('scrollPosition');
-        if (scrollPosition) {
-            window.scrollTo(0, parseInt(scrollPosition));
-            sessionStorage.removeItem('scrollPosition');
-        }
-    });
-
-    // Scan for networks when the "Scan" button is clicked
-    document.getElementById('scan-button').addEventListener('click', function () {
-        let scanButton = document.getElementById('scan-button');
-        let ssidSelect = document.getElementById('ssid-select');
-        let connectionStatus = document.getElementById('connection-status');
-
-        // Disable the button and show a loading message
-        scanButton.disabled = true;
-        connectionStatus.textContent = 'Scanning for networks...';
-
-        fetch('/scan-networks')
-            .then(response => response.json())
-            .then(data => {
-                ssidSelect.innerHTML = '<option value="">Select a network</option>';
-
-                if (data.networks && data.networks.length > 0) {
-                    data.networks.forEach(network => {
-                        let option = document.createElement('option');
-                        option.value = network.ssid;
-                        option.textContent = `${network.ssid} (Signal: ${network.signal}%)`;
-                        ssidSelect.appendChild(option);
-                    });
-                    connectionStatus.textContent = 'Scan complete. Select a network.';
-                } else {
-                    connectionStatus.textContent = 'No networks found. Try scanning again.';
-                }
-            })
-            .catch(error => {
-                console.error('Error scanning networks:', error);
-                connectionStatus.textContent = 'An error occurred while scanning.';
-            })
-            .finally(() => {
-                // Re-enable the button after the scan completes
-                scanButton.disabled = false;
-            });
-    });
-
-    // Connect to the selected network when "Connect" is clicked
-    document.getElementById('connect-button').addEventListener('click', function () {
-        let ssid = document.getElementById('ssid-select').value;
-        let password = document.getElementById('wifi-password').value;
-        let connectionStatus = document.getElementById('connection-status');
-
-        if (!ssid) {
-            connectionStatus.textContent = 'Please select a network.';
-            return;
-        }
-
-        fetch('/connect-to-network', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ ssid: ssid, password: password })
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    connectionStatus.textContent = 'Connected successfully!';
-                } else {
-                    connectionStatus.textContent = `Error: ${data.error}`;
-                }
-            })
-            .catch(error => {
-                console.error('Error connecting to network:', error);
-                connectionStatus.textContent = 'An error occurred while connecting.';
-            });
-    });
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const textarea = document.getElementById('airportsText');
-        const lineNumbers = document.getElementById('line-numbers');
-
-        function updateLineNumbers() {
-            const lines = textarea.value.split('\n').length;
-            let lineNumbersHtml = '';
-            for (let i = 1; i <= lines; i++) {
-                lineNumbersHtml += `${i}<br>`;
-            }
-            lineNumbers.innerHTML = lineNumbersHtml;
-        }
-
-        // Sync scrolling between the textarea and the line numbers
-        textarea.addEventListener('scroll', function () {
-            lineNumbers.style.transform = `translateY(-${textarea.scrollTop}px)`;
-        });
-
-        // Update line numbers on input
-        textarea.addEventListener('input', updateLineNumbers);
-
-        // Initial update on page load
-        updateLineNumbers();
-    });
-
-function saveScrollPosition() {
-    sessionStorage.setItem('scrollPosition', window.scrollY);
-}
-
-// Restore the scroll position after the page reloads
-document.addEventListener('DOMContentLoaded', function() {
-    const scrollPosition = sessionStorage.getItem('scrollPosition');
-    if (scrollPosition) {
-        window.scrollTo(0, parseInt(scrollPosition));
-        sessionStorage.removeItem('scrollPosition');
-    }
-});
-
-// JavaScript for toast notifications
-function showToast(message, category) {
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.innerText = message;
-    toast.classList.add(category);
-    document.body.appendChild(toast);
-    setTimeout(function() {
-        toast.classList.add('show');
-    }, 100);
-    setTimeout(function() {
-        toast.classList.remove('show');
-        document.body.removeChild(toast);
-    }, 8000);
-}
-
-document.addEventListener('DOMContentLoaded', function() {
+    const messages = [];
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                showToast('{{ message }}', '{{ category }}');
+                messages.push({ category: '{{ category }}', message: '{{ message }}' });
             {% endfor %}
         {% endif %}
     {% endwith %}
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-        // Add click and keypress event listener to tooltip icons
-        const tooltipIcons = document.querySelectorAll('.tooltip-icon');
-
-        tooltipIcons.forEach(icon => {
-            icon.addEventListener('click', function() {
-                toggleTooltip(this);
-            });
-
-            icon.addEventListener('keypress', function(event) {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    toggleTooltip(this);
-                }
-            });
-        });
-
-        function toggleTooltip(icon) {
-            const tooltipContent = icon.parentElement.nextElementSibling;
-            const isExpanded = icon.getAttribute('aria-expanded') === 'true';
-
-            if (isExpanded) {
-                tooltipContent.style.display = 'none';
-                icon.setAttribute('aria-expanded', 'false');
-            } else {
-                tooltipContent.style.display = 'block';
-                icon.setAttribute('aria-expanded', 'true');
-            }
-        }
-    });
 </script>
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 
-    
 </body>
 </html>

@@ -215,26 +215,37 @@ def update_leds(weather_data):
 
 # Main loop
 while True:
-    # Read the weather data and update the LEDs
-    weather_data = weather.read_weather_data()
-    update_leds(weather_data)
-    update_led_brightness(pixels)
-    time.sleep(ANIMATION_PAUSE)
+    # Check if the lights should be off based on current time
+    lights_off = check_lights_off()
 
-    # Check for windy airports and animate if any, if WIND_ANIMATION is True
-    if WIND_ANIMATION:
-        windy_airports = weather.get_windy_airports(weather_data)
-        if windy_airports:
-            animate_windy_airports(windy_airports, weather_data)
-            
-    # Check for lightning airports and animate if any, if LIGHTENING_ANIMATION is True
-    if LIGHTENING_ANIMATION:
-        lightning_airports = weather.get_lightning_airports(weather_data)
-        if lightning_airports:
-            animate_lightning_airports(lightning_airports, weather_data)
+    if not lights_off:
+        # Read the weather data and update the LEDs if lights are on
+        weather_data = weather.read_weather_data()
+        update_leds(weather_data)
+        update_led_brightness(pixels)
 
-    # Check for snowy airports and animate if any
-    if SNOWY_ANIMATION:
-        snowy_airports = weather.get_snowy_airports(weather_data)
-        if snowy_airports:
-            animate_snowy_airports(snowy_airports, weather_data)  # We'll define this function next
+        # Check for windy airports and animate if any, if WIND_ANIMATION is True
+        if WIND_ANIMATION:
+            windy_airports = weather.get_windy_airports(weather_data)
+            if windy_airports:
+                animate_windy_airports(windy_airports, weather_data)
+
+        # Check for lightning airports and animate if any, if LIGHTENING_ANIMATION is True
+        if LIGHTENING_ANIMATION:
+            lightning_airports = weather.get_lightning_airports(weather_data)
+            if lightning_airports:
+                animate_lightning_airports(lightning_airports, weather_data)
+
+        # Check for snowy airports and animate if any, if SNOWY_ANIMATION is True
+        if SNOWY_ANIMATION:
+            snowy_airports = weather.get_snowy_airports(weather_data)
+            if snowy_airports:
+                animate_snowy_airports(snowy_airports, weather_data)
+
+    else:
+        # If lights should be off, ensure LEDs are off
+        pixels.fill((0, 0, 0))
+        pixels.show()
+        print("Lights are off due to the schedule.")
+    
+    time.sleep(ANIMATION_PAUSE)  # Pause the loop for the defined time
