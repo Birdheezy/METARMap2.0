@@ -2,8 +2,8 @@ import requests
 import logging
 from config import *
 import json
+import re
 
-LIGHTNING_KEYWORDS = ["TS", "LTG", "VCTS"]
 
 def get_valid_airports(file_path):
     """Read airport IDs from a file and return a list of valid airport codes."""
@@ -75,6 +75,8 @@ def get_windy_airports(weather_data):
 
     return windy_airports
 
+LIGHTNING_KEYWORDS = ["TS", "LTG", "VCTS"]
+
 def get_lightning_airports(weather_data):
     """Detect and return a dictionary of airports with lightning and their corresponding colors."""
     lightning_airports = {}
@@ -83,8 +85,8 @@ def get_lightning_airports(weather_data):
         raw_observation = weather_info.get('raw_observation', '')
         flt_cat = weather_info.get('flt_cat', 'MISSING')
 
-        # Check for lightning using the imported keywords
-        if any(keyword in raw_observation for keyword in LIGHTNING_KEYWORDS):
+        # Check for lightning using regular expressions for whole word matching
+        if any(re.search(rf'\b{keyword}\b', raw_observation) for keyword in LIGHTNING_KEYWORDS):
             # Get the color based on flight category
             flt_cat_color = get_flt_cat_color(flt_cat)
             
@@ -93,7 +95,7 @@ def get_lightning_airports(weather_data):
 
     return lightning_airports
 
-SNOW_KEYWORDS = ["SN", "BLSN", "DRSN"]  # Add this line near the top with the other keyword definitions
+SNOW_KEYWORDS = ["SN", "BLSN", "DRSN", "GS", "SG", "SNINCR", "SP"]
 
 def get_snowy_airports(weather_data):
     """Detect and return a dictionary of airports with snow and their corresponding colors."""
@@ -103,8 +105,8 @@ def get_snowy_airports(weather_data):
         raw_observation = weather_info.get('raw_observation', '')
         flt_cat = weather_info.get('flt_cat', 'MISSING')
 
-        # Check for snow using the imported keywords
-        if any(keyword in raw_observation for keyword in SNOW_KEYWORDS):
+        # Check for snow using regular expressions for whole word matching
+        if any(re.search(rf'\b{keyword}\b', raw_observation) for keyword in SNOW_KEYWORDS):
             # Get the color based on flight category
             flt_cat_color = get_flt_cat_color(flt_cat)
             
