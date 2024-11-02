@@ -46,8 +46,6 @@ def fetch_metar():
         logging.error("Failed to fetch METAR data: %s", e)
         return None
 
-# Add this function to weather.py
-
 def read_weather_data():
     """Read and return the weather data from weather.json."""
     try:
