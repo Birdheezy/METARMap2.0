@@ -4,9 +4,11 @@ import os
 from config import *  # Import all variables from config.py
 import datetime
 import config
+from flask import jsonify
+
+
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Make sure you have this line
-
 
 # Set a secret key for session management (needed for flashing messages)
 app.secret_key = os.urandom(24)
@@ -52,6 +54,37 @@ def reload_config():
     LIGHTS_OFF_TIME = config_globals['LIGHTS_OFF_TIME']
     LIGHTS_ON_TIME = config_globals['LIGHTS_ON_TIME']
     ENABLE_LIGHTS_OFF = config_globals['ENABLE_LIGHTS_OFF']
+
+@app.route('/leds/on', methods=['POST'])
+def turn_on_leds():
+    subprocess.run(['sudo', 'systemctl', 'start', 'metar.service'])
+    return jsonify({"status": "LEDs turned on"}), 200
+
+@app.route('/leds/off', methods=['POST'])
+def turn_off_leds():
+    subprocess.run(['sudo', 'systemctl', 'stop', 'metar.service'])
+    subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/blank.py'])
+    return jsonify({"status": "LEDs turned off"}), 200
+	
+@app.route('/update-weather', methods=['POST'])
+def refresh_weather():
+    subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/weather.py'], check=True)
+    return jsonify({"status": "Weather updated successfully"}), 200
+
+@app.route('/leds/status', methods=['GET'])
+def get_led_status():
+    try:
+        # Check if the metar.service is active
+        result = subprocess.run(
+            ['systemctl', 'is-active', 'metar.service'],
+            capture_output=True, text=True
+        )
+        # Determine LED status based on service status
+        led_status = "on" if result.stdout.strip() == "active" else "off"
+        return jsonify({"status": led_status}), 200
+    except subprocess.CalledProcessError as e:
+        return jsonify({"status": "off", "error": str(e)}), 500
+
 
 @app.route('/', methods=['GET', 'POST'])
 def edit_settings():
@@ -301,6 +334,16 @@ def connect_to_network():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+#@app.route('/leds/on', methods=['POST'])
+#def turn_on_leds():
+#    subprocess.run(['sudo', 'systemctl', 'start', 'metar.service'], check=True)
+#    return jsonify({"status": "LEDs turned on"}), 200
+
+#@app.route('/leds/off', methods=['POST'])
+#def turn_off_leds():
+#    subprocess.run(['sudo', 'systemctl', 'stop', 'metar.service'], check=True)
+#    subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/blank.py'], check=True)
+#    return jsonify({"status": "LEDs turned off"}), 200
 
 # Run the Flask app
 if __name__ == '__main__':
