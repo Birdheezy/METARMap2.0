@@ -8,9 +8,6 @@ from flask import jsonify
 
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)  # Make sure you have this line
-
-# Set a secret key for session management (needed for flashing messages)
 app.secret_key = os.urandom(24)
 
 # Helper function to reload config values
