@@ -8,9 +8,6 @@ from flask import jsonify
 
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)  # Make sure you have this line
-
-# Set a secret key for session management (needed for flashing messages)
 app.secret_key = os.urandom(24)
 
 # Helper function to reload config values
@@ -334,18 +331,6 @@ def connect_to_network():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-#@app.route('/leds/on', methods=['POST'])
-#def turn_on_leds():
-#    subprocess.run(['sudo', 'systemctl', 'start', 'metar.service'], check=True)
-#    return jsonify({"status": "LEDs turned on"}), 200
-
-#@app.route('/leds/off', methods=['POST'])
-#def turn_off_leds():
-#    subprocess.run(['sudo', 'systemctl', 'stop', 'metar.service'], check=True)
-#    subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/blank.py'], check=True)
-#    return jsonify({"status": "LEDs turned off"}), 200
-
-# Run the Flask app
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80, debug=False)
  
