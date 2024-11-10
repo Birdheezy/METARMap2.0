@@ -111,6 +111,33 @@ function saveScrollPosition() {
     sessionStorage.setItem('scrollPosition', window.scrollY);
 }
 
+function saveAndRestart() {
+  // Trigger the form submission first
+  document.forms[0].submit();
+
+  // After a slight delay, make a request to restart the metar service
+  setTimeout(() => {
+    fetch('/restart_metar')
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        }
+        throw new Error('Failed to restart METAR service');
+      })
+      .then(data => {
+        if (data.success) {
+          alert('Settings saved and METAR service restarted successfully!');
+        } else {
+          console.error('Settings saved but failed to restart METAR service.');
+        }
+      })
+      .catch(error => {
+        console.error('Error restarting METAR service:', error);
+      });
+  }, 500); // Delay to allow settings to save
+}
+
+
 // Restore the scroll position after the page reloads
 document.addEventListener('DOMContentLoaded', function() {
     const scrollPosition = sessionStorage.getItem('scrollPosition');

@@ -333,21 +333,21 @@
     </div>
 </section>
 <section>
-        <!-- Submit Button -->
-        <div class="mt-4">
-            <button type="submit" class="btn-primary">Save</button>
-        </div>
-        <div class="mt-4">
-            <a href="{{ url_for('update_weather') }}" class="btn-primary">Update Weather</a>
-        </div>
-        <!-- Restart METAR Service Button -->
-        <div class="mt-4">
-            <a href="{{ url_for('restart_metar') }}" class="btn-primary">Restart METAR Service</a>
-        </div>
-        <!-- Button to stop METAR service and blank LEDs -->
-        <div class="mt-4">
-            <a href="{{ url_for('stop_and_blank') }}" class="btn-primary">Stop METAR</a>
-        </div>
+	<!-- Submit Button -->
+	<div class="mt-4">
+		<button type="submit" class="btn btn-primary" onclick="saveAndRestart()">Save</button>
+	</div>
+	<div class="mt-4">
+		<a href="{{ url_for('update_weather') }}" class="btn-primary">Update Weather</a>
+	</div>
+	<!-- Restart METAR Service Button -->
+	<div class="mt-4">
+		<a href="{{ url_for('restart_metar') }}" class="btn-primary">Restart METAR Service</a>
+	</div>
+	<!-- Button to stop METAR service and blank LEDs -->
+	<div class="mt-4">
+		<a href="{{ url_for('stop_and_blank') }}" class="btn-primary">Stop METAR</a>
+	</div>
 </section>
 
 
