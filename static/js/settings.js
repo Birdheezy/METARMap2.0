@@ -201,3 +201,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+
+// Attach saveScrollPosition to buttons that trigger navigation or page reload
+document.querySelectorAll('a.btn-primary').forEach(button => {
+    button.addEventListener('click', saveScrollPosition);
+});

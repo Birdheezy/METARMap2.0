@@ -207,11 +207,19 @@ def edit_settings():
     lights_on_time_hour = config.LIGHTS_ON_TIME.hour
     lights_on_time_minute = config.LIGHTS_ON_TIME.minute
 
+    # Get the last modified date of weather.json
+    weather_file_path = '/home/pi/weather.json'  # Adjust this path if necessary
+    try:
+        last_modified_timestamp = os.path.getmtime(weather_file_path)
+        weather_last_modified = datetime.datetime.fromtimestamp(last_modified_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+    except FileNotFoundError:
+        weather_last_modified = "Weather data not available"
+
     # Load the airport list from airports.txt
     with open('/home/pi/airports.txt', 'r') as f:
         airports = f.read()
 
-    # Render the template with the updated values
+    # Render the template with the updated values, including weather_last_modified
     return render_template(
         'settings.html',
         bright_time_start_hour=bright_time_start_hour,
@@ -223,7 +231,8 @@ def edit_settings():
         lights_on_time_hour=lights_on_time_hour,
         lights_on_time_minute=lights_on_time_minute,
         airports=airports,
-        config=globals()  # Pass the entire config if needed for other settings
+        config=globals(),  # Pass the entire config if needed for other settings
+        weather_last_modified=weather_last_modified  # Pass the last modified date to the template
     )
 
 # Route to restart the METAR service
