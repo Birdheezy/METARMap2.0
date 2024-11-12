@@ -5,6 +5,7 @@ from config import *  # Import all variables from config.py
 import datetime
 import config
 from flask import jsonify
+import shutil
 
 
 app = Flask(__name__)
@@ -340,8 +341,6 @@ def connect_to_network():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-#if __name__ == '__main__':
-#    app.run(host='0.0.0.0', port=80, debug=False)
 
 @app.route('/check_for_updates', methods=['GET'])
 def check_for_updates():
@@ -359,14 +358,63 @@ def check_for_updates():
     except subprocess.CalledProcessError as e:
         return jsonify({"error": f"Failed to check for updates: {str(e)}"}), 500
 
+import shutil
+import datetime  # Keep using `import datetime` as specified
+
 @app.route('/pull_updates', methods=['GET'])
 def pull_updates():
     try:
+        # Define the project directory and backup directory
+        project_dir = '/home/pi'
+        backup_dir = os.path.join(project_dir, '*BACKUP*')
+
+        # Set a limit for the number of backups to retain
+        MAX_BACKUPS = 5
+
+        # Create a timestamped backup directory to keep multiple backups
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_path = os.path.join(backup_dir, f'backup_{timestamp}')
+        
+        # Create the backup directory if it doesn't exist
+        if not os.path.exists(backup_dir):
+            os.makedirs(backup_dir)
+
+        # List of items to back up
+        items_to_backup = [
+            os.path.join(project_dir, item) for item in os.listdir(project_dir)
+            if item != '*BACKUP*' and item != 'non_repo_files_or_folders_to_ignore'
+        ]
+
+        # Create the specific backup folder
+        os.makedirs(backup_path, exist_ok=True)
+
+        # Copy each item to the backup folder
+        for item in items_to_backup:
+            if os.path.isdir(item):
+                shutil.copytree(item, os.path.join(backup_path, os.path.basename(item)), dirs_exist_ok=True)
+            else:
+                shutil.copy2(item, backup_path)
+
+        # Delete old backups if they exceed the limit
+        existing_backups = sorted(
+            [os.path.join(backup_dir, d) for d in os.listdir(backup_dir)],
+            key=os.path.getmtime
+        )
+
+        while len(existing_backups) > MAX_BACKUPS:
+            shutil.rmtree(existing_backups[0])
+            existing_backups.pop(0)
+
         # Pull the latest updates from the remote repository
-        subprocess.run(['git', 'pull'], cwd='/home/pi', check=True)
-        return jsonify({"success": True, "message": "Update successful!"}), 200
+        subprocess.run(['git', 'pull'], cwd=project_dir, check=True)
+
+        return jsonify({"success": True, "message": f"Update successful! Backup created at {backup_path}"}), 200
+
     except subprocess.CalledProcessError as e:
         return jsonify({"success": False, "error": f"Failed to pull updates: {str(e)}"}), 500
+
+    except Exception as e:
+        return jsonify({"success": False, "error": f"An error occurred during backup or update: {str(e)}"}), 500
 
 
 if __name__ == '__main__':
@@ -378,3 +426,6 @@ if __name__ == '__main__':
             '/etc/ssl/private/flask-selfsigned.key'
         )
     )
+
+#if __name__ == '__main__':
+#    app.run(host='0.0.0.0', port=80, debug=False)
