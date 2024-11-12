@@ -343,6 +343,31 @@ def connect_to_network():
 #if __name__ == '__main__':
 #    app.run(host='0.0.0.0', port=80, debug=False)
 
+@app.route('/check_for_updates', methods=['GET'])
+def check_for_updates():
+    try:
+        # Fetch the latest information from the remote repository
+        subprocess.run(['git', 'fetch'], cwd='/home/pi', check=True)
+
+        # Check if there are differences between the local and remote branches
+        result = subprocess.run(['git', 'status', '-uno'], cwd='/home/pi', capture_output=True, text=True)
+
+        if "Your branch is behind" in result.stdout:
+            return jsonify({"updates_available": True, "message": "Updates are available!"}), 200
+        else:
+            return jsonify({"updates_available": False, "message": "No updates available."}), 200
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": f"Failed to check for updates: {str(e)}"}), 500
+
+@app.route('/pull_updates', methods=['GET'])
+def pull_updates():
+    try:
+        # Pull the latest updates from the remote repository
+        subprocess.run(['git', 'pull'], cwd='/home/pi', check=True)
+        return jsonify({"success": True, "message": "Update successful!"}), 200
+    except subprocess.CalledProcessError as e:
+        return jsonify({"success": False, "error": f"Failed to pull updates: {str(e)}"}), 500
+
 
 if __name__ == '__main__':
     app.run(

@@ -338,19 +338,26 @@
 		<button type="submit" class="btn btn-primary" onclick="saveAndRestart()">Save</button>
 	</div>
 	<div class="mt-4">
-		<a href="{{ url_for('update_weather') }}" class="btn-primary">Update Weather</a>
+		<a href="{{ url_for('update_weather') }}" class="btn btn-primary">Update Weather</a>
 		<label style="color: grey; font-size: smaller;">Last Weather Update:</label>
 		<span style="color: grey; font-size: smaller;">{{ weather_last_modified }}</span>
 	</div>
 
 	<!-- Restart METAR Service Button -->
 	<div class="mt-4">
-		<a href="{{ url_for('restart_metar') }}" class="btn-primary">Restart METAR Service</a>
+		<a href="{{ url_for('restart_metar') }}" class="btn btn-primary">Restart METAR Service</a>
 	</div>
 	<!-- Button to stop METAR service and blank LEDs -->
 	<div class="mt-4">
-		<a href="{{ url_for('stop_and_blank') }}" class="btn-primary">Stop METAR</a>
+		<a href="{{ url_for('stop_and_blank') }}" class="btn btn-primary">Stop METAR</a>
 	</div>
+    <div class="mt-4">
+        <button id="check-updates-button" class="btn btn-primary">Check for Updates</button>
+        <div id="update-status" class="mt-2"></div>
+        <div id="update-button-container" class="mt-2"></div> <!-- Container for the "Update Now" button -->
+    </div>
+
+
 </section>
 
 
