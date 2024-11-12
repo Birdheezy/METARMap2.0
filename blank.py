@@ -1,4 +1,3 @@
-#test
 from config import *  # Import settings from config.py
 import board
 import neopixel
