@@ -360,67 +360,51 @@ def check_for_updates():
     except subprocess.CalledProcessError as e:
         return jsonify({"error": f"Failed to check for updates: {str(e)}"}), 500
 
-import re
 
 def merge_configs(user_config_path, template_config_path):
-    # Load the user's existing config with original formatting
-    with open(user_config_path, 'r') as user_file:
-        user_lines = user_file.readlines()
-
-    # Load the template config
-    template_config = {}
+    # Load the template config lines to get the correct structure and order
     with open(template_config_path, 'r') as template_file:
-        for line in template_file:
+        template_lines = template_file.readlines()
+
+    # Load the user's config into a dictionary to preserve their changes
+    user_config = {}
+    with open(user_config_path, 'r') as user_file:
+        for line in user_file:
             line = line.strip()
-            if line.startswith("#") or not line:
-                continue  # Skip comments and empty lines
-            if line.startswith("import"):
-                continue  # Skip import statements
+            if line.startswith("#") or not line or line.startswith("import"):
+                continue  # Skip comments, empty lines, and import statements
 
             # Extract key and value using regex
             match = re.match(r'^(\w+)\s*=\s*(.+)$', line)
             if match:
                 key, value = match.groups()
-                template_config[key.strip()] = value.strip()
+                user_config[key.strip()] = value.strip()
 
-    # Create a set of keys present in the user's config for easier lookup
-    existing_keys = set()
-
-    # Update the user config with template values while preserving formatting
+    # Create the updated config content by using the structure of the template
     updated_lines = []
-    for line in user_lines:
+    for line in template_lines:
         stripped_line = line.strip()
+
         if stripped_line.startswith("#") or not stripped_line or stripped_line.startswith("import"):
-            # Preserve comments, imports, and empty lines
+            # Preserve comments, empty lines, and import statements from the template
             updated_lines.append(line)
             continue
 
-        # Extract key from the line
+        # Extract key from the template line
         match = re.match(r'^(\w+)\s*=', stripped_line)
         if match:
             key = match.group(1).strip()
-            existing_keys.add(key)
-
-            # Update the line if the key is in the template config
-            if key in template_config:
-                updated_lines.append(f"{key} = {template_config[key]}\n")
-                # Remove from template_config to keep track of what's been merged
-                del template_config[key]
+            # Use the user's value if it exists, otherwise keep the template's value
+            if key in user_config:
+                updated_lines.append(f"{key} = {user_config[key]}\n")
             else:
                 updated_lines.append(line)
         else:
             updated_lines.append(line)
 
-    # Add any new keys from the template that weren't in the original user config
-    if template_config:
-        updated_lines.append("\n# New settings added from template\n")
-        for key, value in template_config.items():
-            updated_lines.append(f"{key} = {value}\n")
-
-    # Write the merged configuration back to user config.py
+    # Write the updated configuration back to user config.py
     with open(user_config_path, 'w') as user_file:
         user_file.writelines(updated_lines)
-
 
 
 @app.route('/pull_updates', methods=['GET'])
