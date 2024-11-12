@@ -6,6 +6,8 @@ import datetime
 import config
 from flask import jsonify
 import shutil
+import shutil
+import re
 
 
 app = Flask(__name__)
@@ -358,8 +360,68 @@ def check_for_updates():
     except subprocess.CalledProcessError as e:
         return jsonify({"error": f"Failed to check for updates: {str(e)}"}), 500
 
-import shutil
-import datetime  # Keep using `import datetime` as specified
+import re
+
+def merge_configs(user_config_path, template_config_path):
+    # Load the user's existing config with original formatting
+    with open(user_config_path, 'r') as user_file:
+        user_lines = user_file.readlines()
+
+    # Load the template config
+    template_config = {}
+    with open(template_config_path, 'r') as template_file:
+        for line in template_file:
+            line = line.strip()
+            if line.startswith("#") or not line:
+                continue  # Skip comments and empty lines
+            if line.startswith("import"):
+                continue  # Skip import statements
+
+            # Extract key and value using regex
+            match = re.match(r'^(\w+)\s*=\s*(.+)$', line)
+            if match:
+                key, value = match.groups()
+                template_config[key.strip()] = value.strip()
+
+    # Create a set of keys present in the user's config for easier lookup
+    existing_keys = set()
+
+    # Update the user config with template values while preserving formatting
+    updated_lines = []
+    for line in user_lines:
+        stripped_line = line.strip()
+        if stripped_line.startswith("#") or not stripped_line or stripped_line.startswith("import"):
+            # Preserve comments, imports, and empty lines
+            updated_lines.append(line)
+            continue
+
+        # Extract key from the line
+        match = re.match(r'^(\w+)\s*=', stripped_line)
+        if match:
+            key = match.group(1).strip()
+            existing_keys.add(key)
+
+            # Update the line if the key is in the template config
+            if key in template_config:
+                updated_lines.append(f"{key} = {template_config[key]}\n")
+                # Remove from template_config to keep track of what's been merged
+                del template_config[key]
+            else:
+                updated_lines.append(line)
+        else:
+            updated_lines.append(line)
+
+    # Add any new keys from the template that weren't in the original user config
+    if template_config:
+        updated_lines.append("\n# New settings added from template\n")
+        for key, value in template_config.items():
+            updated_lines.append(f"{key} = {value}\n")
+
+    # Write the merged configuration back to user config.py
+    with open(user_config_path, 'w') as user_file:
+        user_file.writelines(updated_lines)
+
+
 
 @app.route('/pull_updates', methods=['GET'])
 def pull_updates():
@@ -379,21 +441,29 @@ def pull_updates():
         if not os.path.exists(backup_dir):
             os.makedirs(backup_dir)
 
-        # List of items to back up
-        items_to_backup = [
-            os.path.join(project_dir, item) for item in os.listdir(project_dir)
-            if item != '*BACKUP*' and item != 'non_repo_files_or_folders_to_ignore'
-        ]
+        # Get the list of files from the GitHub repo
+        result = subprocess.run(
+            ['git', 'ls-tree', '-r', 'HEAD', '--name-only'],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
+        # Split the output into individual file paths
+        files_in_repo = result.stdout.strip().split('\n')
 
         # Create the specific backup folder
         os.makedirs(backup_path, exist_ok=True)
 
-        # Copy each item to the backup folder
-        for item in items_to_backup:
-            if os.path.isdir(item):
-                shutil.copytree(item, os.path.join(backup_path, os.path.basename(item)), dirs_exist_ok=True)
-            else:
-                shutil.copy2(item, backup_path)
+        # Copy each file to the backup folder
+        for item in files_in_repo:
+            item_path = os.path.join(project_dir, item)
+            if os.path.exists(item_path):
+                if os.path.isdir(item_path):
+                    shutil.copytree(item_path, os.path.join(backup_path, os.path.basename(item)), dirs_exist_ok=True)
+                else:
+                    shutil.copy2(item_path, backup_path)
 
         # Delete old backups if they exceed the limit
         existing_backups = sorted(
@@ -408,6 +478,11 @@ def pull_updates():
         # Pull the latest updates from the remote repository
         subprocess.run(['git', 'pull'], cwd=project_dir, check=True)
 
+        # Merge the configuration files after pulling updates
+        user_config_path = os.path.join(project_dir, 'config.py')
+        template_config_path = os.path.join(project_dir, 'config_template.py')
+        merge_configs(user_config_path, template_config_path)
+
         return jsonify({"success": True, "message": f"Update successful! Backup created at {backup_path}"}), 200
 
     except subprocess.CalledProcessError as e:
@@ -415,7 +490,6 @@ def pull_updates():
 
     except Exception as e:
         return jsonify({"success": False, "error": f"An error occurred during backup or update: {str(e)}"}), 500
-
 
 if __name__ == '__main__':
     app.run(
