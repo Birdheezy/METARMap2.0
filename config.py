@@ -1,4 +1,3 @@
-#test
 # config.py
 import datetime
 
