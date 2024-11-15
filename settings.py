@@ -214,7 +214,7 @@ def edit_settings():
     weather_file_path = '/home/pi/weather.json'  # Adjust this path if necessary
     try:
         last_modified_timestamp = os.path.getmtime(weather_file_path)
-        weather_last_modified = datetime.datetime.fromtimestamp(last_modified_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        weather_last_modified = datetime.datetime.fromtimestamp(last_modified_timestamp).strftime('%m-%d-%Y %H:%M:%S')
     except FileNotFoundError:
         weather_last_modified = "Weather data not available"
 
