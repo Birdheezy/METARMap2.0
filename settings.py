@@ -367,14 +367,67 @@ def check_for_updates():
 @app.route('/apply_updates', methods=['POST'])
 def apply_updates():
     try:
-        # Pull the latest changes from the remote repository
-        subprocess.run(['git', 'pull'], cwd='/home/pi', check=True)
+        # Define the project directory and backup directory
+        project_dir = '/home/pi'
+        backup_dir = os.path.join(project_dir, '*BACKUP*')
+
+        # Set a limit for the number of backups to retain
+        MAX_BACKUPS = 5
+
+        # Create a timestamped backup directory to keep multiple backups
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_path = os.path.join(backup_dir, f'backup_{timestamp}')
+
+        # Create the backup directory if it doesn't exist
+        if not os.path.exists(backup_dir):
+            os.makedirs(backup_dir)
+
+        # Get the list of files from the GitHub repo
+        result = subprocess.run(
+            ['git', 'ls-tree', '-r', 'HEAD', '--name-only'],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
+        # Split the output into individual file paths
+        files_in_repo = result.stdout.strip().split('\n')
+
+        # Create the specific backup folder
+        os.makedirs(backup_path, exist_ok=True)
+
+        # Copy each file to the backup folder
+        for item in files_in_repo:
+            item_path = os.path.join(project_dir, item)
+            if os.path.exists(item_path):
+                if os.path.isdir(item_path):
+                    shutil.copytree(item_path, os.path.join(backup_path, os.path.basename(item)), dirs_exist_ok=True)
+                else:
+                    shutil.copy2(item_path, backup_path)
+
+        # Delete old backups if they exceed the limit
+        existing_backups = sorted(
+            [os.path.join(backup_dir, d) for d in os.listdir(backup_dir)],
+            key=os.path.getmtime
+        )
+
+        while len(existing_backups) > MAX_BACKUPS:
+            shutil.rmtree(existing_backups[0])
+            existing_backups.pop(0)
+
+        # Pull the latest updates from the remote repository
+        subprocess.run(['git', 'pull'], cwd=project_dir, check=True)
+
         # Restart the relevant service, if necessary (e.g., metar.service)
-        subprocess.run(['systemctl', 'restart', 'metar.service'], check=True)
-        return jsonify({"message": "Updates applied and service restarted."}), 200
+        subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
+
+        return jsonify({"message": "Updates applied, backup created, and service restarted."}), 200
+
     except subprocess.CalledProcessError as e:
         return jsonify({"error": f"Failed to apply updates: {e.stderr}"}), 500
-
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 def merge_configs(user_config_path, template_config_path):
     # Load the template config lines to get the correct structure and order
