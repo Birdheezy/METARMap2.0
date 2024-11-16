@@ -353,12 +353,27 @@ def check_for_updates():
         # Check if there are differences between the local and remote branches
         result = subprocess.run(['git', 'status', '-uno'], cwd='/home/pi', capture_output=True, text=True)
 
-        if "Your branch is behind" in result.stdout:
+        # Check for indicators that the branch is behind
+        if ("Your branch is behind" in result.stdout or
+                "have diverged" in result.stdout or
+                "can be fast-forwarded" in result.stdout):
             return jsonify({"updates_available": True, "message": "Updates are available!"}), 200
         else:
             return jsonify({"updates_available": False, "message": "No updates available."}), 200
     except subprocess.CalledProcessError as e:
-        return jsonify({"error": f"Failed to check for updates: {str(e)}"}), 500
+        return jsonify({"error": f"Failed to check for updates: {e.stderr}"}), 500
+
+
+@app.route('/apply_updates', methods=['POST'])
+def apply_updates():
+    try:
+        # Pull the latest changes from the remote repository
+        subprocess.run(['git', 'pull'], cwd='/home/pi', check=True)
+        # Restart the relevant service, if necessary (e.g., metar.service)
+        subprocess.run(['systemctl', 'restart', 'metar.service'], check=True)
+        return jsonify({"message": "Updates applied and service restarted."}), 200
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": f"Failed to apply updates: {e.stderr}"}), 500
 
 
 def merge_configs(user_config_path, template_config_path):

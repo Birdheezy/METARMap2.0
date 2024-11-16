@@ -237,12 +237,12 @@ document.getElementById('check-updates-button').addEventListener('click', functi
                     updateStatus.textContent = 'Updating...';
 
                     // Fetch the update endpoint to pull the latest updates
-                    fetch('/pull_updates')
+                    fetch('/apply_updates', { method: 'POST' })
                         .then(response => response.json())
                         .then(data => {
-                            if (data.success) {
-                                updateStatus.textContent = 'Update successful!';
-                            } else {
+                            if (data.message) {
+                                updateStatus.textContent = data.message;
+                            } else if (data.error) {
                                 updateStatus.textContent = 'Update failed: ' + data.error;
                             }
                         })
@@ -250,6 +250,7 @@ document.getElementById('check-updates-button').addEventListener('click', functi
                             console.error('Error during update:', error);
                             updateStatus.textContent = 'An error occurred while updating.';
                         });
+
                 });
 
                 // Append the button to the container
