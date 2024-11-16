@@ -1,5 +1,3 @@
-#test
-# config.py
 import datetime
 
 AIRPORTS_FILE = 'airports.txt'
