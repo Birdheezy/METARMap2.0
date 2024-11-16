@@ -1,4 +1,3 @@
-#metar.py test
 import json
 import time
 import signal
