@@ -207,3 +207,61 @@ document.addEventListener('DOMContentLoaded', function() {
 document.querySelectorAll('a.btn-primary').forEach(button => {
     button.addEventListener('click', saveScrollPosition);
 });
+
+
+document.getElementById('check-updates-button').addEventListener('click', function (event) {
+    // Prevent the form from submitting and refreshing the page
+    event.preventDefault();
+
+    let updateStatus = document.getElementById('update-status');
+    let updateButtonContainer = document.getElementById('update-button-container');
+
+    updateStatus.textContent = 'Checking for updates...';
+
+    fetch('/check_for_updates')
+        .then(response => response.json())
+        .then(data => {
+            updateButtonContainer.innerHTML = ''; // Clear any existing button
+            if (data.updates_available) {
+                updateStatus.textContent = data.message;
+
+                // Create the "Update Now" button
+                let updateButton = document.createElement('button');
+                updateButton.textContent = 'Update Now';
+                updateButton.classList.add('btn', 'btn-secondary');
+                updateButton.addEventListener('click', function (event) {
+                    // Prevent page refresh on button click
+                    event.preventDefault();
+
+                    // Update status to "Updating..."
+                    updateStatus.textContent = 'Updating...';
+
+                    // Fetch the update endpoint to pull the latest updates
+                    fetch('/pull_updates')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                updateStatus.textContent = 'Update successful!';
+                            } else {
+                                updateStatus.textContent = 'Update failed: ' + data.error;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error during update:', error);
+                            updateStatus.textContent = 'An error occurred while updating.';
+                        });
+                });
+
+                // Append the button to the container
+                updateButtonContainer.appendChild(updateButton);
+            } else if (data.message) {
+                updateStatus.textContent = data.message;
+            } else if (data.error) {
+                updateStatus.textContent = 'Error: ' + data.error;
+            }
+        })
+        .catch(error => {
+            console.error('Error checking for updates:', error);
+            updateStatus.textContent = 'An error occurred while checking for updates.';
+        });
+});

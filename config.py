@@ -1,10 +1,10 @@
-# config.py
+#test
 import datetime
 
 AIRPORTS_FILE = 'airports.txt'
 PIXEL_PIN = "D18"
 NUM_PIXELS = 50
-BRIGHTNESS = 0.7
+BRIGHTNESS = 0.5
 DAYTIME_DIM_BRIGHTNESS = 0.3
 
 # Animation Configuration
@@ -27,9 +27,9 @@ BRIGHT_TIME_START = datetime.time(7, 20)
 DIM_TIME_START = datetime.time(18, 5)
 
 # Color Definitions in GRB order
-VFR_COLOR = (255, 0, 0)             # Green 
-MVFR_COLOR = (0, 0, 255)            # Blue 
-IFR_COLOR = (0, 255, 0)             # Red 
+VFR_COLOR = (255, 0, 0)             # Green
+MVFR_COLOR = (0, 0, 255)            # Blue
+IFR_COLOR = (0, 255, 0)             # Red
 LIFR_COLOR = (0, 255, 255)          # Magenta
 MISSING_COLOR = (165, 255, 0)       # Orange
 LIGHTENING_COLOR = (255, 255, 255)  # White

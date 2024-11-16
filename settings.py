@@ -5,6 +5,9 @@ from config import *  # Import all variables from config.py
 import datetime
 import config
 from flask import jsonify
+import shutil
+import shutil
+import re
 
 
 app = Flask(__name__)
@@ -211,7 +214,7 @@ def edit_settings():
     weather_file_path = '/home/pi/weather.json'  # Adjust this path if necessary
     try:
         last_modified_timestamp = os.path.getmtime(weather_file_path)
-        weather_last_modified = datetime.datetime.fromtimestamp(last_modified_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        weather_last_modified = datetime.datetime.fromtimestamp(last_modified_timestamp).strftime('%m-%d-%Y %H:%M:%S')
     except FileNotFoundError:
         weather_last_modified = "Weather data not available"
 
@@ -340,9 +343,137 @@ def connect_to_network():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-#if __name__ == '__main__':
-#    app.run(host='0.0.0.0', port=80, debug=False)
 
+@app.route('/check_for_updates', methods=['GET'])
+def check_for_updates():
+    try:
+        # Fetch the latest information from the remote repository
+        subprocess.run(['git', 'fetch'], cwd='/home/pi', check=True)
+
+        # Check if there are differences between the local and remote branches
+        result = subprocess.run(['git', 'status', '-uno'], cwd='/home/pi', capture_output=True, text=True)
+
+        if "Your branch is behind" in result.stdout:
+            return jsonify({"updates_available": True, "message": "Updates are available!"}), 200
+        else:
+            return jsonify({"updates_available": False, "message": "No updates available."}), 200
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": f"Failed to check for updates: {str(e)}"}), 500
+
+
+def merge_configs(user_config_path, template_config_path):
+    # Load the template config lines to get the correct structure and order
+    with open(template_config_path, 'r') as template_file:
+        template_lines = template_file.readlines()
+
+    # Load the user's config into a dictionary to preserve their changes
+    user_config = {}
+    with open(user_config_path, 'r') as user_file:
+        for line in user_file:
+            line = line.strip()
+            if line.startswith("#") or not line or line.startswith("import"):
+                continue  # Skip comments, empty lines, and import statements
+
+            # Extract key and value using regex
+            match = re.match(r'^(\w+)\s*=\s*(.+)$', line)
+            if match:
+                key, value = match.groups()
+                user_config[key.strip()] = value.strip()
+
+    # Create the updated config content by using the structure of the template
+    updated_lines = []
+    for line in template_lines:
+        stripped_line = line.strip()
+
+        if stripped_line.startswith("#") or not stripped_line or stripped_line.startswith("import"):
+            # Preserve comments, empty lines, and import statements from the template
+            updated_lines.append(line)
+            continue
+
+        # Extract key from the template line
+        match = re.match(r'^(\w+)\s*=', stripped_line)
+        if match:
+            key = match.group(1).strip()
+            # Use the user's value if it exists, otherwise keep the template's value
+            if key in user_config:
+                updated_lines.append(f"{key} = {user_config[key]}\n")
+            else:
+                updated_lines.append(line)
+        else:
+            updated_lines.append(line)
+
+    # Write the updated configuration back to user config.py
+    with open(user_config_path, 'w') as user_file:
+        user_file.writelines(updated_lines)
+
+
+@app.route('/pull_updates', methods=['GET'])
+def pull_updates():
+    try:
+        # Define the project directory and backup directory
+        project_dir = '/home/pi'
+        backup_dir = os.path.join(project_dir, '*BACKUP*')
+
+        # Set a limit for the number of backups to retain
+        MAX_BACKUPS = 5
+
+        # Create a timestamped backup directory to keep multiple backups
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_path = os.path.join(backup_dir, f'backup_{timestamp}')
+        
+        # Create the backup directory if it doesn't exist
+        if not os.path.exists(backup_dir):
+            os.makedirs(backup_dir)
+
+        # Get the list of files from the GitHub repo
+        result = subprocess.run(
+            ['git', 'ls-tree', '-r', 'HEAD', '--name-only'],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
+        # Split the output into individual file paths
+        files_in_repo = result.stdout.strip().split('\n')
+
+        # Create the specific backup folder
+        os.makedirs(backup_path, exist_ok=True)
+
+        # Copy each file to the backup folder
+        for item in files_in_repo:
+            item_path = os.path.join(project_dir, item)
+            if os.path.exists(item_path):
+                if os.path.isdir(item_path):
+                    shutil.copytree(item_path, os.path.join(backup_path, os.path.basename(item)), dirs_exist_ok=True)
+                else:
+                    shutil.copy2(item_path, backup_path)
+
+        # Delete old backups if they exceed the limit
+        existing_backups = sorted(
+            [os.path.join(backup_dir, d) for d in os.listdir(backup_dir)],
+            key=os.path.getmtime
+        )
+
+        while len(existing_backups) > MAX_BACKUPS:
+            shutil.rmtree(existing_backups[0])
+            existing_backups.pop(0)
+
+        # Pull the latest updates from the remote repository
+        subprocess.run(['git', 'pull'], cwd=project_dir, check=True)
+
+        # Merge the configuration files after pulling updates
+        user_config_path = os.path.join(project_dir, 'config.py')
+        template_config_path = os.path.join(project_dir, 'config_template.py')
+        merge_configs(user_config_path, template_config_path)
+
+        return jsonify({"success": True, "message": f"Update successful! Backup created at {backup_path}"}), 200
+
+    except subprocess.CalledProcessError as e:
+        return jsonify({"success": False, "error": f"Failed to pull updates: {str(e)}"}), 500
+
+    except Exception as e:
+        return jsonify({"success": False, "error": f"An error occurred during backup or update: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(
@@ -353,3 +484,6 @@ if __name__ == '__main__':
             '/etc/ssl/private/flask-selfsigned.key'
         )
     )
+
+#if __name__ == '__main__':
+#    app.run(host='0.0.0.0', port=80, debug=False)
