@@ -1,4 +1,4 @@
-#metar.py
+#metar.py test
 import json
 import time
 import signal
@@ -188,10 +188,10 @@ def update_leds(weather_data):
 
     # Detect lightning airports
     lightning_airports = weather.get_lightning_airports(weather_data)
-
+    snowy_airports = weather.get_snowy_airports(weather_data)
     # Print header
-    print(f"{'Airport':<10} {'Flight Cat':<12} {'Wind Speed':<12} {'Wind Gust':<12} {'Windy':<6} {'Lightning':<10}")
-    print("-" * 70)  # Separator line for better readability
+    print(f"{'Airport':<10} {'Flight Cat':<12} {'Wind Speed':<12} {'Wind Gust':<12} {'Windy':<6} {'Lightning':<10} {'Snowy':<10}")
+    print("-" * 80)  # Separator line for better readability
 
     # Update LEDs based on flt_cat and print details
     for index, airport_code in enumerate(airport_list):
@@ -204,9 +204,10 @@ def update_leds(weather_data):
             # Check if the airport is in the windy_airports and lightning_airports dictionaries
             is_windy = "Yes" if airport_code in windy_airports else "No"
             is_lightning = "Yes" if airport_code in lightning_airports else "No"  # Based on lightning detection
+            is_snowy = "Yes" if airport_code in snowy_airports else "No"
 
             # Print each airport, flight category, wind speed, wind gust, whether it is windy, and lightning
-            print(f"{airport_code:<10} {flt_cat:<12} {str(wind_speed) + ' kt':<12} {str(wind_gust) + ' kt':<12} {is_windy:<6} {is_lightning:<10} {get_current_brightness():<10}")
+            print(f"{airport_code:<10} {flt_cat:<12} {str(wind_speed) + ' kt':<12} {str(wind_gust) + ' kt':<12} {is_windy:<6} {is_lightning:<10} {is_snowy:<8} {get_current_brightness():<10}")
 
             # Update LED colors based on flt_cat, applying the BRIGHTNESS factor
             base_color = weather.get_flt_cat_color(flt_cat)
