@@ -2,13 +2,15 @@ import os
 import schedule
 import time
 import subprocess
-from datetime import datetime  # Fix for the error
-from config import ENABLE_LIGHTS_OFF, LIGHTS_ON_TIME, LIGHTS_OFF_TIME
-
+from datetime import datetime
+import importlib  # For reloading the config module
+import config  # Import config for dynamic updates
 
 def turn_on_lights():
     """Restart the metar.service to turn on the lights."""
     try:
+        subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/weather.py'], check=True)
+        time.sleep(2)
         subprocess.run(['systemctl', 'start', 'metar.service'], check=True)
         print("Lights turned on: METAR service started.")
     except subprocess.CalledProcessError as e:
@@ -30,14 +32,15 @@ def schedule_lights():
     """Schedule lights on/off based on the current configuration."""
     schedule.clear()
 
-    if ENABLE_LIGHTS_OFF:
+    # Dynamically fetch updated values from the config module
+    if config.ENABLE_LIGHTS_OFF:
         # Schedule lights on
-        on_time = f"{LIGHTS_ON_TIME.hour:02}:{LIGHTS_ON_TIME.minute:02}"
+        on_time = f"{config.LIGHTS_ON_TIME.hour:02}:{config.LIGHTS_ON_TIME.minute:02}"
         schedule.every().day.at(on_time).do(turn_on_lights)
         print(f"Scheduled lights on at {on_time}.")
 
         # Schedule lights off
-        off_time = f"{LIGHTS_OFF_TIME.hour:02}:{LIGHTS_OFF_TIME.minute:02}"
+        off_time = f"{config.LIGHTS_OFF_TIME.hour:02}:{config.LIGHTS_OFF_TIME.minute:02}"
         schedule.every().day.at(off_time).do(turn_off_lights)
         print(f"Scheduled lights off at {off_time}.")
     else:
@@ -53,14 +56,19 @@ def monitor_config_changes(config_file):
         if current_modified != last_modified:
             print("Detected config.py changes. Reloading schedules...")
             last_modified = current_modified
-            from config import ENABLE_LIGHTS_OFF, LIGHTS_ON_TIME, LIGHTS_OFF_TIME
+            time.sleep(2)  # Allow time for changes to propagate
+
+            # Reload the config module to get updated values
+            importlib.reload(config)
+
+            # Reschedule with the updated values
             schedule_lights()
 
             # If the current time falls in the lights-off period, turn off lights immediately
-            current_time = datetime.now().time()  # Fixed the error here
-            if ENABLE_LIGHTS_OFF and (
-                (LIGHTS_OFF_TIME > LIGHTS_ON_TIME and (current_time >= LIGHTS_OFF_TIME or current_time < LIGHTS_ON_TIME)) or
-                (LIGHTS_OFF_TIME <= LIGHTS_ON_TIME and LIGHTS_OFF_TIME <= current_time < LIGHTS_ON_TIME)
+            current_time = datetime.now().time()
+            if config.ENABLE_LIGHTS_OFF and (
+                (config.LIGHTS_OFF_TIME > config.LIGHTS_ON_TIME and (current_time >= config.LIGHTS_OFF_TIME or current_time < config.LIGHTS_ON_TIME)) or
+                (config.LIGHTS_OFF_TIME <= config.LIGHTS_ON_TIME and config.LIGHTS_OFF_TIME <= current_time < config.LIGHTS_ON_TIME)
             ):
                 turn_off_lights()
 
