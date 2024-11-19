@@ -1,4 +1,3 @@
-#test
 import datetime
 
 AIRPORTS_FILE = 'airports.txt'
