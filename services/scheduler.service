@@ -1,0 +1,15 @@
+[Unit]
+Description=Scheduler Service for Lights On/Off
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi
+ExecStart=sudo /home/pi/metar/bin/python3 /home/pi/scheduler.py
+Restart=always
+User=pi
+StandardOutput=append:/var/log/scheduler.log
+StandardError=append:/var/log/scheduler.log
+
+[Install]
+WantedBy=multi-user.target
