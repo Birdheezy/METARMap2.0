@@ -474,7 +474,6 @@ def merge_configs(user_config_path, template_config_path):
     with open(user_config_path, 'w') as user_file:
         user_file.writelines(updated_lines)
 
-
 @app.route('/pull_updates', methods=['GET'])
 def pull_updates():
     try:
