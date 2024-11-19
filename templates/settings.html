@@ -31,7 +31,6 @@
                 Thank you for checking out the settings page! </br>
                 This page contains all of the settings you need to make your map your own</br>
                 If you don't understand a certain setting, it's best to leave it to the default value
-		Be sure to click "Save" then "Restart METAR Service" for you changes to take affect
             </div>
         </div>
     </div>
@@ -77,95 +76,7 @@
     </div>
 </section>
 
-<section id="time-settings">
 
-<h2>Time Settings</h2>
-
-<!-- Lights On Time -->
-    <div class="mb-3">
-        <div class="dropdown-container">
-            <label for="lights_on_time">Lights On Time (HH:MM)
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-            </label>
-            <div class="dropdown-content" style="display: none;">
-                Set the time to turn on the LEDs
-            </div>
-        </div>
-        <select name="lights_on_time_hour" class="form-select inline-input">
-            {% for hour in range(0, 24) %}
-                <option value="{{ hour }}" {% if config.LIGHTS_ON_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
-            {% endfor %}
-        </select> :
-        <select name="lights_on_time_minute" class="form-select inline-input">
-            {% for minute in range(0, 60, 5) %}
-                <option value="{{ minute }}" {% if config.LIGHTS_ON_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
-            {% endfor %}
-        </select>
-    </div>
-<!-- Lights Off Time -->
-    <div class="mb-3">
-        <div class="dropdown-container">
-            <label for="lights_off_time">Lights Off Time (HH:MM)
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-            </label>
-            <div class="dropdown-content" style="display: none;">
-                Set the time to turn off the LEDs
-            </div>
-        </div>
-        <select name="lights_off_time_hour" class="form-select inline-input">
-            {% for hour in range(0, 24) %}
-                <option value="{{ hour }}" {% if config.LIGHTS_OFF_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
-            {% endfor %}
-        </select> :
-        <select name="lights_off_time_minute" class="form-select inline-input">
-            {% for minute in range(0, 60, 5) %}
-                <option value="{{ minute }}" {% if config.LIGHTS_OFF_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
-            {% endfor %}
-        </select>
-    </div>
-<!-- Bright Time Start -->
-    <div class="mb-3">
-        <div class="dropdown-container">
-            <label for="bright_time_start">Bright Time Start (HH:MM)
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-            </label>
-            <div class="dropdown-content" style="display: none;">
-                Set the time to return the LEDs to the default brightness
-            </div>
-        </div>
-        <select name="bright_time_start_hour" class="form-select inline-input">
-            {% for hour in range(0, 24) %}
-                <option value="{{ hour }}" {% if config.BRIGHT_TIME_START.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
-            {% endfor %}
-        </select> :
-        <select name="bright_time_start_minute" class="form-select inline-input">
-            {% for minute in range(0, 60, 5) %}
-                <option value="{{ minute }}" {% if config.BRIGHT_TIME_START.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
-            {% endfor %}
-        </select>
-    </div>
-<!-- Dim Time Start -->
-    <div class="mb-3">
-        <div class="dropdown-container">
-            <label for="dim_time_start">Dim Time Start (HH:MM)
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-            </label>
-            <div class="dropdown-content" style="display: none;">
-                The time when the LEDs will change to night/dimmed brightness
-            </div>
-        </div>
-        <select name="dim_time_start_hour" class="form-select inline-input">
-            {% for hour in range(0, 24) %}
-                <option value="{{ hour }}" {% if config.DIM_TIME_START.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
-            {% endfor %}
-        </select> :
-        <select name="dim_time_start_minute" class="form-select inline-input">
-            {% for minute in range(0, 60, 5) %}
-                <option value="{{ minute }}" {% if config.DIM_TIME_START.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
-            {% endfor %}
-        </select>
-    </div>
-</section>
 
 <!-- Animation Settings -->
 
@@ -301,7 +212,94 @@
         </div>
     </div>
 </section>
-
+<section id="time-settings">
+    <h2>Time Settings</h2>
+    
+    <!-- Lights On Time -->
+        <div class="mb-3">
+            <div class="dropdown-container">
+                <label for="lights_on_time">Lights On Time (HH:MM)
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
+                </label>
+                <div class="dropdown-content" style="display: none;">
+                    Set the time to turn on the LEDs
+                </div>
+            </div>
+            <select name="lights_on_time_hour" class="form-select inline-input">
+                {% for hour in range(0, 24) %}
+                    <option value="{{ hour }}" {% if config.LIGHTS_ON_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                {% endfor %}
+            </select> :
+            <select name="lights_on_time_minute" class="form-select inline-input">
+                {% for minute in range(0, 60, 5) %}
+                    <option value="{{ minute }}" {% if config.LIGHTS_ON_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    <!-- Lights Off Time -->
+        <div class="mb-3">
+            <div class="dropdown-container">
+                <label for="lights_off_time">Lights Off Time (HH:MM)
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
+                </label>
+                <div class="dropdown-content" style="display: none;">
+                    Set the time to turn off the LEDs
+                </div>
+            </div>
+            <select name="lights_off_time_hour" class="form-select inline-input">
+                {% for hour in range(0, 24) %}
+                    <option value="{{ hour }}" {% if config.LIGHTS_OFF_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                {% endfor %}
+            </select> :
+            <select name="lights_off_time_minute" class="form-select inline-input">
+                {% for minute in range(0, 60, 5) %}
+                    <option value="{{ minute }}" {% if config.LIGHTS_OFF_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    <!-- Bright Time Start -->
+        <div class="mb-3">
+            <div class="dropdown-container">
+                <label for="bright_time_start">Bright Time Start (HH:MM)
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
+                </label>
+                <div class="dropdown-content" style="display: none;">
+                    Set the time to return the LEDs to the default brightness
+                </div>
+            </div>
+            <select name="bright_time_start_hour" class="form-select inline-input">
+                {% for hour in range(0, 24) %}
+                    <option value="{{ hour }}" {% if config.BRIGHT_TIME_START.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                {% endfor %}
+            </select> :
+            <select name="bright_time_start_minute" class="form-select inline-input">
+                {% for minute in range(0, 60, 5) %}
+                    <option value="{{ minute }}" {% if config.BRIGHT_TIME_START.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    <!-- Dim Time Start -->
+        <div class="mb-3">
+            <div class="dropdown-container">
+                <label for="dim_time_start">Dim Time Start (HH:MM)
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
+                </label>
+                <div class="dropdown-content" style="display: none;">
+                    The time when the LEDs will change to night/dimmed brightness
+                </div>
+            </div>
+            <select name="dim_time_start_hour" class="form-select inline-input">
+                {% for hour in range(0, 24) %}
+                    <option value="{{ hour }}" {% if config.DIM_TIME_START.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                {% endfor %}
+            </select> :
+            <select name="dim_time_start_minute" class="form-select inline-input">
+                {% for minute in range(0, 60, 5) %}
+                    <option value="{{ minute }}" {% if config.DIM_TIME_START.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                {% endfor %}
+            </select>
+        </div>
+</section>
 <!-- Airports Section with Line Numbers -->
 <section id="airports" class="airports">
     <h2>Airports</h2>
@@ -348,16 +346,14 @@
 		<span style="color: grey; font-size: smaller;">{{ weather_last_modified }}</span>
 	</div>
 
-	<!-- Button to stop METAR service and blank LEDs -->
-	<div class="mt-4">
-		<a href="{{ url_for('stop_and_blank') }}" class="btn btn-primary">Stop METAR</a>
-	</div>
     <div class="mt-4">
         <button id="check-updates-button" class="btn btn-primary">Check for Updates</button>
         <div id="update-status" class="mt-2"></div>
         <div id="update-button-container" class="mt-2"></div> <!-- Container for the "Update Now" button -->
     </div>
-
+	<div class="mt-4">
+		<a href="{{ url_for('stop_and_blank') }}" class="btn btn-primary">Stop METAR</a>
+	</div>
 
 </section>
 
