@@ -8,6 +8,8 @@ from flask import jsonify
 import shutil
 import shutil
 import re
+import time
+import threading
 
 
 app = Flask(__name__)
@@ -249,6 +251,73 @@ def restart_metar():
         flash(f'Error restarting METAR service: {str(e)}', 'danger')
 
     return redirect(url_for('edit_settings'))
+
+
+
+@app.route('/restart_settings', methods=['GET'])
+def restart_settings():
+    try:
+        # Start the restart process in a separate thread
+        threading.Thread(target=restart_service_thread).start()
+
+        # Immediately return a success response to the client
+        return jsonify({"message": "Settings service is restarting."}), 200
+    except Exception as e:
+        # Handle any exceptions and return a proper error response
+        return jsonify({"error": f"Error restarting settings service: {str(e)}"}), 500
+
+
+def restart_service_thread():
+    """Perform the service restart in a separate thread."""
+    try:
+        print("Delaying restart to allow proxy to respond...")
+        time.sleep(2)  # Optional delay to allow proxy to handle response
+        subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
+        print("Settings service restarted successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error restarting settings service: {e}")
+		
+def restart_service():
+    """Restart the settings service in a separate thread."""
+    try:
+        print("Restarting settings service...")
+        subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
+        print("Settings service restarted successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error restarting settings service: {e}")
+
+
+def restart_service():
+    """Restart the settings service."""
+    try:
+        print("Restarting settings service...")
+        subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
+        print("Settings service restarted successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error restarting settings service: {e}")
+
+@app.route('/restarting', methods=['GET'])
+def restarting():
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Restarting...</title>
+        <meta http-equiv="refresh" content="10; url=/" />
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+                margin-top: 50px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Restarting Settings Service...</h1>
+        <p>Please wait. You will be redirected shortly.</p>
+    </body>
+    </html>
+    """
 
 @app.route('/stop_and_blank')
 def stop_and_blank():
