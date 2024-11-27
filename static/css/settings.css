@@ -428,3 +428,30 @@ section {
     font-size: 1.5em;
     color: #007bff;
 }
+
+input[type="color"] {
+    width: 50px; /* Adjust as needed */
+    height: 30px; /* Adjust as needed */
+    border: none;
+    padding: 0;
+    margin: 0;
+    background: none;
+    cursor: pointer;
+}
+/* Align color boxes closer to their labels */
+.color-picker-container label {
+    display: block;
+    margin-bottom: 5px; /* Adjust spacing between label and color box */
+    text-align: center; /* Center-align the label */
+}
+
+.color-picker-container input[type="color"] {
+    display: block;
+    margin: 0 auto; /* Center the color picker box */
+    margin-bottom: 20px; /* Add spacing below the color box */
+}
+
+/* Add more space between rows in the table */
+.color-settings-table tr {
+    margin-bottom: 20px; /* Increase spacing between rows */
+}

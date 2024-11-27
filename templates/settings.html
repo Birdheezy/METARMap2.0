@@ -167,6 +167,44 @@
         </div>
         <input type="text" class="form-control input-small" name="snow_blink_pause" value="{{ config.SNOW_BLINK_PAUSE }}" placeholder="Default: 0.4">
     </div>
+</section>
+<section>
+    <h2>Color Settings</h2>
+    <table class="table table-borderless color-settings-table" style="margin: 0 auto;">
+        <tr>
+            <td class="color-picker-container">
+                <label for="vfr-color-picker">VFR Color:</label>
+                <input type="color" id="vfr-color-picker" name="vfr_color" value="{{ vfr_color }}">
+            </td>
+            <td class="color-picker-container">
+                <label for="mvfr-color-picker">MVFR Color:</label>
+                <input type="color" id="mvfr-color-picker" name="mvfr_color" value="{{ mvfr_color }}">
+            </td>
+            <td class="color-picker-container">
+                <label for="ifr-color-picker">IFR Color:</label>
+                <input type="color" id="ifr-color-picker" name="ifr_color" value="{{ ifr_color }}">
+            </td>
+        </tr>
+        <tr>
+            <td class="color-picker-container">
+                <label for="lifr-color-picker">LIFR Color:</label>
+                <input type="color" id="lifr-color-picker" name="lifr_color" value="{{ lifr_color }}">
+            </td>
+            <td class="color-picker-container">
+                <label for="lightening-color-picker">Lightening Color:</label>
+                <input type="color" id="lightening-color-picker" name="lightening_color" value="{{ lightening_color }}">
+            </td>
+            <td class="color-picker-container">
+                <label for="missing-color-picker">Missing Color:</label>
+                <input type="color" id="missing-color-picker" name="missing_color" value="{{ missing_color }}">
+            </td>
+        </tr>
+    </table>
+</section>
+
+
+<section>
+<h2>Advanced Settings</h2>
 
     <div class="mb-3">
         <div class="dropdown-container">
@@ -178,6 +216,17 @@
             </div>
         </div>
         <input type="text" class="form-control input-small" name="num_steps" value="{{ config.NUM_STEPS }}" placeholder="Default: 100">
+    </div>
+    <div class="mb-3">
+        <div class="dropdown-container">
+            <label for="num_pixels">Pixel Count
+                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
+            </label>
+            <div class="dropdown-content" style="display: none;">
+                Total number of pixels in your setup. (Should be at least as many lines in your airport file)
+            </div>
+        </div>
+        <input type="text" class="form-control input-small" name="num_pixels" value="{{ config.NUM_PIXELS }}" placeholder="i.e. 50">
     </div>
 
 <!-- Boolean Animations (Toggles) -->

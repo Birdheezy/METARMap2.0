@@ -10,6 +10,7 @@ import shutil
 import re
 import time
 import threading
+import importlib
 
 
 app = Flask(__name__)
@@ -17,13 +18,7 @@ app.secret_key = os.urandom(24)
 
 # Helper function to reload config values
 def reload_config():
-    global BRIGHTNESS, DIM_BRIGHTNESS, BRIGHT_TIME_START, DIM_TIME_START
-    global WIND_THRESHOLD, WIND_FADE_TIME, WIND_PAUSE, ANIMATION_PAUSE
-    global NUM_STEPS, SNOW_BLINK_COUNT, SNOW_BLINK_PAUSE
-    global WIND_ANIMATION, LIGHTENING_ANIMATION, SNOWY_ANIMATION
-    global VFR_COLOR, MVFR_COLOR, IFR_COLOR, LIFR_COLOR, MISSING_COLOR, LIGHTENING_COLOR
-    global DAYTIME_DIMMING, DAYTIME_DIM_BRIGHTNESS, ENABLE_LIGHTS_OFF
-    global LIGHTS_OFF_TIME, LIGHTS_ON_TIME
+    importlib.reload(config)
 
     # Use exec to load the latest values from config.py
     config_globals = {}
@@ -56,6 +51,7 @@ def reload_config():
     LIGHTS_OFF_TIME = config_globals['LIGHTS_OFF_TIME']
     LIGHTS_ON_TIME = config_globals['LIGHTS_ON_TIME']
     ENABLE_LIGHTS_OFF = config_globals['ENABLE_LIGHTS_OFF']
+    NUM_PIXELS = config_globals['NUM_PIXELS']
 
 @app.route('/leds/on', methods=['POST'])
 def turn_on_leds():
@@ -105,14 +101,38 @@ def edit_settings():
                 lights_off_time_minute = int(request.form['lights_off_time_minute'])
                 lights_on_time_hour = int(request.form['lights_on_time_hour'])
                 lights_on_time_minute = int(request.form['lights_on_time_minute'])
-                
+        
                 # Convert the time inputs into datetime.time format
                 config_updates["BRIGHT_TIME_START"] = f"datetime.time({bright_time_start_hour}, {bright_time_start_minute})"
                 config_updates["DIM_TIME_START"] = f"datetime.time({dim_time_start_hour}, {dim_time_start_minute})"
                 config_updates["LIGHTS_OFF_TIME"] = f"datetime.time({lights_off_time_hour}, {lights_off_time_minute})"
                 config_updates["LIGHTS_ON_TIME"] = f"datetime.time({lights_on_time_hour}, {lights_on_time_minute})"
+
             except ValueError:
                 raise ValueError("Could not update time settings: Please enter valid numbers for hours and minutes.")
+
+            # Handle color inputs with GRB adjustment
+            color_fields = {
+                "VFR_COLOR": "vfr_color",
+                "MVFR_COLOR": "mvfr_color",
+                "IFR_COLOR": "ifr_color",
+                "LIFR_COLOR": "lifr_color",
+                "MISSING_COLOR": "missing_color",
+                "LIGHTENING_COLOR": "lightening_color"
+            }
+
+            for key, field_name in color_fields.items():
+                hex_value = request.form.get(field_name)
+                if hex_value:
+                    # Convert HEX to RGB tuple
+                    r, g, b = (int(hex_value[i:i+2], 16) for i in (1, 3, 5))
+                    
+                    # Rearrange to GRB for your LEDs
+                    grb_value = (g, r, b)
+                    
+                    # Save the GRB value
+                    config_updates[key] = grb_value
+
 
             # Define individual settings updates and catch specific errors
             try:
@@ -159,7 +179,11 @@ def edit_settings():
                 config_updates["DAYTIME_DIM_BRIGHTNESS"] = float(request.form['daytime_dim_brightness'])
             except ValueError:
                 raise ValueError("Could not update Daytime Dim Brightness: Please enter a valid number.")
-
+            try:
+                config_updates["NUM_PIXELS"] = float(request.form['num_pixels'])
+            except ValueError:
+                raise ValueError("Could not update Pixel Count: Please enter a valid number.")
+            
             # Boolean values for checkbox-based settings
             config_updates["WIND_ANIMATION"] = 'wind_animation' in request.form
             config_updates["LIGHTENING_ANIMATION"] = 'lightening_animation' in request.form
@@ -211,6 +235,14 @@ def edit_settings():
     lights_off_time_minute = config.LIGHTS_OFF_TIME.minute
     lights_on_time_hour = config.LIGHTS_ON_TIME.hour
     lights_on_time_minute = config.LIGHTS_ON_TIME.minute
+    
+    vfr_color = '#{:02x}{:02x}{:02x}'.format(config.VFR_COLOR[1], config.VFR_COLOR[0], config.VFR_COLOR[2])  # GRB -> RGB
+    mvfr_color = '#{:02x}{:02x}{:02x}'.format(config.MVFR_COLOR[1], config.MVFR_COLOR[0], config.MVFR_COLOR[2])  # GRB -> RGB
+    ifr_color = '#{:02x}{:02x}{:02x}'.format(config.IFR_COLOR[1], config.IFR_COLOR[0], config.IFR_COLOR[2])  # GRB -> RGB
+    lifr_color = '#{:02x}{:02x}{:02x}'.format(config.LIFR_COLOR[1], config.LIFR_COLOR[0], config.LIFR_COLOR[2])  # GRB -> RGB
+    missing_color = '#{:02x}{:02x}{:02x}'.format(config.MISSING_COLOR[1], config.MISSING_COLOR[0], config.MISSING_COLOR[2])  # GRB -> RGB
+    lightening_color = '#{:02x}{:02x}{:02x}'.format(config.LIGHTENING_COLOR[1], config.LIGHTENING_COLOR[0], config.LIGHTENING_COLOR[2])  # GRB -> RGB
+
 
     # Get the last modified date of weather.json
     weather_file_path = '/home/pi/weather.json'  # Adjust this path if necessary
@@ -236,8 +268,14 @@ def edit_settings():
         lights_on_time_hour=lights_on_time_hour,
         lights_on_time_minute=lights_on_time_minute,
         airports=airports,
-        config=globals(),  # Pass the entire config if needed for other settings
-        weather_last_modified=weather_last_modified  # Pass the last modified date to the template
+        config=globals(),
+        weather_last_modified=weather_last_modified,
+        vfr_color=vfr_color,
+        mvfr_color=mvfr_color,
+        ifr_color=ifr_color,
+        lifr_color=lifr_color,
+        missing_color=missing_color,
+        lightening_color=lightening_color
     )
 
 # Route to restart the METAR service
@@ -251,7 +289,6 @@ def restart_metar():
         flash(f'Error restarting METAR service: {str(e)}', 'danger')
 
     return redirect(url_for('edit_settings'))
-
 
 
 @app.route('/restart_settings', methods=['GET'])
@@ -279,16 +316,6 @@ def restart_service_thread():
 		
 def restart_service():
     """Restart the settings service in a separate thread."""
-    try:
-        print("Restarting settings service...")
-        subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
-        print("Settings service restarted successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error restarting settings service: {e}")
-
-
-def restart_service():
-    """Restart the settings service."""
     try:
         print("Restarting settings service...")
         subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
@@ -610,6 +637,7 @@ def pull_updates():
 
     except Exception as e:
         return jsonify({"success": False, "error": f"An error occurred during backup or update: {str(e)}"}), 500
+
 
 if __name__ == '__main__':
     app.run(
