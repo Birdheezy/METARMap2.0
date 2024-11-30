@@ -75,6 +75,38 @@ def check_lights_off():
     print("Lights remain on.")  # Debugging statement to know if lights are staying on
     return False  # Indicate that lights should remain on
 
+def calculate_dimmed_color(base_color, dim_brightness):
+    """Calculate the dimmed color by applying the brightness factor."""
+    return tuple(int(c * dim_brightness) for c in base_color)
+
+def update_legend(pixels):
+    """Update the legend LEDs at the end of the strand if LEGEND is enabled."""
+    if not LEGEND:
+        return  # Do nothing if the legend is disabled
+
+    # Dynamically calculate the WINDY color
+    WINDY_COLOR = calculate_dimmed_color(VFR_COLOR, DIM_BRIGHTNESS)
+
+    legend_colors = [
+        VFR_COLOR,
+        MVFR_COLOR,
+        IFR_COLOR,
+        LIFR_COLOR,
+        MISSING_COLOR,
+        LIGHTENING_COLOR,
+        WINDY_COLOR  # Add WINDY color to the legend
+    ]
+
+    # Start from the end of the strand
+    start_index = NUM_PIXELS - len(legend_colors)
+
+    for i, color in enumerate(legend_colors):
+        if start_index + i < NUM_PIXELS:  # Ensure we don't go out of bounds
+            # Adjust for GRB color order if needed
+            pixels[start_index + i] = (color[0], color[1], color[2])  # GRB
+
+    pixels.show()
+
 
 #######------ ANIMATIONS ------#######
 
@@ -226,6 +258,8 @@ while True:
         weather_data = weather.read_weather_data()
         update_leds(weather_data)
         update_led_brightness(pixels)
+        if LEGEND:
+            update_legend(pixels)
         time.sleep(ANIMATION_PAUSE)
 
         # Check for windy airports and animate if any, if WIND_ANIMATION is True
@@ -245,6 +279,8 @@ while True:
             snowy_airports = weather.get_snowy_airports(weather_data)
             if snowy_airports:
                 animate_snowy_airports(snowy_airports, weather_data)
+		
+
 
     else:
         # If lights should be off, ensure LEDs are off
