@@ -1,3 +1,6 @@
+# NOTE: 
+### The "main" branch is my "beta" branch. It's where I commit my nightly work and can be unstable. Please use the "production" branch for your own projects. 
+
 This is a complete rewrite of my METARMap Project. It was inspired by others who have created a similar project. I wanted it to be easy enough to set up so that a complete beginner could do it!
 
 # Main features of this project
