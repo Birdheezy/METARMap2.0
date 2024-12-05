@@ -52,6 +52,7 @@ def reload_config():
     LIGHTS_ON_TIME = config_globals['LIGHTS_ON_TIME']
     ENABLE_LIGHTS_OFF = config_globals['ENABLE_LIGHTS_OFF']
     NUM_PIXELS = config_globals['NUM_PIXELS']
+    LEGEND = config_globals['LEGEND']
 
 @app.route('/leds/on', methods=['POST'])
 def turn_on_leds():
@@ -183,13 +184,14 @@ def edit_settings():
                 config_updates["NUM_PIXELS"] = float(request.form['num_pixels'])
             except ValueError:
                 raise ValueError("Could not update Pixel Count: Please enter a valid number.")
-            
+
             # Boolean values for checkbox-based settings
             config_updates["WIND_ANIMATION"] = 'wind_animation' in request.form
             config_updates["LIGHTENING_ANIMATION"] = 'lightening_animation' in request.form
             config_updates["SNOWY_ANIMATION"] = 'snowy_animation' in request.form
             config_updates["DAYTIME_DIMMING"] = 'daytime_dimming' in request.form
             config_updates["ENABLE_LIGHTS_OFF"] = 'enable_lights_off' in request.form
+            config_updates["LEGEND"] = 'legend' in request.form
 
             # Update the config.py file
             with open('/home/pi/config.py', 'r') as f:
@@ -275,7 +277,9 @@ def edit_settings():
         ifr_color=ifr_color,
         lifr_color=lifr_color,
         missing_color=missing_color,
-        lightening_color=lightening_color
+        lightening_color=lightening_color,
+        enable_lights_off=config.ENABLE_LIGHTS_OFF,
+        legend=config.LEGEND
     )
 
 # Route to restart the METAR service

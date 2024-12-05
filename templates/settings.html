@@ -231,34 +231,38 @@
 
 <!-- Boolean Animations (Toggles) -->
     
+
     <div class="toggle-container">
         <div class="toggle-wrapper">
-            <input type="checkbox" id="enable_lights_off" name="enable_lights_off" class="toggle-input" {% if config.ENABLE_LIGHTS_OFF %}checked{% endif %}>
-            <label for="enable_lights_off" class="toggle-label">Enable Lights Off Time</label>
+            <!-- Dynamically set the 'checked' attribute based on the ENABLE_LIGHTS_OFF value -->
+            <input type="checkbox" id="enable_lights_off" name="enable_lights_off" class="toggle-input" {% if enable_lights_off %}checked{% endif %}>
+            <label for="enable_lights_off" class="toggle-label">Enable Lights On/Off Time</label>
         </div>
         <!-- Daytime Dimming Toggle -->
         <div class="toggle-wrapper">
             <input type="checkbox" id="daytime_dimming" name="daytime_dimming" class="toggle-input" {% if config.DAYTIME_DIMMING %}checked{% endif %}>
             <label for="daytime_dimming" class="toggle-label">Enable Daytime Dimming</label>
         </div>
-
         <!-- Wind Animation Toggle -->
         <div class="toggle-wrapper">
             <input type="checkbox" id="wind_animation" name="wind_animation" class="toggle-input" {% if config.WIND_ANIMATION %}checked{% endif %}>
             <label for="wind_animation" class="toggle-label">Enable Wind Animation</label>
         </div>
-
         <!-- Lightning Animation Toggle -->
         <div class="toggle-wrapper">
             <input type="checkbox" id="lightening_animation" name="lightening_animation" class="toggle-input" {% if config.LIGHTENING_ANIMATION %}checked{% endif %}>
             <label for="lightening_animation" class="toggle-label">Enable Lightning Animation</label>
         </div>
-
         <!-- Snowy Animation Toggle -->
         <div class="toggle-wrapper">
             <input type="checkbox" id="snowy_animation" name="snowy_animation" class="toggle-input" {% if config.SNOWY_ANIMATION %}checked{% endif %}>
             <label for="snowy_animation" class="toggle-label">Enable Snowy Animation</label>
         </div>
+        <div class="toggle-wrapper">
+            <input type="checkbox" id="legend" name="legend" class="toggle-input" {% if legend %}checked{% endif %}>
+            <label for="legend" class="toggle-label">Enable LED Legend</label>
+        </div>
+
     </div>
 </section>
 <section id="time-settings">
