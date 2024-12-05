@@ -16,43 +16,46 @@ import importlib
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# Helper function to reload config values
+
 def reload_config():
     importlib.reload(config)
+    
+    # Update global variables dynamically
+    for key in dir(config):
+        if key.isupper():  # Only update uppercase variables (configuration constants)
+            globals()[key] = getattr(config, key)
 
-    # Use exec to load the latest values from config.py
-    config_globals = {}
-    with open('/home/pi/config.py') as f:
-        exec(f.read(), config_globals)
+
 
     # Update global values from the loaded config
-    BRIGHTNESS = config_globals['BRIGHTNESS']
-    DIM_BRIGHTNESS = config_globals['DIM_BRIGHTNESS']
-    BRIGHT_TIME_START = config_globals['BRIGHT_TIME_START']
-    DIM_TIME_START = config_globals['DIM_TIME_START']
-    WIND_THRESHOLD = config_globals['WIND_THRESHOLD']
-    WIND_FADE_TIME = config_globals['WIND_FADE_TIME']
-    WIND_PAUSE = config_globals['WIND_PAUSE']
-    ANIMATION_PAUSE = config_globals['ANIMATION_PAUSE']
-    NUM_STEPS = config_globals['NUM_STEPS']
-    SNOW_BLINK_COUNT = config_globals['SNOW_BLINK_COUNT']
-    SNOW_BLINK_PAUSE = config_globals['SNOW_BLINK_PAUSE']
-    WIND_ANIMATION = config_globals['WIND_ANIMATION']
-    LIGHTENING_ANIMATION = config_globals['LIGHTENING_ANIMATION']
-    SNOWY_ANIMATION = config_globals['SNOWY_ANIMATION']
-    VFR_COLOR = config_globals['VFR_COLOR']
-    MVFR_COLOR = config_globals['MVFR_COLOR']
-    IFR_COLOR = config_globals['IFR_COLOR']
-    LIFR_COLOR = config_globals['LIFR_COLOR']
-    MISSING_COLOR = config_globals['MISSING_COLOR']
-    LIGHTENING_COLOR = config_globals['LIGHTENING_COLOR']
-    DAYTIME_DIMMING = config_globals.get('DAYTIME_DIMMING')
-    DAYTIME_DIM_BRIGHTNESS = config_globals.get('DAYTIME_DIM_BRIGHTNESS')
-    LIGHTS_OFF_TIME = config_globals['LIGHTS_OFF_TIME']
-    LIGHTS_ON_TIME = config_globals['LIGHTS_ON_TIME']
-    ENABLE_LIGHTS_OFF = config_globals['ENABLE_LIGHTS_OFF']
-    NUM_PIXELS = config_globals['NUM_PIXELS']
-    LEGEND = config_globals['LEGEND']
+    BRIGHTNESS = globals().get('BRIGHTNESS', None)
+    DIM_BRIGHTNESS = globals().get('DIM_BRIGHTNESS', None)
+    BRIGHT_TIME_START = globals().get('BRIGHT_TIME_START', None)
+    DIM_TIME_START = globals().get('DIM_TIME_START', None)
+    WIND_THRESHOLD = globals().get('WIND_THRESHOLD', None)
+    WIND_FADE_TIME = globals().get('WIND_FADE_TIME', None)
+    WIND_PAUSE = globals().get('WIND_PAUSE', None)
+    ANIMATION_PAUSE = globals().get('ANIMATION_PAUSE', None)
+    NUM_STEPS = globals().get('NUM_STEPS', None)
+    SNOW_BLINK_COUNT = globals().get('SNOW_BLINK_COUNT', None)
+    SNOW_BLINK_PAUSE = globals().get('SNOW_BLINK_PAUSE', None)
+    WIND_ANIMATION = globals().get('WIND_ANIMATION', None)
+    LIGHTENING_ANIMATION = globals().get('LIGHTENING_ANIMATION', None)
+    SNOWY_ANIMATION = globals().get('SNOWY_ANIMATION', None)
+    VFR_COLOR = globals().get('VFR_COLOR', None)
+    MVFR_COLOR = globals().get('MVFR_COLOR', None)
+    IFR_COLOR = globals().get('IFR_COLOR', None)
+    LIFR_COLOR = globals().get('LIFR_COLOR', None)
+    MISSING_COLOR = globals().get('MISSING_COLOR', None)
+    LIGHTENING_COLOR = globals().get('LIGHTENING_COLOR', None)
+    DAYTIME_DIMMING = globals().get('DAYTIME_DIMMING', None)
+    DAYTIME_DIM_BRIGHTNESS = globals().get('DAYTIME_DIM_BRIGHTNESS', None)
+    LIGHTS_OFF_TIME = globals().get('LIGHTS_OFF_TIME', None)
+    LIGHTS_ON_TIME = globals().get('LIGHTS_ON_TIME', None)
+    ENABLE_LIGHTS_OFF = globals().get('ENABLE_LIGHTS_OFF', None)
+    NUM_PIXELS = globals().get('NUM_PIXELS', None)
+    LEGEND = globals().get('LEGEND', None)
+
 
 @app.route('/leds/on', methods=['POST'])
 def turn_on_leds():
@@ -94,20 +97,32 @@ def edit_settings():
 
             # Extract and validate time settings
             try:
-                bright_time_start_hour = int(request.form['bright_time_start_hour'])
-                bright_time_start_minute = int(request.form['bright_time_start_minute'])
-                dim_time_start_hour = int(request.form['dim_time_start_hour'])
-                dim_time_start_minute = int(request.form['dim_time_start_minute'])
-                lights_off_time_hour = int(request.form['lights_off_time_hour'])
-                lights_off_time_minute = int(request.form['lights_off_time_minute'])
-                lights_on_time_hour = int(request.form['lights_on_time_hour'])
-                lights_on_time_minute = int(request.form['lights_on_time_minute'])
-        
-                # Convert the time inputs into datetime.time format
-                config_updates["BRIGHT_TIME_START"] = f"datetime.time({bright_time_start_hour}, {bright_time_start_minute})"
-                config_updates["DIM_TIME_START"] = f"datetime.time({dim_time_start_hour}, {dim_time_start_minute})"
-                config_updates["LIGHTS_OFF_TIME"] = f"datetime.time({lights_off_time_hour}, {lights_off_time_minute})"
-                config_updates["LIGHTS_ON_TIME"] = f"datetime.time({lights_on_time_hour}, {lights_on_time_minute})"
+                config_updates["LEGEND"] = 'legend' in request.form
+                config_updates["ENABLE_LIGHTS_OFF"] = 'enable_lights_off' in request.form
+                config_updates["DAYTIME_DIMMING"] = 'daytime_dimming' in request.form
+                config_updates["WIND_ANIMATION"] = 'wind_animation' in request.form
+                config_updates["LIGHTENING_ANIMATION"] = 'lightening_animation' in request.form
+                config_updates["SNOWY_ANIMATION"] = 'snowy_animation' in request.form
+
+                # Float or Integer Settings
+                config_updates["BRIGHTNESS"] = float(request.form.get('brightness', 0))
+                config_updates["DIM_BRIGHTNESS"] = float(request.form.get('dim_brightness', 0))
+                config_updates["DAYTIME_DIM_BRIGHTNESS"] = float(request.form.get('daytime_dim_brightness', 0))
+                config_updates["WIND_THRESHOLD"] = int(request.form.get('wind_threshold', 0))
+                config_updates["WIND_FADE_TIME"] = float(request.form.get('wind_fade_time', 0))
+                config_updates["WIND_PAUSE"] = float(request.form.get('wind_pause', 0))
+                config_updates["ANIMATION_PAUSE"] = int(request.form.get('animation_pause', 0))
+                config_updates["LIGHTNING_FLASH_COUNT"] = int(request.form.get('lightning_flash_count', 0))
+                config_updates["SNOW_BLINK_COUNT"] = int(request.form.get('snow_blink_count', 0))
+                config_updates["SNOW_BLINK_PAUSE"] = float(request.form.get('snow_blink_pause', 0))
+                config_updates["NUM_STEPS"] = int(request.form.get('num_steps', 0))
+                config_updates["NUM_PIXELS"] = int(request.form.get('num_pixels', 0))
+
+                # Time Settings (convert from form input)
+                config_updates["BRIGHT_TIME_START"] = f"datetime.time({request.form.get('bright_time_start_hour', 0)}, {request.form.get('bright_time_start_minute', 0)})"
+                config_updates["DIM_TIME_START"] = f"datetime.time({request.form.get('dim_time_start_hour', 0)}, {request.form.get('dim_time_start_minute', 0)})"
+                config_updates["LIGHTS_OFF_TIME"] = f"datetime.time({request.form.get('lights_off_time_hour', 0)}, {request.form.get('lights_off_time_minute', 0)})"
+                config_updates["LIGHTS_ON_TIME"] = f"datetime.time({request.form.get('lights_on_time_hour', 0)}, {request.form.get('lights_on_time_minute', 0)})"
 
             except ValueError:
                 raise ValueError("Could not update time settings: Please enter valid numbers for hours and minutes.")
@@ -213,7 +228,7 @@ def edit_settings():
             # Reload the configuration to reflect the changes
             reload_config()
             updated_airports = request.form.get("airports")
-
+            
             # Write the updated list to airports.txt
             if updated_airports is not None:
                 with open('/home/pi/airports.txt', 'w') as f:  # Replace with actual path to airports.txt
@@ -270,8 +285,8 @@ def edit_settings():
         lights_on_time_hour=lights_on_time_hour,
         lights_on_time_minute=lights_on_time_minute,
         airports=airports,
-        config=globals(),
         weather_last_modified=weather_last_modified,
+        config=globals(),
         vfr_color=vfr_color,
         mvfr_color=mvfr_color,
         ifr_color=ifr_color,
@@ -279,8 +294,26 @@ def edit_settings():
         missing_color=missing_color,
         lightening_color=lightening_color,
         enable_lights_off=config.ENABLE_LIGHTS_OFF,
-        legend=config.LEGEND
+        legend=config.LEGEND,
+        num_pixels=config.NUM_PIXELS,
+        num_steps=config.NUM_STEPS,
+        brightness=config.BRIGHTNESS,
+        dim_brightness=config.DIM_BRIGHTNESS,
+        daytime_dim_brightness=config.DAYTIME_DIM_BRIGHTNESS,
+        wind_threshold=config.WIND_THRESHOLD,
+        wind_fade_time=config.WIND_FADE_TIME,
+        wind_pause=config.WIND_PAUSE,
+        animation_pause=config.ANIMATION_PAUSE,
+        lightning_flash_count=config.LIGHTNING_FLASH_COUNT,
+        snow_blink_count=config.SNOW_BLINK_COUNT,
+        snow_blink_pause=config.SNOW_BLINK_PAUSE,
+        wind_animation=config.WIND_ANIMATION,
+        lightening_animation=config.LIGHTENING_ANIMATION,
+        snowy_animation=config.SNOWY_ANIMATION,
+        daytime_dimming=config.DAYTIME_DIMMING
     )
+
+
 
 # Route to restart the METAR service
 @app.route('/restart_metar')
