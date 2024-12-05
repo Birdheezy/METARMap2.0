@@ -676,15 +676,15 @@ def pull_updates():
         return jsonify({"success": False, "error": f"An error occurred during backup or update: {str(e)}"}), 500
 
 
-if __name__ == '__main__':
-    app.run(
-        host='0.0.0.0',
-        port=443,  # Use port 443 for HTTPS
-        ssl_context=(
-            '/etc/ssl/certs/flask-selfsigned.crt',
-            '/etc/ssl/private/flask-selfsigned.key'
-        )
-    )
-
 #if __name__ == '__main__':
-#    app.run(host='0.0.0.0', port=80, debug=False)
+#    app.run(
+#        host='0.0.0.0',
+#        port=443,  # Use port 443 for HTTPS
+#        ssl_context=(
+#            '/etc/ssl/certs/flask-selfsigned.crt',
+#            '/etc/ssl/private/flask-selfsigned.key'
+#        )
+#    )
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=80, debug=False)
