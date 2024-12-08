@@ -6,7 +6,6 @@ import datetime
 import config
 from flask import jsonify
 import shutil
-import shutil
 import re
 import time
 import threading
@@ -57,6 +56,7 @@ def reload_config():
     LEGEND = globals().get('LEGEND', None)
 
 
+#Home Assistant Inetegration
 @app.route('/leds/on', methods=['POST'])
 def turn_on_leds():
     subprocess.run(['sudo', 'systemctl', 'start', 'metar.service'])
@@ -273,9 +273,10 @@ def edit_settings():
     with open('/home/pi/airports.txt', 'r') as f:
         airports = f.read()
 
-    # Render the template with the updated values, including weather_last_modified
+    # Render the template with the updated values
     return render_template(
         'settings.html',
+        config=globals(),
         bright_time_start_hour=bright_time_start_hour,
         bright_time_start_minute=bright_time_start_minute,
         dim_time_start_hour=dim_time_start_hour,
@@ -286,7 +287,6 @@ def edit_settings():
         lights_on_time_minute=lights_on_time_minute,
         airports=airports,
         weather_last_modified=weather_last_modified,
-        config=globals(),
         vfr_color=vfr_color,
         mvfr_color=mvfr_color,
         ifr_color=ifr_color,
@@ -324,7 +324,6 @@ def restart_metar():
         flash('METAR service restarted successfully!', 'success')
     except subprocess.CalledProcessError as e:
         flash(f'Error restarting METAR service: {str(e)}', 'danger')
-
     return redirect(url_for('edit_settings'))
 
 
@@ -496,195 +495,153 @@ def check_for_updates():
     except subprocess.CalledProcessError as e:
         return jsonify({"error": f"Failed to check for updates: {e.stderr}"}), 500
 
+def create_backup():
+    project_dir = '/home/pi'
+    backup_dir = os.path.join(project_dir, 'BACKUP')  # Updated directory name
+    max_backups = 5
+
+    # Ensure backup directory exists
+    os.makedirs(backup_dir, exist_ok=True)
+
+    # Create a timestamped backup folder
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    backup_path = os.path.join(backup_dir, f'backup_{timestamp}')
+    os.makedirs(backup_path, exist_ok=True)
+
+    # Backup config.py and airports.txt
+    shutil.copy(os.path.join(project_dir, 'config.py'), os.path.join(backup_path, 'config.py'))
+    shutil.copy(os.path.join(project_dir, 'airports.txt'), os.path.join(backup_path, 'airports.txt'))
+
+    # Delete old backups if exceeding max_backups
+    existing_backups = sorted(
+        [os.path.join(backup_dir, d) for d in os.listdir(backup_dir) if os.path.isdir(os.path.join(backup_dir, d))],
+        key=os.path.getmtime
+    )
+    while len(existing_backups) > max_backups:
+        shutil.rmtree(existing_backups.pop(0))
+
+    print(f"Backup created at {backup_path}")
+    return backup_path
+
+
+def update_config(user_config_path, repo_config_path):
+    """
+    Merge user_config with repo_config:
+    - Retain formatting, sections, and import statements.
+    - Add missing keys from repo_config to user_config.
+    """
+    # Read user config
+    with open(user_config_path, 'r') as user_file:
+        user_lines = user_file.readlines()
+
+    # Read repo config
+    with open(repo_config_path, 'r') as repo_file:
+        repo_lines = repo_file.readlines()
+
+    # Preserve user config structure and comments
+    merged_lines = []
+    user_keys = {}
+
+    # Extract user keys
+    for line in user_lines:
+        stripped_line = line.strip()
+        if stripped_line.startswith("import ") or not stripped_line or stripped_line.startswith("#"):
+            merged_lines.append(line)
+        elif "=" in stripped_line:
+            key, _ = map(str.strip, stripped_line.split("=", 1))
+            user_keys[key] = line
+            merged_lines.append(line)
+        else:
+            merged_lines.append(line)
+
+    # Add missing keys from repo config
+    for line in repo_lines:
+        stripped_line = line.strip()
+        if "=" in stripped_line and not stripped_line.startswith("import ") and not stripped_line.startswith("#"):
+            key, value = map(str.strip, stripped_line.split("=", 1))
+            if key not in user_keys:
+                merged_lines.append(f"{key} = {value}\n")
+
+    # Write back to user config, preserving structure
+    with open(user_config_path, 'w') as user_file:
+        user_file.writelines(merged_lines)
 
 @app.route('/apply_updates', methods=['POST'])
 def apply_updates():
     try:
-        # Define the project directory and backup directory
+        # Define paths
         project_dir = '/home/pi'
-        backup_dir = os.path.join(project_dir, '*BACKUP*')
+        user = 'pi'  # Set the desired owner
+        user_config_path = os.path.join(project_dir, 'config.py')
+        repo_config_path = os.path.join(project_dir, 'config.py')
 
-        # Set a limit for the number of backups to retain
-        MAX_BACKUPS = 5
+        # Step 1: Create backup
+        create_backup()
 
-        # Create a timestamped backup directory to keep multiple backups
-        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_path = os.path.join(backup_dir, f'backup_{timestamp}')
+        # Step 2: Pull updates from repo
+        subprocess.run(['git', 'fetch'], cwd=project_dir, check=True)
+        subprocess.run(['git', 'reset', '--hard', 'origin/production'], cwd=project_dir, check=True)
 
-        # Create the backup directory if it doesn't exist
-        if not os.path.exists(backup_dir):
-            os.makedirs(backup_dir)
+        # Step 3: Merge config.py
+        update_config(user_config_path, repo_config_path)
 
-        # Get the list of files from the GitHub repo
-        result = subprocess.run(
-            ['git', 'ls-tree', '-r', 'HEAD', '--name-only'],
-            cwd=project_dir,
-            capture_output=True,
-            text=True,
-            check=True
-        )
+        # Step 4: Change ownership of files to 'pi'
+        subprocess.run(['chown', '-R', f'{user}:{user}', project_dir], check=True)
 
-        # Split the output into individual file paths
-        files_in_repo = result.stdout.strip().split('\n')
-
-        # Create the specific backup folder
-        os.makedirs(backup_path, exist_ok=True)
-
-        # Copy each file to the backup folder
-        for item in files_in_repo:
-            item_path = os.path.join(project_dir, item)
-            if os.path.exists(item_path):
-                if os.path.isdir(item_path):
-                    shutil.copytree(item_path, os.path.join(backup_path, os.path.basename(item)), dirs_exist_ok=True)
-                else:
-                    shutil.copy2(item_path, backup_path)
-
-        # Delete old backups if they exceed the limit
-        existing_backups = sorted(
-            [os.path.join(backup_dir, d) for d in os.listdir(backup_dir)],
-            key=os.path.getmtime
-        )
-
-        while len(existing_backups) > MAX_BACKUPS:
-            shutil.rmtree(existing_backups[0])
-            existing_backups.pop(0)
-
-        # Pull the latest updates from the remote repository
-        subprocess.run(['git', 'pull'], cwd=project_dir, check=True)
-
-        # Restart the relevant service, if necessary (e.g., metar.service)
+        # Step 5: Restart services
         subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
 
-        return jsonify({"message": "Updates applied, backup created, and service restarted."}), 200
+        return jsonify({"message": "Updates applied successfully!"}), 200
 
+    except FileNotFoundError as e:
+        return jsonify({"error": f"Missing file during update: {str(e)}"}), 500
     except subprocess.CalledProcessError as e:
-        return jsonify({"error": f"Failed to apply updates: {e.stderr}"}), 500
+        return jsonify({"error": f"Command failed: {e.stderr}"}), 500
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
-def merge_configs(user_config_path, template_config_path):
-    # Load the template config lines to get the correct structure and order
-    with open(template_config_path, 'r') as template_file:
-        template_lines = template_file.readlines()
-
-    # Load the user's config into a dictionary to preserve their changes
-    user_config = {}
-    with open(user_config_path, 'r') as user_file:
-        for line in user_file:
-            line = line.strip()
-            if line.startswith("#") or not line or line.startswith("import"):
-                continue  # Skip comments, empty lines, and import statements
-
-            # Extract key and value using regex
-            match = re.match(r'^(\w+)\s*=\s*(.+)$', line)
-            if match:
-                key, value = match.groups()
-                user_config[key.strip()] = value.strip()
-
-    # Create the updated config content by using the structure of the template
-    updated_lines = []
-    for line in template_lines:
-        stripped_line = line.strip()
-
-        if stripped_line.startswith("#") or not stripped_line or stripped_line.startswith("import"):
-            # Preserve comments, empty lines, and import statements from the template
-            updated_lines.append(line)
-            continue
-
-        # Extract key from the template line
-        match = re.match(r'^(\w+)\s*=', stripped_line)
-        if match:
-            key = match.group(1).strip()
-            # Use the user's value if it exists, otherwise keep the template's value
-            if key in user_config:
-                updated_lines.append(f"{key} = {user_config[key]}\n")
-            else:
-                updated_lines.append(line)
-        else:
-            updated_lines.append(line)
-
-    # Write the updated configuration back to user config.py
-    with open(user_config_path, 'w') as user_file:
-        user_file.writelines(updated_lines)
-
-@app.route('/pull_updates', methods=['GET'])
-def pull_updates():
+@app.route('/rollback', methods=['GET'])
+def rollback():
     try:
-        # Define the project directory and backup directory
+        # Define paths
         project_dir = '/home/pi'
-        backup_dir = os.path.join(project_dir, '*BACKUP*')
+        backup_dir = os.path.join(project_dir, 'BACKUP')
 
-        # Set a limit for the number of backups to retain
-        MAX_BACKUPS = 5
-
-        # Create a timestamped backup directory to keep multiple backups
-        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_path = os.path.join(backup_dir, f'backup_{timestamp}')
-        
-        # Create the backup directory if it doesn't exist
-        if not os.path.exists(backup_dir):
-            os.makedirs(backup_dir)
-
-        # Get the list of files from the GitHub repo
-        result = subprocess.run(
-            ['git', 'ls-tree', '-r', 'HEAD', '--name-only'],
-            cwd=project_dir,
-            capture_output=True,
-            text=True,
-            check=True
+        # Get the latest backup directory
+        backups = sorted(
+            [os.path.join(backup_dir, d) for d in os.listdir(backup_dir) if os.path.isdir(os.path.join(backup_dir, d))],
+            key=os.path.getmtime,
+            reverse=True
         )
 
-        # Split the output into individual file paths
-        files_in_repo = result.stdout.strip().split('\n')
+        if not backups:
+            flash("No backups found to roll back.", "danger")
+            return redirect(url_for('edit_settings'))
 
-        # Create the specific backup folder
-        os.makedirs(backup_path, exist_ok=True)
+        latest_backup = backups[0]
 
-        # Copy each file to the backup folder
-        for item in files_in_repo:
-            item_path = os.path.join(project_dir, item)
-            if os.path.exists(item_path):
-                if os.path.isdir(item_path):
-                    shutil.copytree(item_path, os.path.join(backup_path, os.path.basename(item)), dirs_exist_ok=True)
-                else:
-                    shutil.copy2(item_path, backup_path)
+        # Restore config.py and airports.txt from the latest backup
+        shutil.copy(os.path.join(latest_backup, 'config.py'), os.path.join(project_dir, 'config.py'))
+        shutil.copy(os.path.join(latest_backup, 'airports.txt'), os.path.join(project_dir, 'airports.txt'))
 
-        # Delete old backups if they exceed the limit
-        existing_backups = sorted(
-            [os.path.join(backup_dir, d) for d in os.listdir(backup_dir)],
-            key=os.path.getmtime
-        )
-
-        while len(existing_backups) > MAX_BACKUPS:
-            shutil.rmtree(existing_backups[0])
-            existing_backups.pop(0)
-
-        # Pull the latest updates from the remote repository
-        subprocess.run(['git', 'pull'], cwd=project_dir, check=True)
-
-        # Merge the configuration files after pulling updates
-        user_config_path = os.path.join(project_dir, 'config.py')
-        template_config_path = os.path.join(project_dir, 'config_template.py')
-        merge_configs(user_config_path, template_config_path)
-
-        return jsonify({"success": True, "message": f"Update successful! Backup created at {backup_path}"}), 200
-
-    except subprocess.CalledProcessError as e:
-        return jsonify({"success": False, "error": f"Failed to pull updates: {str(e)}"}), 500
+        # Feedback to the user
+        flash("Rollback to the latest backup was successful.", "success")
+        return redirect(url_for('edit_settings'))
 
     except Exception as e:
-        return jsonify({"success": False, "error": f"An error occurred during backup or update: {str(e)}"}), 500
+        flash(f"An error occurred during rollback: {str(e)}", "danger")
+        return redirect(url_for('edit_settings'))
 
-
-#if __name__ == '__main__':
-#    app.run(
-#        host='0.0.0.0',
-#        port=443,  # Use port 443 for HTTPS
-#        ssl_context=(
-#            '/etc/ssl/certs/flask-selfsigned.crt',
-#            '/etc/ssl/private/flask-selfsigned.key'
-#        )
-#    )
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=80, debug=False)
+    app.run(
+        host='0.0.0.0',
+        port=443,  # Use port 443 for HTTPS
+        ssl_context=(
+            '/etc/ssl/certs/flask-selfsigned.crt',
+            '/etc/ssl/private/flask-selfsigned.key'
+        )
+    )
+
+#if __name__ == '__main__':
+#    app.run(host='0.0.0.0', port=80, debug=False)

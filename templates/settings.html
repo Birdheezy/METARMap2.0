@@ -167,44 +167,6 @@
         </div>
         <input type="text" class="form-control input-small" name="snow_blink_pause" value="{{ config.SNOW_BLINK_PAUSE }}" placeholder="Default: 0.4">
     </div>
-</section>
-<section>
-    <h2>Color Settings</h2>
-    <table class="table table-borderless color-settings-table" style="margin: 0 auto;">
-        <tr>
-            <td class="color-picker-container">
-                <label for="vfr-color-picker">VFR Color:</label>
-                <input type="color" id="vfr-color-picker" name="vfr_color" value="{{ vfr_color }}">
-            </td>
-            <td class="color-picker-container">
-                <label for="mvfr-color-picker">MVFR Color:</label>
-                <input type="color" id="mvfr-color-picker" name="mvfr_color" value="{{ mvfr_color }}">
-            </td>
-            <td class="color-picker-container">
-                <label for="ifr-color-picker">IFR Color:</label>
-                <input type="color" id="ifr-color-picker" name="ifr_color" value="{{ ifr_color }}">
-            </td>
-        </tr>
-        <tr>
-            <td class="color-picker-container">
-                <label for="lifr-color-picker">LIFR Color:</label>
-                <input type="color" id="lifr-color-picker" name="lifr_color" value="{{ lifr_color }}">
-            </td>
-            <td class="color-picker-container">
-                <label for="lightening-color-picker">Lightening Color:</label>
-                <input type="color" id="lightening-color-picker" name="lightening_color" value="{{ lightening_color }}">
-            </td>
-            <td class="color-picker-container">
-                <label for="missing-color-picker">Missing Color:</label>
-                <input type="color" id="missing-color-picker" name="missing_color" value="{{ missing_color }}">
-            </td>
-        </tr>
-    </table>
-</section>
-
-
-<section>
-<h2>Advanced Settings</h2>
 
     <div class="mb-3">
         <div class="dropdown-container">
@@ -217,52 +179,37 @@
         </div>
         <input type="text" class="form-control input-small" name="num_steps" value="{{ config.NUM_STEPS }}" placeholder="Default: 100">
     </div>
-    <div class="mb-3">
-        <div class="dropdown-container">
-            <label for="num_pixels">Pixel Count
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-            </label>
-            <div class="dropdown-content" style="display: none;">
-                Total number of pixels in your setup. (Should be at least as many lines in your airport file)
-            </div>
-        </div>
-        <input type="text" class="form-control input-small" name="num_pixels" value="{{ config.NUM_PIXELS }}" placeholder="i.e. 50">
-    </div>
 
 <!-- Boolean Animations (Toggles) -->
     
-
     <div class="toggle-container">
         <div class="toggle-wrapper">
-            <!-- Dynamically set the 'checked' attribute based on the ENABLE_LIGHTS_OFF value -->
-            <input type="checkbox" id="enable_lights_off" name="enable_lights_off" class="toggle-input" {% if enable_lights_off %}checked{% endif %}>
-            <label for="enable_lights_off" class="toggle-label">Enable Lights On/Off Time</label>
+            <input type="checkbox" id="enable_lights_off" name="enable_lights_off" class="toggle-input" {% if config.ENABLE_LIGHTS_OFF %}checked{% endif %}>
+            <label for="enable_lights_off" class="toggle-label">Enable Lights Off Time</label>
         </div>
         <!-- Daytime Dimming Toggle -->
         <div class="toggle-wrapper">
             <input type="checkbox" id="daytime_dimming" name="daytime_dimming" class="toggle-input" {% if config.DAYTIME_DIMMING %}checked{% endif %}>
             <label for="daytime_dimming" class="toggle-label">Enable Daytime Dimming</label>
         </div>
+
         <!-- Wind Animation Toggle -->
         <div class="toggle-wrapper">
             <input type="checkbox" id="wind_animation" name="wind_animation" class="toggle-input" {% if config.WIND_ANIMATION %}checked{% endif %}>
             <label for="wind_animation" class="toggle-label">Enable Wind Animation</label>
         </div>
+
         <!-- Lightning Animation Toggle -->
         <div class="toggle-wrapper">
             <input type="checkbox" id="lightening_animation" name="lightening_animation" class="toggle-input" {% if config.LIGHTENING_ANIMATION %}checked{% endif %}>
             <label for="lightening_animation" class="toggle-label">Enable Lightning Animation</label>
         </div>
+
         <!-- Snowy Animation Toggle -->
         <div class="toggle-wrapper">
             <input type="checkbox" id="snowy_animation" name="snowy_animation" class="toggle-input" {% if config.SNOWY_ANIMATION %}checked{% endif %}>
             <label for="snowy_animation" class="toggle-label">Enable Snowy Animation</label>
         </div>
-        <div class="toggle-wrapper">
-            <input type="checkbox" id="legend" name="legend" class="toggle-input" {% if legend %}checked{% endif %}>
-            <label for="legend" class="toggle-label">Enable LED Legend</label>
-        </div>
-
     </div>
 </section>
 <section id="time-settings">
@@ -393,14 +340,6 @@
 	<div class="mt-4">
 		<a href="{{ url_for('restart_metar') }}" class="btn btn-primary">Restart METAR Service</a>
 	</div>
-
-	<div class="mt-4">
-		<button id="restart-settings-button" class="btn btn-primary">Restart Settings Service</button>
-	</div>
-	<div id="restart-settings-status" style="margin-top: 10px; color: green; font-weight: bold;"></div>
-
- 
-
 	<div class="mt-4">
 		<a href="{{ url_for('update_weather') }}" class="btn btn-primary">Update Weather</a>
 		<label style="color: grey; font-size: smaller;">Last Weather Update:</label>
@@ -410,8 +349,12 @@
     <div class="mt-4">
         <button id="check-updates-button" class="btn btn-primary">Check for Updates</button>
         <div id="update-status" class="mt-2"></div>
-        <div id="update-button-container" class="mt-2"></div>
+        <div id="update-button-container" class="mt-2"></div> <!-- Container for the "Update Now" button -->
     </div>
+    <div class="mt-4">
+        <a href="{{ url_for('rollback') }}" class="btn btn-primary">Rollback to Last Backup</a>
+    </div>
+
 	<div class="mt-4">
 		<a href="{{ url_for('stop_and_blank') }}" class="btn btn-primary">Stop METAR</a>
 	</div>
@@ -420,7 +363,7 @@
 
 
 
-    </form>
+</form>
 </div>
 <script type="text/javascript">
     const messages = [];
