@@ -208,7 +208,6 @@ document.querySelectorAll('a.btn-primary').forEach(button => {
     button.addEventListener('click', saveScrollPosition);
 });
 
-
 document.addEventListener("DOMContentLoaded", () => {
     console.log("settings.js is running");
 
@@ -291,8 +290,6 @@ document.addEventListener("DOMContentLoaded", () => {
             });
     });
 });
-
-
 
 document.getElementById('check-updates-button').addEventListener('click', function (event) {
     // Prevent the form from submitting and refreshing the page

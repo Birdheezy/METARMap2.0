@@ -340,6 +340,11 @@
 	<div class="mt-4">
 		<a href="{{ url_for('restart_metar') }}" class="btn btn-primary">Restart METAR Service</a>
 	</div>
+   	<div class="mt-4">
+		<button id="restart-settings-button" class="btn btn-primary">Restart Settings Service</button>
+	</div>
+	<div id="restart-settings-status" style="margin-top: 10px; color: green; font-weight: bold;"></div>
+
 	<div class="mt-4">
 		<a href="{{ url_for('update_weather') }}" class="btn btn-primary">Update Weather</a>
 		<label style="color: grey; font-size: smaller;">Last Weather Update:</label>
@@ -351,10 +356,6 @@
         <div id="update-status" class="mt-2"></div>
         <div id="update-button-container" class="mt-2"></div> <!-- Container for the "Update Now" button -->
     </div>
-    <div class="mt-4">
-        <a href="{{ url_for('rollback') }}" class="btn btn-primary">Rollback to Last Backup</a>
-    </div>
-
 	<div class="mt-4">
 		<a href="{{ url_for('stop_and_blank') }}" class="btn btn-primary">Stop METAR</a>
 	</div>
@@ -363,7 +364,7 @@
 
 
 
-</form>
+    </form>
 </div>
 <script type="text/javascript">
     const messages = [];
