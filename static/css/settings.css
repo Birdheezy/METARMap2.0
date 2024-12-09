@@ -257,9 +257,6 @@ textarea {
     margin-bottom: 10px; /* Adds space between input fields and the next section */
 }
 
-.mt-3 {
-    margin-bottom: 10px; /* Adds space between input fields and the next section */
-}
 .mt-4 {
     margin-top: 10px;
     margin-bottom: 10px;
@@ -428,30 +425,24 @@ section {
     font-size: 1.5em;
     color: #007bff;
 }
-
 input[type="color"] {
-    width: 50px; /* Adjust as needed */
-    height: 30px; /* Adjust as needed */
+    width: 50px;  /* Adjust as needed */
+    height: 30px;  /* Adjust as needed */
     border: none;
     padding: 0;
     margin: 0;
     background: none;
     cursor: pointer;
-}
-/* Align color boxes closer to their labels */
-.color-picker-container label {
-    display: block;
-    margin-bottom: 5px; /* Adjust spacing between label and color box */
-    text-align: center; /* Center-align the label */
+    -webkit-appearance: none;  /* For Chrome/Safari */
+    -moz-appearance: none;   /* For Firefox */
+    appearance: none;        /* Standard */
 }
 
-.color-picker-container input[type="color"] {
-    display: block;
-    margin: 0 auto; /* Center the color picker box */
-    margin-bottom: 20px; /* Add spacing below the color box */
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
 }
 
-/* Add more space between rows in the table */
-.color-settings-table tr {
-    margin-bottom: 20px; /* Increase spacing between rows */
+input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 5px; /* Adjust or remove if you don't want rounded corners */
 }
