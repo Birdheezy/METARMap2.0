@@ -512,9 +512,14 @@ def apply_updates():
         backup_path = os.path.join(backup_dir, f'backup_{timestamp}')
         os.makedirs(backup_path, exist_ok=True)
 
-        shutil.copy(user_config_path, os.path.join(backup_path, 'config.py'))
-        shutil.copy(os.path.join(project_dir, 'airports.txt'), os.path.join(backup_path, 'airports.txt'))
-
+        for filename in os.listdir(project_dir):
+            if filename != 'airports.txt' and not filename.startswith('.') and filename != 'BACKUP':  
+                source_path = os.path.join(project_dir, filename)
+                destination_path = os.path.join(backup_path, filename)
+                if os.path.isfile(source_path):
+                    shutil.copy(source_path, destination_path)
+                elif os.path.isdir(source_path):
+                    shutil.copytree(source_path, destination_path)
         # Limit backups to 5
         existing_backups = sorted(
             [os.path.join(backup_dir, d) for d in os.listdir(backup_dir)],
@@ -526,8 +531,20 @@ def apply_updates():
 
         # Step 2: Pull updates from the repo
         subprocess.run(['git', 'fetch'], cwd=project_dir, check=True)
-        subprocess.run(['git', 'reset', '--hard', 'origin/production'], cwd=project_dir, check=True)
-
+        # Get the current branch
+        current_branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=project_dir, text=True).strip()
+        
+        # Temporarily move airports.txt out of the way
+        airports_path = os.path.join(project_dir, 'airports.txt')
+        temp_airports_path = os.path.join(project_dir, 'airports.txt.tmp')
+        os.rename(airports_path, temp_airports_path)
+        
+        # Use the current branch to reset
+        subprocess.run(['git', 'reset', '--hard', f'origin/{current_branch}'], cwd=project_dir, check=True)
+        
+        # Move airports.txt back to its original location
+        os.rename(temp_airports_path, airports_path)
+        
         # Step 3: Update config.py
         update_config(user_config_path, repo_config_path)
 
