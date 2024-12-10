@@ -545,11 +545,7 @@ def apply_updates():
         
         # Move airports.txt back to its original location
         os.rename(temp_airports_path, airports_path)
-        for root, dirs, files in os.walk(project_dir):
-            for dir in dirs:
-                shutil.chown(os.path.join(root, dir), user='pi', group='pi')
-            for file in files:
-                shutil.chown(os.path.join(root, file), user='pi', group='pi')
+        subprocess.run(['sudo', 'chown', '-R', 'pi:pi', '/home/pi'], check=True)
         # Step 3: Update config.py
         update_config(user_config_path, repo_config_path)
 
