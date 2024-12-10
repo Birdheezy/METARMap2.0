@@ -573,18 +573,17 @@ def update_config(user_config_path, repo_config_path):
     with open(repo_config_path, 'r') as repo_file:
         exec(repo_file.read(), repo_config)
 
-    # Merge keys from the repo config into the user config
-    merged_config = user_config.copy()
+    # Add any NEW keys from the repo config to the user config
     for key, value in repo_config.items():
-        if key.isupper():  # Only handle uppercase keys
-            merged_config.setdefault(key, value)  # Add missing keys with repo defaults
+        if key.isupper() and key not in user_config:  # Only add if key is missing
+            user_config[key] = value
 
     # Write the updated user config back to the file
     with open(user_config_path, 'w') as user_file:
         user_file.write("import datetime\n\n")  # Add the import statement
 
         for key, value in user_config.items():
-            if key.isupper():
+            if key.isupper():  # Write only configuration constants
                 user_file.write(f"{key} = {repr(value)}\n")
 
 if __name__ == '__main__':
