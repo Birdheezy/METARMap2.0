@@ -580,8 +580,10 @@ def update_config(user_config_path, repo_config_path):
 
     # Write the updated user config back to the file
     with open(user_config_path, 'w') as user_file:
-        for key, value in merged_config.items():
-            if key.isupper():  # Write only configuration constants
+        user_file.write("import datetime\n\n")  # Add the import statement
+
+        for key, value in user_config.items():
+            if key.isupper():
                 user_file.write(f"{key} = {repr(value)}\n")
 
 if __name__ == '__main__':
