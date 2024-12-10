@@ -66,11 +66,15 @@ def monitor_config_changes(config_file):
 
             # If the current time falls in the lights-off period, turn off lights immediately
             current_time = datetime.now().time()
-            if config.ENABLE_LIGHTS_OFF and (
-                (config.LIGHTS_OFF_TIME > config.LIGHTS_ON_TIME and (current_time >= config.LIGHTS_OFF_TIME or current_time < config.LIGHTS_ON_TIME)) or
-                (config.LIGHTS_OFF_TIME <= config.LIGHTS_ON_TIME and config.LIGHTS_OFF_TIME <= current_time < config.LIGHTS_ON_TIME)
-            ):
-                turn_off_lights()
+            if config.ENABLE_LIGHTS_OFF:
+                lights_off = (
+                    (config.LIGHTS_OFF_TIME > config.LIGHTS_ON_TIME and (current_time >= config.LIGHTS_OFF_TIME or current_time < config.LIGHTS_ON_TIME)) or
+                    (config.LIGHTS_OFF_TIME <= config.LIGHTS_ON_TIME and config.LIGHTS_OFF_TIME <= current_time < config.LIGHTS_ON_TIME)
+                )
+                if lights_off:
+                    turn_off_lights()
+                else:  # Implied lights-on condition
+                    turn_on_lights()
 
         schedule.run_pending()
         time.sleep(1)

@@ -103,7 +103,7 @@ def edit_settings():
                 config_updates["WIND_ANIMATION"] = 'wind_animation' in request.form
                 config_updates["LIGHTENING_ANIMATION"] = 'lightening_animation' in request.form
                 config_updates["SNOWY_ANIMATION"] = 'snowy_animation' in request.form
-
+                config_updates["ENABLE_HTTPS"] = 'enable_https' in request.form
                 # Float or Integer Settings
                 config_updates["BRIGHTNESS"] = float(request.form.get('brightness', 0))
                 config_updates["DIM_BRIGHTNESS"] = float(request.form.get('dim_brightness', 0))
@@ -207,6 +207,7 @@ def edit_settings():
             config_updates["DAYTIME_DIMMING"] = 'daytime_dimming' in request.form
             config_updates["ENABLE_LIGHTS_OFF"] = 'enable_lights_off' in request.form
             config_updates["LEGEND"] = 'legend' in request.form
+            config_updates["ENABLE_HTTPS"] = 'enable_https' in request.form
 
             # Update the config.py file
             with open('/home/pi/config.py', 'r') as f:
@@ -310,7 +311,8 @@ def edit_settings():
         wind_animation=config.WIND_ANIMATION,
         lightening_animation=config.LIGHTENING_ANIMATION,
         snowy_animation=config.SNOWY_ANIMATION,
-        daytime_dimming=config.DAYTIME_DIMMING
+        daytime_dimming=config.DAYTIME_DIMMING,
+        enable_https=config.ENABLE_HTTPS
     )
 
 
@@ -565,16 +567,15 @@ def update_config(user_config_path, repo_config_path):
             if key.isupper():  # Write only configuration constants
                 user_file.write(f"{key} = {repr(value)}\n")
 
-
-#if __name__ == '__main__':
-#    app.run(
-#        host='0.0.0.0',
-#        port=443,  # Use port 443 for HTTPS
-#        ssl_context=(
-#            '/etc/ssl/certs/flask-selfsigned.crt',
-#            '/etc/ssl/private/flask-selfsigned.key'
-#        )
-#    )
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=80, debug=False)
+    if ENABLE_HTTPS:
+        app.run(
+            host='0.0.0.0',
+            port=443,  # Use port 443 for HTTPS
+            ssl_context=(
+                '/etc/ssl/certs/flask-selfsigned.crt',  # Replace with your certificate paths
+                '/etc/ssl/private/flask-selfsigned.key'
+            )
+        )
+    else:
+        app.run(host='0.0.0.0', port=80, debug=False)

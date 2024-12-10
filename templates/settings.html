@@ -262,6 +262,10 @@
             <input type="checkbox" id="legend" name="legend" class="toggle-input" {% if legend %}checked{% endif %}>
             <label for="legend" class="toggle-label">Enable LED Legend</label>
         </div>
+        <div class="toggle-wrapper">
+            <input type="checkbox" id="enable_https" name="enable_https" class="toggle-input" {% if enable_https %}checked{% endif %}>
+            <label for="enable_https" class="toggle-label">Enable HTTPS</label>
+        </div>
 
     </div>
 </section>
@@ -386,19 +390,27 @@
 </section>
 <section>
 	<!-- Submit Button -->
-	<div class="mt-4">
+</br>
+     NOTE: If you made chagnes to any settings above...
+</br>
+    Be sure to click "Save" before restarting any services
+
+ 	<div class="mt-4">
 		<button type="submit" class="btn btn-primary" onclick="saveAndRestart()">Save</button>
 	</div>
 	<!-- Restart METAR Service Button -->
 	<div class="mt-4">
 		<a href="{{ url_for('restart_metar') }}" class="btn btn-primary">Restart METAR Service</a>
 	</div>
+    This will restart the service that runs the lights.
+</br>
+    Be sure to save before restarting this service
 
 	<div class="mt-4">
 		<button id="restart-settings-button" class="btn btn-primary">Restart Settings Service</button>
 	</div>
 	<div id="restart-settings-status" style="margin-top: 10px; color: green; font-weight: bold;"></div>
-
+    This will restart the service that runs this website
  
 
 	<div class="mt-4">
@@ -406,16 +418,17 @@
 		<label style="color: grey; font-size: smaller;">Last Weather Update:</label>
 		<span style="color: grey; font-size: smaller;">{{ weather_last_modified }}</span>
 	</div>
-
+<!--
     <div class="mt-4">
         <button id="check-updates-button" class="btn btn-primary">Check for Updates</button>
         <div id="update-status" class="mt-2"></div>
         <div id="update-button-container" class="mt-2"></div>
     </div>
+-->
 	<div class="mt-4">
 		<a href="{{ url_for('stop_and_blank') }}" class="btn btn-primary">Stop METAR</a>
 	</div>
-
+This will stop the METAR service and turn off the LEDs
 </section>
 
 </form>
