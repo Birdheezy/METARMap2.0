@@ -566,24 +566,35 @@ def update_config(user_config_path, repo_config_path):
 
     # Load the user's config
     with open(user_config_path, 'r') as user_file:
-        exec(user_file.read(), user_config)
+        try:
+            exec(user_file.read(), {}, user_config)
+        except Exception as e:
+            raise ValueError(f"Error loading user config: {e}")
 
     # Load the repo's config
     with open(repo_config_path, 'r') as repo_file:
-        exec(repo_file.read(), repo_config)
+        try:
+            exec(repo_file.read(), {}, repo_config)
+        except Exception as e:
+            raise ValueError(f"Error loading repo config: {e}")
 
-    # Add any NEW keys from the repo config to the user config
+    # Merge: Add only new keys from repo_config without overwriting user-defined values
+    merged_config = user_config.copy()  # Start with user config
     for key, value in repo_config.items():
-        if key.isupper() and key not in user_config:  # Only add if key is missing
-            user_config[key] = value
+        if key.isupper() and key not in merged_config:  # Only add new keys
+            merged_config[key] = value
 
     # Write the updated user config back to the file
     with open(user_config_path, 'w') as user_file:
-        user_file.write("import datetime\n\n")  # Add the import statement
-
-        for key, value in user_config.items():
-            if key.isupper():  # Write only configuration constants
+        # Preserve imports if present in the user's original config
+        if "import datetime" in open(user_config_path).read():
+            user_file.write("import datetime\n\n")
+        
+        # Write the merged config
+        for key, value in merged_config.items():
+            if key.isupper():  # Write only uppercase constants
                 user_file.write(f"{key} = {repr(value)}\n")
+
 
 if __name__ == '__main__':
     if ENABLE_HTTPS:
