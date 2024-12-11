@@ -1,4 +1,3 @@
-#test2
 from flask import Flask, render_template, request, redirect, url_for, flash
 import subprocess
 import os
@@ -56,6 +55,7 @@ def reload_config():
     ENABLE_LIGHTS_OFF = globals().get('ENABLE_LIGHTS_OFF', None)
     NUM_PIXELS = globals().get('NUM_PIXELS', None)
     LEGEND = globals().get('LEGEND', None)
+    PIXEL_PIN = globals().get('PIXEL_PIN', None)
 
 
 @app.route('/leds/on', methods=['POST'])
@@ -68,7 +68,7 @@ def turn_off_leds():
     subprocess.run(['sudo', 'systemctl', 'stop', 'metar.service'])
     subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/blank.py'])
     return jsonify({"status": "LEDs turned off"}), 200
-	
+    
 @app.route('/update-weather', methods=['POST'])
 def refresh_weather():
     subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/weather.py'], check=True)
@@ -98,6 +98,7 @@ def edit_settings():
 
             # Extract and validate time settings
             try:
+                config_updates["PIXEL_PIN"] = request.form.get('PIXEL_PIN', '').strip()
                 config_updates["LEGEND"] = 'legend' in request.form
                 config_updates["ENABLE_LIGHTS_OFF"] = 'enable_lights_off' in request.form
                 config_updates["DAYTIME_DIMMING"] = 'daytime_dimming' in request.form
@@ -200,6 +201,13 @@ def edit_settings():
                 config_updates["NUM_PIXELS"] = float(request.form['num_pixels'])
             except ValueError:
                 raise ValueError("Could not update Pixel Count: Please enter a valid number.")
+            try:
+                config_updates["PIXEL_PIN"] = int(request.form['PIXEL_PIN'])
+            except ValueError:
+                raise ValueError("Could not update PIXEL_PIN: Please enter a valid integer.")
+
+
+
 
             # Boolean values for checkbox-based settings
             config_updates["WIND_ANIMATION"] = 'wind_animation' in request.form
@@ -313,7 +321,8 @@ def edit_settings():
         lightening_animation=config.LIGHTENING_ANIMATION,
         snowy_animation=config.SNOWY_ANIMATION,
         daytime_dimming=config.DAYTIME_DIMMING,
-        enable_https=config.ENABLE_HTTPS
+        enable_https=config.ENABLE_HTTPS,
+        pixel_pin=config.PIXEL_PIN
     )
 
 
@@ -353,7 +362,7 @@ def restart_service_thread():
         print("Settings service restarted successfully.")
     except subprocess.CalledProcessError as e:
         print(f"Error restarting settings service: {e}")
-		
+        
 def restart_service():
     """Restart the settings service in a separate thread."""
     try:

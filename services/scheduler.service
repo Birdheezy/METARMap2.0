@@ -1,5 +1,5 @@
 [Unit]
-Description=Scheduler Service for Lights On/Off
+Description=Scheduler Service
 After=network.target
 
 [Service]
@@ -8,8 +8,8 @@ WorkingDirectory=/home/pi
 ExecStart=sudo /home/pi/metar/bin/python3 /home/pi/scheduler.py
 Restart=always
 User=pi
-StandardOutput=append:/var/log/scheduler.log
-StandardError=append:/var/log/scheduler.log
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

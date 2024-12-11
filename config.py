@@ -1,7 +1,7 @@
 import datetime
 
 AIRPORTS_FILE = 'airports.txt'
-PIXEL_PIN = "D18"
+PIXEL_PIN = 18
 NUM_PIXELS = 25
 BRIGHTNESS = 0.5
 DAYTIME_DIM_BRIGHTNESS = 0.3

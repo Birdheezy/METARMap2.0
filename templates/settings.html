@@ -228,6 +228,20 @@
         </div>
         <input type="text" class="form-control input-small" name="num_pixels" value="{{ config.NUM_PIXELS }}" placeholder="i.e. 50">
     </div>
+	<div class="mb-3">
+		<div class="dropdown-container">
+			<label for="pixel_pin">Pixel Pin
+				<span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
+			</label>
+			<div class="dropdown-content" style="display: none;">
+				Enter the GPIO pin in the format "D<number>", e.g., "D18".
+			</div>
+		</div>
+		<input type="text" class="form-control input-small" name="PIXEL_PIN" id="pixel_pin" 
+			   value="{{ config.PIXEL_PIN }}" placeholder="e.g., D18">
+	</div>
+
+
 
 <!-- Boolean Animations (Toggles) -->
     
