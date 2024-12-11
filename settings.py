@@ -521,31 +521,33 @@ def apply_updates():
                     shutil.copy(source_path, destination_path)
                 elif os.path.isdir(source_path):
                     shutil.copytree(source_path, destination_path)
+
         # Limit backups to 5
         existing_backups = sorted(
             [os.path.join(backup_dir, d) for d in os.listdir(backup_dir)],
             key=os.path.getmtime
         )
         while len(existing_backups) > 5:
-            shutil.rmtree(existing_backups[0])
-            existing_backups.pop(0)
+            shutil.rmtree(existing_backups.pop(0))
 
         # Step 2: Pull updates from the repo
         subprocess.run(['git', 'fetch'], cwd=project_dir, check=True)
-        # Get the current branch
-        current_branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=project_dir, text=True).strip()
-        
+        current_branch = subprocess.check_output(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=project_dir, text=True
+        ).strip()
+
         # Temporarily move airports.txt out of the way
         airports_path = os.path.join(project_dir, 'airports.txt')
         temp_airports_path = os.path.join(project_dir, 'airports.txt.tmp')
         os.rename(airports_path, temp_airports_path)
-        
+
         # Use the current branch to reset
         subprocess.run(['git', 'reset', '--hard', f'origin/{current_branch}'], cwd=project_dir, check=True)
-        
+
         # Move airports.txt back to its original location
         os.rename(temp_airports_path, airports_path)
         subprocess.run(['sudo', 'chown', '-R', 'pi:pi', '/home/pi'], check=True)
+
         # Step 3: Update config.py
         update_config(user_config_path, repo_config_path)
 
@@ -562,39 +564,35 @@ def apply_updates():
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 def update_config(user_config_path, repo_config_path):
-    user_config = {}
+    # Load the repo config into a dictionary
     repo_config = {}
-
-    # Load the user's config
-    with open(user_config_path, 'r') as user_file:
-        try:
-            exec(user_file.read(), {}, user_config)
-        except Exception as e:
-            raise ValueError(f"Error loading user config: {e}")
-
-    # Load the repo's config
     with open(repo_config_path, 'r') as repo_file:
         try:
             exec(repo_file.read(), {}, repo_config)
         except Exception as e:
             raise ValueError(f"Error loading repo config: {e}")
 
-    # Merge: Add only new keys from repo_config without overwriting user-defined values
-    merged_config = user_config.copy()  # Start with user config
-    for key, value in repo_config.items():
-        if key.isupper() and key not in merged_config:  # Only add new keys
-            merged_config[key] = value
+    # Read the user's config line by line
+    with open(user_config_path, 'r') as user_file:
+        user_lines = user_file.readlines()
 
-    # Write the updated user config back to the file
+    # Prepare a set of existing keys in the user's config
+    existing_keys = set()
+    for line in user_lines:
+        # Match lines like `KEY = value`
+        match = re.match(r'^([A-Z_]+)\s*=', line)
+        if match:
+            existing_keys.add(match.group(1))
+
+    # Append missing keys from the repo config
+    new_lines = user_lines[:]
+    for key, value in repo_config.items():
+        if key.isupper() and key not in existing_keys:  # Add only missing keys
+            new_lines.append(f"{key} = {repr(value)}\n")
+
+    # Write the updated config back to the user's file
     with open(user_config_path, 'w') as user_file:
-        # Preserve imports if present in the user's original config
-        if "import datetime" in open(user_config_path).read():
-            user_file.write("import datetime\n\n")
-        
-        # Write the merged config
-        for key, value in merged_config.items():
-            if key.isupper():  # Write only uppercase constants
-                user_file.write(f"{key} = {repr(value)}\n")
+        user_file.writelines(new_lines)
 
 
 if __name__ == '__main__':
