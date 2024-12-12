@@ -257,9 +257,6 @@ textarea {
     margin-bottom: 10px; /* Adds space between input fields and the next section */
 }
 
-.mt-3 {
-    margin-bottom: 10px; /* Adds space between input fields and the next section */
-}
 .mt-4 {
     margin-top: 10px;
     margin-bottom: 10px;
@@ -427,4 +424,25 @@ section {
     cursor: pointer;
     font-size: 1.5em;
     color: #007bff;
+}
+input[type="color"] {
+    width: 50px;  /* Adjust as needed */
+    height: 30px;  /* Adjust as needed */
+    border: none;
+    padding: 0;
+    margin: 0;
+    background: none;
+    cursor: pointer;
+    -webkit-appearance: none;  /* For Chrome/Safari */
+    -moz-appearance: none;   /* For Firefox */
+    appearance: none;        /* Standard */
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 5px; /* Adjust or remove if you don't want rounded corners */
 }

@@ -208,6 +208,88 @@ document.querySelectorAll('a.btn-primary').forEach(button => {
     button.addEventListener('click', saveScrollPosition);
 });
 
+document.addEventListener("DOMContentLoaded", () => {
+    console.log("settings.js is running");
+
+    const restartButton = document.getElementById("restart-settings-button");
+    const statusDiv = document.getElementById("restart-settings-status");
+
+    if (!restartButton) {
+        console.error("Restart Settings button not found!");
+        return;
+    }
+
+    restartButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        console.log("Restart Settings button clicked");
+
+        // Disable the button to prevent double-clicks
+        restartButton.disabled = true;
+        console.log("Restart Settings button disabled.");
+
+        // Update the status message
+        if (statusDiv) {
+            statusDiv.textContent = "Restarting Settings Service...";
+            console.log("Status updated to 'Restarting Settings Service...'");
+        }
+
+        // Send a request to restart the service
+        fetch('/restart_settings')
+            .then((response) => {
+                if (response.ok) {
+                    console.log("Settings service restarting...");
+
+                    if (statusDiv) {
+                        // Start a countdown before showing the refresh button
+                        let countdown = 3; // Seconds
+                        const countdownInterval = setInterval(() => {
+                            statusDiv.textContent = `Please wait ${countdown} seconds before refreshing...`;
+                            console.log(`Countdown: ${countdown}`);
+                            countdown--;
+
+                            if (countdown < 0) {
+                                clearInterval(countdownInterval);
+
+                                // Clear the status message
+                                statusDiv.textContent = "";
+
+                                // Add the "Refresh Page" button
+                                const refreshButton = document.createElement("button");
+                                refreshButton.textContent = "Refresh Page";
+                                refreshButton.classList.add("btn", "btn-secondary", "mt-3");
+                                refreshButton.addEventListener("click", () => {
+                                    console.log("Refreshing the page...");
+                                    location.reload();
+                                });
+
+                                // Append the button
+                                statusDiv.appendChild(refreshButton);
+                                console.log("Refresh button added.");
+                            }
+                        }, 1000); // 1 second interval
+                    }
+                } else {
+                    console.error("Failed to restart settings service.");
+                    if (statusDiv) {
+                        statusDiv.textContent = "Failed to restart settings service.";
+                    }
+                }
+            })
+            .catch((error) => {
+                console.error("Error restarting settings service:", error);
+                if (statusDiv) {
+                    statusDiv.textContent = "An error occurred while restarting the service.";
+                }
+            })
+            .finally(() => {
+                // Re-enable the restart button after 10 seconds
+                setTimeout(() => {
+                    restartButton.disabled = false;
+                    console.log("Restart Settings button re-enabled.");
+                }, 10000); // Adjust the delay as needed
+            });
+    });
+});
 
 document.getElementById('check-updates-button').addEventListener('click', function (event) {
     // Prevent the form from submitting and refreshing the page

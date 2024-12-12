@@ -9,8 +9,8 @@ WorkingDirectory=/home/pi/
 ExecStart=sudo /home/pi/metar/bin/python3 /home/pi/settings.py
 Restart=on-failure
 User=pi
-StandardOutput=append:/var/log/settings.log
-StandardError=append:/var/log/settings.log
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 
