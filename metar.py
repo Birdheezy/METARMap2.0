@@ -34,8 +34,8 @@ def update_led_brightness(pixels):
         print(f"Brightness updated to {new_brightness} based on time.")
 
 
-# Initialize NeoPixel object with the appropriate brightness level
-pixels = neopixel.NeoPixel(getattr(board, PIXEL_PIN), NUM_PIXELS, brightness=BRIGHTNESS, auto_write=False)
+pixel_pin = f"D{PIXEL_PIN}"  # Create "D18"
+pixels = neopixel.NeoPixel(getattr(board, pixel_pin), NUM_PIXELS, brightness=BRIGHTNESS, auto_write=False)
 
 if DAYTIME_DIMMING:
     print(f"Daytime dimming is enabled. Current brightness level: {get_current_brightness()}")
