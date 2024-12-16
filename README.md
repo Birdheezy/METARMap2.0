@@ -83,7 +83,7 @@ Services on the pi allow a script or program to run at an elevated level. We wil
 
 `cd /etc/systemd/system/` <— change directoey
 
-We will create 3 services. One for metar.py and one for scheduler.py and one for settings.py
+We will create 4 services. One for metar.py and one for scheduler.py one for wather.py and one for settings.py
 `sudo nano settings.service`
 When asked which editor you’d like to use, select nano (option 1) and hit enter. You should now be presented with a mostly blank screen. Copy over 
 ```
@@ -98,8 +98,8 @@ WorkingDirectory=/home/pi/
 ExecStart=sudo /home/pi/metar/bin/python3 /home/pi/settings.py
 Restart=on-failure
 User=pi
-StandardOutput=append:/var/log/settings.log
-StandardError=append:/var/log/settings.log
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 
@@ -112,7 +112,7 @@ ctrl+x, y, enter to save.
 
 ```
 [Unit]
-Description=Scheduler Service for Lights On/Off
+Description=Scheduler Service
 After=network.target
 
 [Service]
@@ -121,8 +121,8 @@ WorkingDirectory=/home/pi
 ExecStart=sudo /home/pi/metar/bin/python3 /home/pi/scheduler.py
 Restart=always
 User=pi
-StandardOutput=append:/var/log/scheduler.log
-StandardError=append:/var/log/scheduler.log
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
@@ -143,13 +143,37 @@ WorkingDirectory=/home/pi
 ExecStart=/home/pi/metar/bin/python3 /home/pi/metar.py
 Restart=always
 User=root
-StandardOutput=append:/var/log/metar.log
-StandardError=append:/var/log/metar.log
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
 ```
 ctrl+x, y, enter to save
+
+`sudo nano weather.service`
+
+```
+[Unit]
+
+Description=Run Weather Service
+After=network.target
+
+[Service]
+
+WorkingDirectory=/home/pi/
+ExecStart=sudo /home/pi/metar/bin/python3 /home/pi/weather.py
+Restart=10
+User=root
+StandardOutput=append:/var/log/weather.log
+StandardError=append:/var/log/weather.log
+
+[Install]
+
+WantedBy=multi-user.target
+```
+ctrl+x, y, enter to save
+
 
 Run 
 `sudo systemctl daemon-reload`
@@ -183,7 +207,9 @@ alias weatherstatus='sudo systemctl status weather.service'
 alias settingsstatus='sudo systemctl status settings.service'
 alias schedulerstatus='sudo systemctl status scheduler.service'
 ```
+
 ctrl+x, y, enter to save. 
+
 To reload the aliases file for our changes to take affect, run
 `source .bash_aliases`
 Now you can simply use any alias to run its respective command. For example, instead of running 
@@ -198,14 +224,19 @@ To have the metar.py script start at boot, run
 `sudo systemctl enable metar.service`
 And 
 `sudo systemctl enable scheduler.service`
-This will enable scheduler.py at boot as well which handles LED on and off times if enabled in the settings. 
+and 
+`sudo systemctl enable settings.service`
+
+This will enable scheduler.py, settings.py and metar.py at boot as well which handles LED on and off times if enabled in the settings. 
+
 ## CRON Setup
 CRON is a very simple and powerful scheduling language that we’ll use to trigger the weather update script. I have mine to run every 5 min. This will get the weather for your airports and parse the data every 5 min.
 
 1. `CRON tab -e` <— opens the CRONtab file to edit.
 2. Using the arrow keys, navigate to the bottom of the file. Paste in
 3. ```*/5 * * * * sudo /home/pi/metar/bin/python3 weather.py```
-4. If you want to learn more about CRON (hint, you do) check out https://crontab.guru/
+4. This will fetch weather every 5 minutes.
+5. If you want to learn more about CRON (hint, you do) check out https://crontab.guru/
 
 ## Advanced - Tailscale setup
 
@@ -244,8 +275,27 @@ You should now see a url in the terminal window. Highlighting it will copy it to
 # Hardware Setup
 I use a Raspberry Pi Zero 2 W for my projects. There is now a model with the header already soldered to the board or you can solder your own. It is capable to supporting up to 30 or so lights if you're using .5 for your default brightness. Anything more than than, I'd power inject. There are plenty of youtube videos on that. 
 
-I use GPIO pin 18 for data. A pinout can be found here: https://peppe8o.com/wp-content/uploads/2020/09/Raspberry-PI-Zero-Pinout-schema.jpg
+I use GPIO pin 18 for data. A pinout can be found here: https://pinout.xyz/
 
-I use WS2811 5v bullet style lights. The code is set up so you can use 1 strand and skip lights so you don't have to cut and solder the strand. I plan on having a youtube video at some point showing the hardware setup. 
+I use WS2811 5v bullet style lights. The code is set up so you can use 1 strand and skip lights so you don't have to cut and solder the strand.  
 
 Be sure the pi is not plugged into power when you plug in your lights. You can use male to female jumper wires (search it on amazon) to make life easy, or you can solder. 
+
+LEDs
+https://tinyurl.com/yk879yje
+
+Pi Zero 2 W with headers
+https://www.adafruit.com/product/6008
+
+Pi Imaging software
+https://www.raspberrypi.com/software/
+
+Jumper Wires (Amazon)
+https://tinyurl.com/2ea5j4t9
+
+7mm Hole Punch
+https://tinyurl.com/46229c7f
+
+Power Injection
+https://youtu.be/2_saSAf8hgo?t=328
+This video is great for general LED practices and how-to, but I've linked right to the power injection portion. 
