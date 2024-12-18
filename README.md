@@ -18,6 +18,9 @@ It should be fun to change the settings, update the weather and see what is happ
 I hope people find this project and collaborate on it. I'm not here to make money as this is a passion project. Please submit bug reports and feature requests! If you notice anything wonky in the code, let me know! 
 
 # Install instructions
+## Setup.sh
+there is now a batch script that will guide you through the setup. After first boot of the pi, copy over setup.sh and run "sudo bash setup.sh" the script will walk you through everything. 
+
 ## Pi Setup
 I suggest using a Pi zero 2 w. It's cheap enough and more than powerful enough for this project. a pi zero w will work it's just a little slower.
 1. Download the Pi imiger https://www.raspberrypi.com/software/
