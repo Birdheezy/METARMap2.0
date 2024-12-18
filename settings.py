@@ -55,7 +55,9 @@ def reload_config():
     ENABLE_LIGHTS_OFF = globals().get('ENABLE_LIGHTS_OFF', None)
     NUM_PIXELS = globals().get('NUM_PIXELS', None)
     LEGEND = globals().get('LEGEND', None)
-    PIXEL_PIN = globals().get('PIXEL_PIN', None)
+    PIXEL_PIN = globals().get('PIXEL_PIN', None),
+    WEATHER_UPDATE_INTERVAL = globals().get('WEATHER_UPDATE_INTERVAL', None)
+    UPDATE_WEATHER = globals().get('UPDATE_WEATHER', None)  # Add this line
 
 
 @app.route('/leds/on', methods=['POST'])
@@ -106,6 +108,7 @@ def edit_settings():
                 config_updates["LIGHTENING_ANIMATION"] = 'lightening_animation' in request.form
                 config_updates["SNOWY_ANIMATION"] = 'snowy_animation' in request.form
                 config_updates["ENABLE_HTTPS"] = 'enable_https' in request.form
+                config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form  # Add this line
                 # Float or Integer Settings
                 config_updates["BRIGHTNESS"] = float(request.form.get('brightness', 0))
                 config_updates["DIM_BRIGHTNESS"] = float(request.form.get('dim_brightness', 0))
@@ -119,12 +122,17 @@ def edit_settings():
                 config_updates["SNOW_BLINK_PAUSE"] = float(request.form.get('snow_blink_pause', 0))
                 config_updates["NUM_STEPS"] = int(request.form.get('num_steps', 0))
                 config_updates["NUM_PIXELS"] = int(request.form.get('num_pixels', 0))
+                config_updates["WEATHER_UPDATE_INTERVAL"] = int(request.form.get('weather_update_interval', 5))
 
                 # Time Settings (convert from form input)
                 config_updates["BRIGHT_TIME_START"] = f"datetime.time({request.form.get('bright_time_start_hour', 0)}, {request.form.get('bright_time_start_minute', 0)})"
                 config_updates["DIM_TIME_START"] = f"datetime.time({request.form.get('dim_time_start_hour', 0)}, {request.form.get('dim_time_start_minute', 0)})"
                 config_updates["LIGHTS_OFF_TIME"] = f"datetime.time({request.form.get('lights_off_time_hour', 0)}, {request.form.get('lights_off_time_minute', 0)})"
                 config_updates["LIGHTS_ON_TIME"] = f"datetime.time({request.form.get('lights_on_time_hour', 0)}, {request.form.get('lights_on_time_minute', 0)})"
+
+                # Convert minutes to seconds for storage
+                minutes = float(request.form.get('weather_update_interval', 5))
+                config_updates["WEATHER_UPDATE_INTERVAL"] = int(minutes * 60)
 
             except ValueError:
                 raise ValueError("Could not update time settings: Please enter valid numbers for hours and minutes.")
@@ -205,6 +213,12 @@ def edit_settings():
                 config_updates["PIXEL_PIN"] = int(request.form['PIXEL_PIN'])
             except ValueError:
                 raise ValueError("Could not update PIXEL_PIN: Please enter a valid integer.")
+            try:
+                # Convert minutes to seconds for storage
+                minutes = float(request.form.get('weather_update_interval', 5))
+                config_updates["WEATHER_UPDATE_INTERVAL"] = int(minutes * 60)  # Store as seconds in config
+            except ValueError:
+                raise ValueError("Could not update Weather Update Interval: Please enter a valid number.")
 
 
 
@@ -217,6 +231,7 @@ def edit_settings():
             config_updates["ENABLE_LIGHTS_OFF"] = 'enable_lights_off' in request.form
             config_updates["LEGEND"] = 'legend' in request.form
             config_updates["ENABLE_HTTPS"] = 'enable_https' in request.form
+            config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form  # Add this line
 
             # Update the config.py file
             with open('/home/pi/config.py', 'r') as f:
@@ -244,6 +259,13 @@ def edit_settings():
                 with open('/home/pi/airports.txt', 'w') as f:  # Replace with actual path to airports.txt
                     f.write(updated_airports)
             flash('Configuration updated successfully!', 'success')
+
+            # After successful update, restart the scheduler service
+            try:
+                subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
+                flash('Configuration updated and scheduler service restarted!', 'success')
+            except subprocess.CalledProcessError as e:
+                flash(f'Config updated but failed to restart scheduler: {str(e)}', 'warning')
 
         except ValueError as e:
             flash(str(e), 'danger')  # Show specific error messages
@@ -322,7 +344,8 @@ def edit_settings():
         snowy_animation=config.SNOWY_ANIMATION,
         daytime_dimming=config.DAYTIME_DIMMING,
         enable_https=config.ENABLE_HTTPS,
-        pixel_pin=config.PIXEL_PIN
+        pixel_pin=config.PIXEL_PIN,
+        weather_update_interval=config.WEATHER_UPDATE_INTERVAL
     )
 
 

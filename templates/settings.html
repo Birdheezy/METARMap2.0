@@ -86,6 +86,18 @@
 
     <div class="mb-3">
         <div class="dropdown-container">
+            <label for="weather_update_interval">Weather Update Interval (in minutes)
+                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
+            </label>
+            <div class="dropdown-content" style="display: none;">
+                Sets how often the weather data is updated automatically, in minutes. Default is 5 minutes.
+            </div>
+        </div>
+        <input type="text" class="form-control input-small" name="weather_update_interval" value="{{ config.WEATHER_UPDATE_INTERVAL // 60 }}" placeholder="Default: 5">
+    </div>
+
+    <div class="mb-3">
+        <div class="dropdown-container">
             <label for="animation_pause">Animation Pause Time (in seconds)
                 <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
             </label>
@@ -279,6 +291,10 @@
         <div class="toggle-wrapper">
             <input type="checkbox" id="enable_https" name="enable_https" class="toggle-input" {% if enable_https %}checked{% endif %}>
             <label for="enable_https" class="toggle-label">Enable HTTPS</label>
+        </div>
+        <div class="toggle-wrapper">
+            <input type="checkbox" id="update_weather" name="update_weather" class="toggle-input" {% if config.UPDATE_WEATHER %}checked{% endif %}>
+            <label for="update_weather" class="toggle-label">Enable Weather Updates</label>
         </div>
 
     </div>

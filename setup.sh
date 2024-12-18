@@ -47,9 +47,10 @@ create_venv() {
 echo "Welcome to METARMap setup"
 
 # System update choice
-read -p "Would you like to update the system? (y/n): " UPDATE_CHOICE
-case $UPDATE_CHOICE in
-    [Yy]*)
+read -e -p "Would you like to update the system? [Y/n]: " UPDATE_CHOICE
+UPDATE_CHOICE=${UPDATE_CHOICE:-y}  # Default to 'y' if empty
+case ${UPDATE_CHOICE,,} in  # Convert to lowercase
+    [Yy]*|"")
         update_system
         ;;
     [Nn]*)
@@ -70,9 +71,6 @@ if [[ ! $VENV_NAME =~ ^[a-zA-Z0-9_]+$ ]]; then
     echo -e "${RED}Invalid virtual environment name. Use only letters, numbers, and underscores.${NC}"
     exit 1
 fi
-
-create_venv "$VENV_NAME"
-
 # Function to install Python packages
 install_packages() {
     local venv_name=$1
@@ -109,10 +107,32 @@ install_packages() {
     return 0
 }
 
-# Add this after create_venv in the main script:
-if [ $? -eq 0 ]; then
-    install_packages "$VENV_NAME"
-fi
+create_venv "$VENV_NAME"
+
+# Add package installation prompt
+echo -e "\n${GREEN}=== Python Package Installation ===${NC}"
+echo "The following packages will be installed:"
+echo "- adafruit-circuitpython-neopixel (LED control)"
+echo "- flask (web interface)"
+echo "- requests (API communication)"
+echo "- schedule (task automation)"
+
+read -e -p "Would you like to install the required packages? [Y/n]: " PACKAGES_CHOICE
+PACKAGES_CHOICE=${PACKAGES_CHOICE:-y}
+case ${PACKAGES_CHOICE,,} in
+    [Yy]*|"")
+        if [ $? -eq 0 ]; then
+            install_packages "$VENV_NAME"
+        fi
+        ;;
+    [Nn]*)
+        echo "Skipping package installation"
+        ;;
+    *)
+        echo -e "${RED}Invalid input${NC}"
+        ;;
+esac
+
 
 # Function to setup WiFi broadcasting
 setup_wifi_broadcast() {
@@ -158,9 +178,10 @@ setup_wifi_broadcast() {
 
 # Add to main script after package installation:
 echo -e "\nWould you like to install Auto WiFi Broadcasting Capabilities?"
-read -p "This will launch an interactive installer (y/n): " WIFI_CHOICE
-case $WIFI_CHOICE in
-    [Yy]*)
+read -e -p "This will launch an interactive installer [Y/n]: " WIFI_CHOICE
+WIFI_CHOICE=${WIFI_CHOICE:-y}
+case ${WIFI_CHOICE,,} in
+    [Yy]*|"")
         setup_wifi_broadcast
         ;;
     [Nn]*)
@@ -254,37 +275,6 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target"
 
-# Add to main script:
-echo -e "\n${GREEN}=== Service Installation ===${NC}"
-echo "This will install the following services:"
-echo "- METAR service (LED control)"
-echo "- Weather service (weather data fetching)"
-echo "- Settings service (web interface)"
-echo "- Scheduler service (automation)"
-
-read -p "Would you like to install all services? (y/n): " SERVICES_CHOICE
-case $SERVICES_CHOICE in
-    [Yy]*)
-        # Install all services
-        create_service_file "metar.service" "$METAR_SERVICE" && \
-        create_service_file "weather.service" "$WEATHER_SERVICE" && \
-        create_service_file "settings.service" "$SETTINGS_SERVICE" && \
-        create_service_file "scheduler.service" "$SCHEDULER_SERVICE" && \
-        enable_services
-        if [ $? -eq 0 ]; then
-            echo -e "${GREEN}✓ All services installed and enabled successfully${NC}"
-        else
-            echo -e "${RED}✗ Error installing services${NC}"
-        fi
-        ;;
-    [Nn]*)
-        echo "Skipping service installation"
-        ;;
-    *)
-        echo -e "${RED}Invalid input${NC}"
-        ;;
-esac
-
 # Function to create service file
 create_service_file() {
     local service_name=$1
@@ -324,18 +314,6 @@ enable_services() {
     fi
 }
 
-# Add to main script:
-echo -e "\n${GREEN}=== Installing System Services ===${NC}"
-
-# Create service files
-create_service_file "metar.service" "$METAR_SERVICE"
-create_service_file "weather.service" "$WEATHER_SERVICE"
-create_service_file "settings.service" "$SETTINGS_SERVICE"
-create_service_file "scheduler.service" "$SCHEDULER_SERVICE"
-
-# Enable required services
-enable_services
-
 # Function to setup aliases
 setup_aliases() {
     local ALIASES="alias blank='sudo /home/pi/metar/bin/python3 blank.py'
@@ -364,15 +342,53 @@ alias schedulerstatus='sudo systemctl status scheduler.service'"
     su - pi -c 'source /home/pi/.bash_aliases'
     
     echo -e "${GREEN}✓ Aliases installed${NC}"
-    echo "Note: To use aliases in the current session, run: source ~/.bash_aliases"
+    echo "Note: To use aliases in the current session, run: source ~/.bash_aliases or reboot"
     return 0
 }
 
+# Add to main script:
+echo -e "\n${GREEN}=== Service Installation ===${NC}"
+echo "This will install the following services:"
+echo "- METAR service (LED control)"
+echo "- Weather service (weather data fetching)"
+echo "- Settings service (web interface)"
+echo "- Scheduler service (automation)"
+
+read -e -p "Would you like to install all services? [Y/n]: " SERVICES_CHOICE
+SERVICES_CHOICE=${SERVICES_CHOICE:-y}
+case ${SERVICES_CHOICE,,} in
+    [Yy]*|"")
+        # Create service files
+        create_service_file "metar.service" "$METAR_SERVICE"
+        create_service_file "weather.service" "$WEATHER_SERVICE"
+        create_service_file "settings.service" "$SETTINGS_SERVICE"
+        create_service_file "scheduler.service" "$SCHEDULER_SERVICE"
+
+        # Enable required services
+        enable_services
+
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✓ All services installed and enabled successfully${NC}"
+        else
+            echo -e "${RED}✗ Error installing services${NC}"
+        fi
+        ;;
+    [Nn]*)
+        echo "Skipping service installation and enabling"
+        ;;
+    *)
+        echo -e "${RED}Invalid input${NC}"
+        ;;
+esac
+
+
+
 # Add after service installation section:
 echo -e "\n${GREEN}=== Alias Setup ===${NC}"
-read -p "Would you like to install command aliases? (y/n): " ALIAS_CHOICE
-case $ALIAS_CHOICE in
-    [Yy]*)
+read -e -p "Would you like to install command aliases? [Y/n]: " ALIAS_CHOICE
+ALIAS_CHOICE=${ALIAS_CHOICE:-y}
+case ${ALIAS_CHOICE,,} in
+    [Yy]*|"")
         setup_aliases
         ;;
     [Nn]*)
@@ -447,8 +463,9 @@ install_tailscale() {
 
 # Add Tailscale installation prompt
 echo -e "\n${GREEN}=== Tailscale Setup ===${NC}"
-read -p "Would you like to install Tailscale? (y/n): " TAILSCALE_CHOICE
-case $TAILSCALE_CHOICE in
+read -e -p "Would you like to install Tailscale? [N/y]: " TAILSCALE_CHOICE
+TAILSCALE_CHOICE=${TAILSCALE_CHOICE:-n}
+case ${TAILSCALE_CHOICE,,} in
     [Yy]*)
         install_tailscale
         ;;
@@ -460,7 +477,6 @@ case $TAILSCALE_CHOICE in
         ;;
 esac
 
-# Function to install Git and clone repository
 setup_git() {
     echo -e "\n${GREEN}=== Installing Git and Cloning Repository ===${NC}"
     
@@ -471,38 +487,34 @@ setup_git() {
         return 1
     fi
 
-    # Let user choose branch before initialization
+    cd /home/pi || return 1
+    
+    # Let user choose branch
     echo -e "\n${GREEN}Choose which branch to install:${NC}"
     echo "1) main (beta/development branch)"
     echo "2) production (stable branch)"
     read -p "Enter choice (1 or 2): " BRANCH_CHOICE
 
     case $BRANCH_CHOICE in
-        1)
-            BRANCH="main"
-            ;;
-        2)
-            BRANCH="production"
-            ;;
-        *)
+        1) BRANCH="main" ;;
+        2) BRANCH="production" ;;
+        *) 
             echo -e "${RED}Invalid choice${NC}"
             return 1
             ;;
     esac
 
-    # Initialize Git in /home/pi with chosen branch
-    cd /home/pi || return 1
-    
+    # Initialize git repo
     echo "Initializing Git repository with $BRANCH branch..."
     if ! git init -b "$BRANCH"; then
-        echo -e "${RED}Failed to initialize Git repository${NC}"
+        echo -e "${RED}Failed to initialize repository${NC}"
         return 1
     fi
 
-    # Add remote repository
+    # Add remote origin
     echo "Adding remote repository..."
     if ! git remote add origin https://github.com/Birdheezy/METARMap2.0; then
-        echo -e "${RED}Failed to add remote repository${NC}"
+        echo -e "${RED}Failed to add remote${NC}"
         return 1
     fi
 
@@ -513,23 +525,35 @@ setup_git() {
         return 1
     fi
 
-    # Checkout chosen branch
+    # Checkout selected branch with force
     echo "Setting up $BRANCH branch..."
-    if ! git checkout -b "$BRANCH" "origin/$BRANCH"; then
+    if ! git checkout -f -b "$BRANCH" "origin/$BRANCH"; then
         echo -e "${RED}Failed to checkout $BRANCH branch${NC}"
         return 1
     fi
+
+    # Pull latest changes with force
+    echo "Pulling latest changes..."
+    if ! git pull -f origin "$BRANCH"; then
+        echo -e "${RED}Failed to pull latest changes${NC}"
+        return 1
+    fi
+
+    # Set ownership
+    sudo chown -R pi:pi /home/pi
 
     echo -e "${GREEN}✓ Git repository setup completed successfully${NC}"
     echo -e "Installed branch: ${GREEN}$BRANCH${NC}"
     return 0
 }
-
 # Add Git installation prompt
 echo -e "\n${GREEN}=== Git Repository Setup ===${NC}"
-read -p "Would you like to install Git and clone the required files? (y/n): " GIT_CHOICE
-case $GIT_CHOICE in
-    [Yy]*)
+read -e -p "Would you like to install Git and clone the required files? [Y/n]: " GIT_CHOICE
+GIT_CHOICE=${GIT_CHOICE:-y}
+case ${GIT_CHOICE,,} in
+    [Yy]*|"")
+        # Modify setup_git function to default to production branch
+        BRANCH="production"  # Set default branch
         setup_git
         ;;
     [Nn]*)
@@ -544,7 +568,7 @@ esac
 setup_ssl() {
     echo -e "\n${GREEN}=== Setting up Self-Signed SSL Certificate ===${NC}"
     echo "You will be prompted to enter certificate information."
-    echo "Important: When asked for 'Common Name', enter your Pi's IP address"
+    echo "Important: When asked for 'Common Name', enter your Pi's local IP address"
     echo "For other fields, you can press '.' to leave them blank"
     echo -e "Press ${GREEN}Enter${NC} when ready..."
     read
@@ -592,12 +616,13 @@ disable_https() {
 
 # Add SSL setup prompt
 echo -e "\n${GREEN}=== SSL Certificate Setup ===${NC}"
-read -p "Would you like to setup HTTPS with a self-signed certificate? (y/n): " SSL_CHOICE
-case $SSL_CHOICE in
+read -e -p "Would you like to setup HTTPS with a self-signed certificate? [N/y]: " SSL_CHOICE
+SSL_CHOICE=${SSL_CHOICE:-n}
+case ${SSL_CHOICE,,} in
     [Yy]*)
         setup_ssl
         ;;
-    [Nn]*)
+    [Nn]*|"")
         disable_https
         echo "HTTPS disabled"
         ;;
@@ -606,3 +631,19 @@ case $SSL_CHOICE in
         ;;
 esac
 
+# Add reboot prompt at the end
+echo -e "\n${GREEN}=== Setup Complete ===${NC}"
+read -e -p "Would you like to reboot now? [Y/n]: " REBOOT_CHOICE
+REBOOT_CHOICE=${REBOOT_CHOICE:-y}
+case ${REBOOT_CHOICE,,} in
+    [Yy]*|"")
+        echo "Rebooting system..."
+        sudo reboot
+        ;;
+    [Nn]*)
+        echo "Please remember to reboot your system to apply all changes"
+        ;;
+    *)
+        echo -e "${RED}Invalid input. Please reboot manually when ready${NC}"
+        ;;
+esac
