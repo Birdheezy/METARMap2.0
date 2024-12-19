@@ -608,16 +608,31 @@ def update_config(user_config_path, repo_config_path):
     with open(user_config_path, 'r') as user_file:
         user_lines = user_file.readlines()
 
+    # Identify import statements
+    import_lines = []
+    config_lines = []
+    
+    for line in user_lines:
+        if line.strip().startswith('import ') or line.strip().startswith('from '):
+            import_lines.append(line)
+        else:
+            config_lines.append(line)
+
     # Prepare a set of existing keys in the user's config
     existing_keys = set()
-    for line in user_lines:
+    for line in config_lines:
         # Match lines like `KEY = value`
         match = re.match(r'^([A-Z_]+)\s*=', line)
         if match:
             existing_keys.add(match.group(1))
 
+    # Start with import statements
+    new_lines = import_lines[:]
+
+    # Add the rest of the configuration
+    new_lines.extend(config_lines)
+
     # Append missing keys from the repo config
-    new_lines = user_lines[:]
     for key, value in repo_config.items():
         if key.isupper() and key not in existing_keys:  # Add only missing keys
             new_lines.append(f"{key} = {repr(value)}\n")
