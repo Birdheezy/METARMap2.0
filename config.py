@@ -1,5 +1,5 @@
 import datetime
-#test6
+
 AIRPORTS_FILE = 'airports.txt'
 PIXEL_PIN = 18
 NUM_PIXELS = 25
@@ -43,3 +43,4 @@ ENABLE_LIGHTS_OFF = False
 LEGEND = False
 ENABLE_HTTPS = False
 UPDATE_WEATHER = False
+VALUE= 9
