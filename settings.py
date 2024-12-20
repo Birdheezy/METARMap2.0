@@ -144,7 +144,8 @@ def edit_settings():
                 "IFR_COLOR": "ifr_color",
                 "LIFR_COLOR": "lifr_color",
                 "MISSING_COLOR": "missing_color",
-                "LIGHTENING_COLOR": "lightening_color"
+                "LIGHTENING_COLOR": "lightening_color",
+                "SNOWY_COLOR": "snowy_color"  # Add this line
             }
 
             for key, field_name in color_fields.items():
@@ -291,7 +292,7 @@ def edit_settings():
     lifr_color = '#{:02x}{:02x}{:02x}'.format(config.LIFR_COLOR[1], config.LIFR_COLOR[0], config.LIFR_COLOR[2])  # GRB -> RGB
     missing_color = '#{:02x}{:02x}{:02x}'.format(config.MISSING_COLOR[1], config.MISSING_COLOR[0], config.MISSING_COLOR[2])  # GRB -> RGB
     lightening_color = '#{:02x}{:02x}{:02x}'.format(config.LIGHTENING_COLOR[1], config.LIGHTENING_COLOR[0], config.LIGHTENING_COLOR[2])  # GRB -> RGB
-
+    snowy_color = '#{:02x}{:02x}{:02x}'.format(config.SNOWY_COLOR[1], config.SNOWY_COLOR[0], config.SNOWY_COLOR[2])  # GRB -> RGB  # Add this line
 
     # Get the last modified date of weather.json
     weather_file_path = '/home/pi/weather.json'  # Adjust this path if necessary
@@ -325,6 +326,7 @@ def edit_settings():
         lifr_color=lifr_color,
         missing_color=missing_color,
         lightening_color=lightening_color,
+        snowy_color=snowy_color,  # Add this line
         enable_lights_off=config.ENABLE_LIGHTS_OFF,
         legend=config.LEGEND,
         num_pixels=config.NUM_PIXELS,

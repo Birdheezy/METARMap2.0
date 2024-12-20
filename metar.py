@@ -95,7 +95,8 @@ def update_legend(pixels):
         LIFR_COLOR,
         MISSING_COLOR,
         LIGHTENING_COLOR,
-        WINDY_COLOR  # Add WINDY color to the legend
+        WINDY_COLOR,
+        SNOWY_COLOR
     ]
 
     # Start from the end of the strand
@@ -175,8 +176,7 @@ def animate_windy_airports(windy_airports, weather_data):
 
 def animate_snowy_airports(snowy_airports, weather_data):
     """Animate the snowy airports with a twinkling white effect."""
-    # Use a dim white color to represent snow
-    snowy_color = tuple(int(c * BRIGHTNESS) for c in (128, 128, 128))  # Dim white color
+    snowy_color = tuple(int(c * BRIGHTNESS) for c in SNOWY_COLOR)
 
     # Twinkling effect: alternate between on and off state
     for _ in range(SNOW_BLINK_COUNT):  # Use SNOW_BLINK_COUNT for the number of twinkles
