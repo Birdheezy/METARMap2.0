@@ -1,10 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 import subprocess
 import os
 from config import *  # Import all variables from config.py
 import datetime
 import config
-from flask import jsonify
 import shutil
 import shutil
 import re
