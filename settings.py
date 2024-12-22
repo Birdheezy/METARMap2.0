@@ -601,50 +601,75 @@ def apply_updates():
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 def update_config(user_config_path, repo_config_path):
-    # Load the repo config into a dictionary
-    repo_config = {}
-    with open(repo_config_path, 'r') as repo_file:
-        try:
-            exec(repo_file.read(), {}, repo_config)
-        except Exception as e:
-            raise ValueError(f"Error loading repo config: {e}")
+    """
+    Update config.py while preserving user settings and adding new entries from repo
+    """
+    try:
+        # Load the repo config into a dictionary
+        repo_config = {}
+        with open(repo_config_path, 'r') as repo_file:
+            repo_content = repo_file.read()
+            # Execute in isolated namespace to get values
+            exec(repo_content, {}, repo_config)
 
-    # Read the user's config line by line
-    with open(user_config_path, 'r') as user_file:
-        user_lines = user_file.readlines()
+        # Load the user's current config
+        user_config = {}
+        with open(user_config_path, 'r') as user_file:
+            user_content = user_file.read()
+            exec(user_content, {}, user_config)
 
-    # Identify import statements
-    import_lines = []
-    config_lines = []
-    
-    for line in user_lines:
-        if line.strip().startswith('import ') or line.strip().startswith('from '):
-            import_lines.append(line)
-        else:
-            config_lines.append(line)
+        # Read the user's config line by line to preserve comments and formatting
+        with open(user_config_path, 'r') as user_file:
+            user_lines = user_file.readlines()
 
-    # Prepare a set of existing keys in the user's config
-    existing_keys = set()
-    for line in config_lines:
-        # Match lines like `KEY = value`
-        match = re.match(r'^([A-Z_]+)\s*=', line)
-        if match:
-            existing_keys.add(match.group(1))
+        # Identify import statements and existing keys
+        import_lines = []
+        config_lines = []
+        existing_keys = set()
 
-    # Start with import statements
-    new_lines = import_lines[:]
+        for line in user_lines:
+            line = line.strip()
+            if line.startswith(('import ', 'from ')):
+                import_lines.append(line + '\n')
+            elif '=' in line:
+                key = line.split('=')[0].strip()
+                if key.isupper():  # Only track uppercase config variables
+                    existing_keys.add(key)
+                config_lines.append(line + '\n')
+            else:
+                config_lines.append(line + '\n')
 
-    # Add the rest of the configuration
-    new_lines.extend(config_lines)
+        # Start new config with imports
+        new_config_lines = import_lines[:]
+        if new_config_lines and not new_config_lines[-1].strip():
+            new_config_lines.append('\n')  # Add spacing after imports
 
-    # Append missing keys from the repo config
-    for key, value in repo_config.items():
-        if key.isupper() and key not in existing_keys:  # Add only missing keys
-            new_lines.append(f"{key} = {repr(value)}\n")
+        # Add existing config lines
+        new_config_lines.extend(config_lines)
 
-    # Write the updated config back to the user's file
-    with open(user_config_path, 'w') as user_file:
-        user_file.writelines(new_lines)
+        # Add any new keys from repo that don't exist in user config
+        new_entries = []
+        for key, value in repo_config.items():
+            if (key.isupper() and  # Only process uppercase config variables
+                key not in existing_keys and  # Skip existing keys
+                not key.startswith('__')):  # Skip Python special variables
+                new_entries.append(f"{key} = {repr(value)}\n")
+
+        if new_entries:
+            # Add a comment to indicate new entries
+            new_config_lines.append('\n# New settings added from update\n')
+            new_config_lines.extend(new_entries)
+
+        # Write the updated config back to file
+        with open(user_config_path, 'w') as user_file:
+            user_file.writelines(new_config_lines)
+
+        print(f"Config updated successfully. {len(new_entries)} new entries added.")
+        return True
+
+    except Exception as e:
+        print(f"Error updating config: {str(e)}")
+        raise
 
 def get_git_tracked_files(project_dir):
     """Get list of files tracked by Git in the project directory."""
