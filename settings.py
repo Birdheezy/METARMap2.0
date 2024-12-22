@@ -536,27 +536,23 @@ def apply_updates():
         # Define paths
         project_dir = '/home/pi'
         backup_dir = os.path.join(project_dir, 'BACKUP')
-        user_config_path = os.path.join(project_dir, 'config.py')
-        repo_config_path = os.path.join(project_dir, 'config.py')
-
-        # Step 1: Create backup
         timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         backup_path = os.path.join(backup_dir, f'backup_{timestamp}')
+        
+        # Create backup paths
+        backup_config_path = os.path.join(backup_path, 'config.py')
+        current_config_path = os.path.join(project_dir, 'config.py')
+        
+        # Create backup
         os.makedirs(backup_path, exist_ok=True)
-
-        # Get list of Git tracked files
+        
+        # Backup tracked files
         tracked_files = get_git_tracked_files(project_dir)
-
-        # Backup each tracked file
         for file_path in tracked_files:
-            if file_path != 'airports.txt':  # Still exclude airports.txt
+            if file_path != 'airports.txt':
                 source_path = os.path.join(project_dir, file_path)
                 dest_path = os.path.join(backup_path, file_path)
-                
-                # Create necessary subdirectories
                 os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-                
-                # Copy the file
                 shutil.copy2(source_path, dest_path)
 
         # Limit backups to 5
@@ -567,105 +563,75 @@ def apply_updates():
         while len(existing_backups) > 5:
             shutil.rmtree(existing_backups.pop(0))
 
-        # Step 2: Pull updates from the repo
-        subprocess.run(['git', 'fetch'], cwd=project_dir, check=True)
-        current_branch = subprocess.check_output(
-            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=project_dir, text=True
-        ).strip()
-
-        # Temporarily move airports.txt out of the way
+        # Save airports.txt
         airports_path = os.path.join(project_dir, 'airports.txt')
         temp_airports_path = os.path.join(project_dir, 'airports.txt.tmp')
         os.rename(airports_path, temp_airports_path)
 
-        # Use the current branch to reset
-        subprocess.run(['git', 'reset', '--hard', f'origin/{current_branch}'], cwd=project_dir, check=True)
+        # Pull updates
+        subprocess.run(['git', 'fetch'], cwd=project_dir, check=True)
+        current_branch = subprocess.check_output(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], 
+            cwd=project_dir, text=True
+        ).strip()
+        subprocess.run(['git', 'reset', '--hard', f'origin/{current_branch}'], 
+                      cwd=project_dir, check=True)
 
-        # Move airports.txt back to its original location
+        # Restore airports.txt
         os.rename(temp_airports_path, airports_path)
+        
+        # Update config using backed up config as source of user settings
+        update_config(backup_config_path, current_config_path)
+        
+        # Fix permissions
         subprocess.run(['sudo', 'chown', '-R', 'pi:pi', '/home/pi'], check=True)
 
-        # Step 3: Update config.py
-        update_config(user_config_path, repo_config_path)
-
-        # Step 4: Restart services
+        # Restart services
         subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
 
         return jsonify({"message": "Updates applied successfully!"}), 200
 
-    except FileNotFoundError as e:
-        return jsonify({"error": f"Missing file during update: {str(e)}"}), 500
-    except subprocess.CalledProcessError as e:
-        return jsonify({"error": f"Command failed: {e.stderr}"}), 500
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
-def update_config(user_config_path, repo_config_path):
+def update_config(backup_config_path, new_config_path):
     """
-    Update config.py while preserving user settings and adding new entries from repo
+    Merge user settings from backup with new config from repo
+    backup_config_path: Path to backed up user config
+    new_config_path: Path to new config pulled from repo
     """
     try:
-        # Load the repo config into a dictionary
-        repo_config = {}
-        with open(repo_config_path, 'r') as repo_file:
-            repo_content = repo_file.read()
-            # Execute in isolated namespace to get values
-            exec(repo_content, {}, repo_config)
-
-        # Load the user's current config
+        # Load backed up user config
         user_config = {}
-        with open(user_config_path, 'r') as user_file:
-            user_content = user_file.read()
-            exec(user_content, {}, user_config)
+        with open(backup_config_path, 'r') as f:
+            exec(f.read(), {}, user_config)
 
-        # Read the user's config line by line to preserve comments and formatting
-        with open(user_config_path, 'r') as user_file:
-            user_lines = user_file.readlines()
+        # Load new config from repo
+        repo_config = {}
+        with open(new_config_path, 'r') as f:
+            exec(f.read(), {}, repo_config)
 
-        # Identify import statements and existing keys
-        import_lines = []
-        config_lines = []
-        existing_keys = set()
+        # Read new config line by line to preserve structure and comments
+        with open(new_config_path, 'r') as f:
+            new_lines = f.readlines()
 
-        for line in user_lines:
-            line = line.strip()
-            if line.startswith(('import ', 'from ')):
-                import_lines.append(line + '\n')
-            elif '=' in line:
+        # Update values in new config with user's existing settings
+        final_lines = []
+        for line in new_lines:
+            if '=' in line:
                 key = line.split('=')[0].strip()
-                if key.isupper():  # Only track uppercase config variables
-                    existing_keys.add(key)
-                config_lines.append(line + '\n')
+                if key.isupper() and key in user_config:
+                    # Preserve user's value
+                    final_lines.append(f"{key} = {repr(user_config[key])}\n")
+                else:
+                    # Keep new config value
+                    final_lines.append(line)
             else:
-                config_lines.append(line + '\n')
+                final_lines.append(line)
 
-        # Start new config with imports
-        new_config_lines = import_lines[:]
-        if new_config_lines and not new_config_lines[-1].strip():
-            new_config_lines.append('\n')  # Add spacing after imports
-
-        # Add existing config lines
-        new_config_lines.extend(config_lines)
-
-        # Add any new keys from repo that don't exist in user config
-        new_entries = []
-        for key, value in repo_config.items():
-            if (key.isupper() and  # Only process uppercase config variables
-                key not in existing_keys and  # Skip existing keys
-                not key.startswith('__')):  # Skip Python special variables
-                new_entries.append(f"{key} = {repr(value)}\n")
-
-        if new_entries:
-            # Add a comment to indicate new entries
-            new_config_lines.append('\n# New settings added from update\n')
-            new_config_lines.extend(new_entries)
-
-        # Write the updated config back to file
-        with open(user_config_path, 'w') as user_file:
-            user_file.writelines(new_config_lines)
-
-        print(f"Config updated successfully. {len(new_entries)} new entries added.")
-        return True
+        # Write merged config back to file
+        with open(new_config_path, 'w') as f:
+            f.writelines(final_lines)
 
     except Exception as e:
         print(f"Error updating config: {str(e)}")
