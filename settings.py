@@ -486,8 +486,6 @@ def scan_networks():
 
 @app.route('/connect-to-network', methods=['POST'])
 def connect_to_network():
-    import subprocess
-    from flask import request, jsonify
 
     data = request.get_json()
     ssid = data.get('ssid')
@@ -546,14 +544,20 @@ def apply_updates():
         backup_path = os.path.join(backup_dir, f'backup_{timestamp}')
         os.makedirs(backup_path, exist_ok=True)
 
-        for filename in os.listdir(project_dir):
-            if filename != 'airports.txt' and not filename.startswith('.') and filename != 'BACKUP':  
-                source_path = os.path.join(project_dir, filename)
-                destination_path = os.path.join(backup_path, filename)
-                if os.path.isfile(source_path):
-                    shutil.copy(source_path, destination_path)
-                elif os.path.isdir(source_path):
-                    shutil.copytree(source_path, destination_path)
+        # Get list of Git tracked files
+        tracked_files = get_git_tracked_files(project_dir)
+
+        # Backup each tracked file
+        for file_path in tracked_files:
+            if file_path != 'airports.txt':  # Still exclude airports.txt
+                source_path = os.path.join(project_dir, file_path)
+                dest_path = os.path.join(backup_path, file_path)
+                
+                # Create necessary subdirectories
+                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                
+                # Copy the file
+                shutil.copy2(source_path, dest_path)
 
         # Limit backups to 5
         existing_backups = sorted(
@@ -642,6 +646,20 @@ def update_config(user_config_path, repo_config_path):
     with open(user_config_path, 'w') as user_file:
         user_file.writelines(new_lines)
 
+def get_git_tracked_files(project_dir):
+    """Get list of files tracked by Git in the project directory."""
+    try:
+        # Get list of tracked files from git
+        result = subprocess.run(
+            ['git', 'ls-files'],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return result.stdout.splitlines()
+    except subprocess.CalledProcessError as e:
+        raise Exception(f"Failed to get Git tracked files: {e.stderr}")
 
 if __name__ == '__main__':
     if ENABLE_HTTPS:
