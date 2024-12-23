@@ -1,4 +1,3 @@
-#test10
 import datetime
 
 AIRPORTS_FILE = 'airports.txt'
@@ -45,4 +44,3 @@ ENABLE_LIGHTS_OFF = False
 LEGEND = False
 ENABLE_HTTPS = False
 UPDATE_WEATHER = False
-NEWKEY = False
