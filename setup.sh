@@ -61,16 +61,32 @@ case ${UPDATE_CHOICE,,} in  # Convert to lowercase
 esac
 
 
-# Virtual environment setup
-read -p "Enter virtual environment name (default: metar): " VENV_NAME
-VENV_NAME=${VENV_NAME:-metar}
+# Virtual environment setup prompt
+read -e -p "Would you like to set up a virtual environment? [Y/n]: " VENV_SETUP_CHOICE
+VENV_SETUP_CHOICE=${VENV_SETUP_CHOICE:-y}
+case ${VENV_SETUP_CHOICE,,} in
+    [Yy]*|"")
+        # Ask for virtual environment name
+        read -p "Enter virtual environment name (default: metar): " VENV_NAME
+        VENV_NAME=${VENV_NAME:-metar}
 
+        # Validate venv name (only allow alphanumeric and underscores)
+        if [[ ! $VENV_NAME =~ ^[a-zA-Z0-9_]+$ ]]; then
+            echo -e "${RED}Invalid virtual environment name. Use only letters, numbers, and underscores.${NC}"
+            exit 1
+        fi
 
-# Validate venv name (only allow alphanumeric and underscores)
-if [[ ! $VENV_NAME =~ ^[a-zA-Z0-9_]+$ ]]; then
-    echo -e "${RED}Invalid virtual environment name. Use only letters, numbers, and underscores.${NC}"
-    exit 1
-fi
+        create_venv "$VENV_NAME"
+        ;;
+    [Nn]*)
+        echo "Skipping virtual environment setup"
+        ;;
+    *)
+        echo -e "${RED}Invalid input${NC}"
+        exit 1
+        ;;
+esac
+
 # Function to install Python packages
 install_packages() {
     local venv_name=$1
@@ -106,8 +122,6 @@ install_packages() {
     echo -e "${GREEN}All packages installed successfully${NC}"
     return 0
 }
-
-create_venv "$VENV_NAME"
 
 # Add package installation prompt
 echo -e "\n${GREEN}=== Python Package Installation ===${NC}"
@@ -177,7 +191,7 @@ setup_wifi_broadcast() {
 }
 
 # Add to main script after package installation:
-echo -e "\nWould you like to install Auto WiFi Broadcasting Capabilities?"
+echo -e "\n${GREEN}=== Would you like to install Auto WiFi Broadcasting Capabilities? ===${NC}"
 read -e -p "This will launch an interactive installer [Y/n]: " WIFI_CHOICE
 WIFI_CHOICE=${WIFI_CHOICE:-y}
 case ${WIFI_CHOICE,,} in
