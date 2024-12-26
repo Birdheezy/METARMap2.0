@@ -291,8 +291,17 @@
             <label for="snowy_animation" class="toggle-label">Enable Snowy Animation</label>
         </div>
         <div class="toggle-wrapper">
-            <input type="checkbox" id="legend" name="legend" class="toggle-input" {% if legend %}checked{% endif %}>
-            <label for="legend" class="toggle-label">Enable LED Legend</label>
+            <div class="dropdown-container">
+                <input type="checkbox" id="legend" name="legend" class="toggle-input" {% if legend %}checked{% endif %}>
+                <label for="legend" class="toggle-label">Enable LED Legend
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
+                </label>
+                <div class="dropdown-content" style="display: none;">
+                    This lights up LED's at the end of the strand to show what each color means.
+                    Starting from the end of the strand. The colors are:
+                    Snowy, Windy, Lightning, Missing, LIFR, IFR, MVFR, VFR
+                </div>
+            </div>
         </div>
         <div class="toggle-wrapper">
             <input type="checkbox" id="enable_https" name="enable_https" class="toggle-input" {% if enable_https %}checked{% endif %}>
