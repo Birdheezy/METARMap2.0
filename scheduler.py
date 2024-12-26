@@ -70,10 +70,10 @@ def schedule_lights():
 def monitor_config_changes(config_file):
     """Monitor config.py for changes and reload schedules dynamically."""
     last_modified = os.path.getmtime(config_file)
-    last_check = time.time()
+    last_check = time.time()  # Initialize with timestamp
 
     while True:
-        current_time = time.time()
+        current_time = time.time()  # Get current timestamp
         
         # Run scheduled tasks every second
         schedule.run_pending()
@@ -93,17 +93,17 @@ def monitor_config_changes(config_file):
 
                 # Handle lights state after config change
                 if config.ENABLE_LIGHTS_OFF:
-                    current_time = datetime.now().time()
+                    now = datetime.now().time()  # Get current time for comparison
                     lights_off = (
-                        (config.LIGHTS_OFF_TIME > config.LIGHTS_ON_TIME and (current_time >= config.LIGHTS_OFF_TIME or current_time < config.LIGHTS_ON_TIME)) or
-                        (config.LIGHTS_OFF_TIME <= config.LIGHTS_ON_TIME and config.LIGHTS_OFF_TIME <= current_time < config.LIGHTS_ON_TIME)
+                        (config.LIGHTS_OFF_TIME > config.LIGHTS_ON_TIME and (now >= config.LIGHTS_OFF_TIME or now < config.LIGHTS_ON_TIME)) or
+                        (config.LIGHTS_OFF_TIME <= config.LIGHTS_ON_TIME and config.LIGHTS_OFF_TIME <= now < config.LIGHTS_ON_TIME)
                     )
                     if lights_off:
                         turn_off_lights()
                     else:
                         turn_on_lights()
             
-            last_check = current_time
+            last_check = current_time  # Update last check timestamp
         
         time.sleep(1)  # Sleep for 1 second between checks
 
