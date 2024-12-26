@@ -20,6 +20,7 @@ I hope people find this project and collaborate on it. I'm not here to make mone
 # Install instructions
 ## Setup.sh
 there is now a batch script that will guide you through the setup. After first boot of the pi, copy over setup.sh and run "sudo bash setup.sh" the script will walk you through everything. 
+https://www.youtube.com/watch?v=eBfOBHSns-k
 
 ## Pi Setup
 I suggest using a Pi zero 2 w. It's cheap enough and more than powerful enough for this project. a pi zero w will work it's just a little slower.
