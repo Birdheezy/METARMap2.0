@@ -45,7 +45,6 @@ create_venv() {
 # Main script
 echo "Welcome to METARMap setup"
 
-# System update choice
 read -e -p "Would you like to update the system? [Y/n]: " UPDATE_CHOICE
 UPDATE_CHOICE=${UPDATE_CHOICE:-y}  # Default to 'y' if empty
 case ${UPDATE_CHOICE,,} in  # Convert to lowercase
@@ -61,9 +60,11 @@ case ${UPDATE_CHOICE,,} in  # Convert to lowercase
         ;;
 esac
 
+
 # Virtual environment setup
 read -p "Enter virtual environment name (default: metar): " VENV_NAME
 VENV_NAME=${VENV_NAME:-metar}
+
 
 # Validate venv name (only allow alphanumeric and underscores)
 if [[ ! $VENV_NAME =~ ^[a-zA-Z0-9_]+$ ]]; then
