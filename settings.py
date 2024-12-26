@@ -1,10 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 import subprocess
 import os
 from config import *  # Import all variables from config.py
 import datetime
 import config
-from flask import jsonify
 import shutil
 import shutil
 import re
@@ -55,7 +54,9 @@ def reload_config():
     ENABLE_LIGHTS_OFF = globals().get('ENABLE_LIGHTS_OFF', None)
     NUM_PIXELS = globals().get('NUM_PIXELS', None)
     LEGEND = globals().get('LEGEND', None)
-    PIXEL_PIN = globals().get('PIXEL_PIN', None)
+    PIXEL_PIN = globals().get('PIXEL_PIN', None),
+    WEATHER_UPDATE_INTERVAL = globals().get('WEATHER_UPDATE_INTERVAL', None)
+    UPDATE_WEATHER = globals().get('UPDATE_WEATHER', None)  # Add this line
 
 
 @app.route('/leds/on', methods=['POST'])
@@ -106,6 +107,7 @@ def edit_settings():
                 config_updates["LIGHTENING_ANIMATION"] = 'lightening_animation' in request.form
                 config_updates["SNOWY_ANIMATION"] = 'snowy_animation' in request.form
                 config_updates["ENABLE_HTTPS"] = 'enable_https' in request.form
+                config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form  # Add this line
                 # Float or Integer Settings
                 config_updates["BRIGHTNESS"] = float(request.form.get('brightness', 0))
                 config_updates["DIM_BRIGHTNESS"] = float(request.form.get('dim_brightness', 0))
@@ -119,12 +121,17 @@ def edit_settings():
                 config_updates["SNOW_BLINK_PAUSE"] = float(request.form.get('snow_blink_pause', 0))
                 config_updates["NUM_STEPS"] = int(request.form.get('num_steps', 0))
                 config_updates["NUM_PIXELS"] = int(request.form.get('num_pixels', 0))
+                config_updates["WEATHER_UPDATE_INTERVAL"] = int(request.form.get('weather_update_interval', 5))
 
                 # Time Settings (convert from form input)
                 config_updates["BRIGHT_TIME_START"] = f"datetime.time({request.form.get('bright_time_start_hour', 0)}, {request.form.get('bright_time_start_minute', 0)})"
                 config_updates["DIM_TIME_START"] = f"datetime.time({request.form.get('dim_time_start_hour', 0)}, {request.form.get('dim_time_start_minute', 0)})"
                 config_updates["LIGHTS_OFF_TIME"] = f"datetime.time({request.form.get('lights_off_time_hour', 0)}, {request.form.get('lights_off_time_minute', 0)})"
                 config_updates["LIGHTS_ON_TIME"] = f"datetime.time({request.form.get('lights_on_time_hour', 0)}, {request.form.get('lights_on_time_minute', 0)})"
+
+                # Convert minutes to seconds for storage
+                minutes = float(request.form.get('weather_update_interval', 5))
+                config_updates["WEATHER_UPDATE_INTERVAL"] = int(minutes * 60)
 
             except ValueError:
                 raise ValueError("Could not update time settings: Please enter valid numbers for hours and minutes.")
@@ -136,7 +143,8 @@ def edit_settings():
                 "IFR_COLOR": "ifr_color",
                 "LIFR_COLOR": "lifr_color",
                 "MISSING_COLOR": "missing_color",
-                "LIGHTENING_COLOR": "lightening_color"
+                "LIGHTENING_COLOR": "lightening_color",
+                "SNOWY_COLOR": "snowy_color"  # Add this line
             }
 
             for key, field_name in color_fields.items():
@@ -205,6 +213,12 @@ def edit_settings():
                 config_updates["PIXEL_PIN"] = int(request.form['PIXEL_PIN'])
             except ValueError:
                 raise ValueError("Could not update PIXEL_PIN: Please enter a valid integer.")
+            try:
+                # Convert minutes to seconds for storage
+                minutes = float(request.form.get('weather_update_interval', 5))
+                config_updates["WEATHER_UPDATE_INTERVAL"] = int(minutes * 60)  # Store as seconds in config
+            except ValueError:
+                raise ValueError("Could not update Weather Update Interval: Please enter a valid number.")
 
 
 
@@ -217,6 +231,7 @@ def edit_settings():
             config_updates["ENABLE_LIGHTS_OFF"] = 'enable_lights_off' in request.form
             config_updates["LEGEND"] = 'legend' in request.form
             config_updates["ENABLE_HTTPS"] = 'enable_https' in request.form
+            config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form  # Add this line
 
             # Update the config.py file
             with open('/home/pi/config.py', 'r') as f:
@@ -245,6 +260,13 @@ def edit_settings():
                     f.write(updated_airports)
             flash('Configuration updated successfully!', 'success')
 
+            # After successful update, restart the scheduler service
+            try:
+                subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
+                flash('Configuration updated and scheduler service restarted!', 'success')
+            except subprocess.CalledProcessError as e:
+                flash(f'Config updated but failed to restart scheduler: {str(e)}', 'warning')
+
         except ValueError as e:
             flash(str(e), 'danger')  # Show specific error messages
         except Exception as e:
@@ -269,7 +291,7 @@ def edit_settings():
     lifr_color = '#{:02x}{:02x}{:02x}'.format(config.LIFR_COLOR[1], config.LIFR_COLOR[0], config.LIFR_COLOR[2])  # GRB -> RGB
     missing_color = '#{:02x}{:02x}{:02x}'.format(config.MISSING_COLOR[1], config.MISSING_COLOR[0], config.MISSING_COLOR[2])  # GRB -> RGB
     lightening_color = '#{:02x}{:02x}{:02x}'.format(config.LIGHTENING_COLOR[1], config.LIGHTENING_COLOR[0], config.LIGHTENING_COLOR[2])  # GRB -> RGB
-
+    snowy_color = '#{:02x}{:02x}{:02x}'.format(config.SNOWY_COLOR[1], config.SNOWY_COLOR[0], config.SNOWY_COLOR[2])  # GRB -> RGB  # Add this line
 
     # Get the last modified date of weather.json
     weather_file_path = '/home/pi/weather.json'  # Adjust this path if necessary
@@ -303,6 +325,7 @@ def edit_settings():
         lifr_color=lifr_color,
         missing_color=missing_color,
         lightening_color=lightening_color,
+        snowy_color=snowy_color,  # Add this line
         enable_lights_off=config.ENABLE_LIGHTS_OFF,
         legend=config.LEGEND,
         num_pixels=config.NUM_PIXELS,
@@ -322,7 +345,8 @@ def edit_settings():
         snowy_animation=config.SNOWY_ANIMATION,
         daytime_dimming=config.DAYTIME_DIMMING,
         enable_https=config.ENABLE_HTTPS,
-        pixel_pin=config.PIXEL_PIN
+        pixel_pin=config.PIXEL_PIN,
+        weather_update_interval=config.WEATHER_UPDATE_INTERVAL
     )
 
 
@@ -462,8 +486,6 @@ def scan_networks():
 
 @app.route('/connect-to-network', methods=['POST'])
 def connect_to_network():
-    import subprocess
-    from flask import request, jsonify
 
     data = request.get_json()
     ssid = data.get('ssid')
@@ -514,22 +536,24 @@ def apply_updates():
         # Define paths
         project_dir = '/home/pi'
         backup_dir = os.path.join(project_dir, 'BACKUP')
-        user_config_path = os.path.join(project_dir, 'config.py')
-        repo_config_path = os.path.join(project_dir, 'config.py')
-
-        # Step 1: Create backup
         timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         backup_path = os.path.join(backup_dir, f'backup_{timestamp}')
+        
+        # Create backup paths
+        backup_config_path = os.path.join(backup_path, 'config.py')
+        current_config_path = os.path.join(project_dir, 'config.py')
+        
+        # Create backup
         os.makedirs(backup_path, exist_ok=True)
-
-        for filename in os.listdir(project_dir):
-            if filename != 'airports.txt' and not filename.startswith('.') and filename != 'BACKUP':  
-                source_path = os.path.join(project_dir, filename)
-                destination_path = os.path.join(backup_path, filename)
-                if os.path.isfile(source_path):
-                    shutil.copy(source_path, destination_path)
-                elif os.path.isdir(source_path):
-                    shutil.copytree(source_path, destination_path)
+        
+        # Backup tracked files
+        tracked_files = get_git_tracked_files(project_dir)
+        for file_path in tracked_files:
+            if file_path != 'airports.txt':
+                source_path = os.path.join(project_dir, file_path)
+                dest_path = os.path.join(backup_path, file_path)
+                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                shutil.copy2(source_path, dest_path)
 
         # Limit backups to 5
         existing_backups = sorted(
@@ -539,70 +563,94 @@ def apply_updates():
         while len(existing_backups) > 5:
             shutil.rmtree(existing_backups.pop(0))
 
-        # Step 2: Pull updates from the repo
-        subprocess.run(['git', 'fetch'], cwd=project_dir, check=True)
-        current_branch = subprocess.check_output(
-            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=project_dir, text=True
-        ).strip()
-
-        # Temporarily move airports.txt out of the way
+        # Save airports.txt
         airports_path = os.path.join(project_dir, 'airports.txt')
         temp_airports_path = os.path.join(project_dir, 'airports.txt.tmp')
         os.rename(airports_path, temp_airports_path)
 
-        # Use the current branch to reset
-        subprocess.run(['git', 'reset', '--hard', f'origin/{current_branch}'], cwd=project_dir, check=True)
+        # Pull updates
+        subprocess.run(['git', 'fetch'], cwd=project_dir, check=True)
+        current_branch = subprocess.check_output(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], 
+            cwd=project_dir, text=True
+        ).strip()
+        subprocess.run(['git', 'reset', '--hard', f'origin/{current_branch}'], 
+                      cwd=project_dir, check=True)
 
-        # Move airports.txt back to its original location
+        # Restore airports.txt
         os.rename(temp_airports_path, airports_path)
+        
+        # Update config using backed up config as source of user settings
+        update_config(backup_config_path, current_config_path)
+        
+        # Fix permissions
         subprocess.run(['sudo', 'chown', '-R', 'pi:pi', '/home/pi'], check=True)
 
-        # Step 3: Update config.py
-        update_config(user_config_path, repo_config_path)
-
-        # Step 4: Restart services
+        # Restart services
         subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
 
         return jsonify({"message": "Updates applied successfully!"}), 200
 
-    except FileNotFoundError as e:
-        return jsonify({"error": f"Missing file during update: {str(e)}"}), 500
-    except subprocess.CalledProcessError as e:
-        return jsonify({"error": f"Command failed: {e.stderr}"}), 500
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
-def update_config(user_config_path, repo_config_path):
-    # Load the repo config into a dictionary
-    repo_config = {}
-    with open(repo_config_path, 'r') as repo_file:
-        try:
-            exec(repo_file.read(), {}, repo_config)
-        except Exception as e:
-            raise ValueError(f"Error loading repo config: {e}")
+def update_config(backup_config_path, new_config_path):
+    """
+    Merge user settings from backup with new config from repo
+    backup_config_path: Path to backed up user config
+    new_config_path: Path to new config pulled from repo
+    """
+    try:
+        # Load backed up user config
+        user_config = {}
+        with open(backup_config_path, 'r') as f:
+            exec(f.read(), {}, user_config)
 
-    # Read the user's config line by line
-    with open(user_config_path, 'r') as user_file:
-        user_lines = user_file.readlines()
+        # Load new config from repo
+        repo_config = {}
+        with open(new_config_path, 'r') as f:
+            exec(f.read(), {}, repo_config)
 
-    # Prepare a set of existing keys in the user's config
-    existing_keys = set()
-    for line in user_lines:
-        # Match lines like `KEY = value`
-        match = re.match(r'^([A-Z_]+)\s*=', line)
-        if match:
-            existing_keys.add(match.group(1))
+        # Read new config line by line to preserve structure and comments
+        with open(new_config_path, 'r') as f:
+            new_lines = f.readlines()
 
-    # Append missing keys from the repo config
-    new_lines = user_lines[:]
-    for key, value in repo_config.items():
-        if key.isupper() and key not in existing_keys:  # Add only missing keys
-            new_lines.append(f"{key} = {repr(value)}\n")
+        # Update values in new config with user's existing settings
+        final_lines = []
+        for line in new_lines:
+            if '=' in line:
+                key = line.split('=')[0].strip()
+                if key.isupper() and key in user_config:
+                    # Preserve user's value
+                    final_lines.append(f"{key} = {repr(user_config[key])}\n")
+                else:
+                    # Keep new config value
+                    final_lines.append(line)
+            else:
+                final_lines.append(line)
 
-    # Write the updated config back to the user's file
-    with open(user_config_path, 'w') as user_file:
-        user_file.writelines(new_lines)
+        # Write merged config back to file
+        with open(new_config_path, 'w') as f:
+            f.writelines(final_lines)
 
+    except Exception as e:
+        print(f"Error updating config: {str(e)}")
+        raise
+
+def get_git_tracked_files(project_dir):
+    """Get list of files tracked by Git in the project directory."""
+    try:
+        # Get list of tracked files from git
+        result = subprocess.run(
+            ['git', 'ls-files'],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return result.stdout.splitlines()
+    except subprocess.CalledProcessError as e:
+        raise Exception(f"Failed to get Git tracked files: {e.stderr}")
 
 if __name__ == '__main__':
     if ENABLE_HTTPS:
