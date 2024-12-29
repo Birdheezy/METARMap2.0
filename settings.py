@@ -652,6 +652,38 @@ def get_git_tracked_files(project_dir):
     except subprocess.CalledProcessError as e:
         raise Exception(f"Failed to get Git tracked files: {e.stderr}")
 
+@app.route('/service/status/<service_name>', methods=['GET'])
+def get_service_status(service_name):
+    try:
+        result = subprocess.run(
+            ['systemctl', 'is-active', f'{service_name}.service'],
+            capture_output=True, text=True
+        )
+        status = result.stdout.strip()
+        return jsonify({
+            "status": "running" if status == "active" else "stopped",
+            "message": f"Service is {status}"
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "unknown",
+            "message": str(e)
+        }), 500
+
+@app.route('/service/control/<service_name>/<action>', methods=['POST'])
+def control_service(service_name, action):
+    if action not in ['start', 'stop', 'restart']:
+        return jsonify({"error": "Invalid action"}), 400
+    
+    try:
+        subprocess.run(['sudo', 'systemctl', action, f'{service_name}.service'], check=True)
+        return jsonify({
+            "message": f"Service {action} successful",
+            "status": "running" if action in ['start', 'restart'] else "stopped"
+        })
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": f"Failed to {action} service: {str(e)}"}), 500
+
 if __name__ == '__main__':
     if ENABLE_HTTPS:
         app.run(

@@ -348,3 +348,56 @@ document.getElementById('check-updates-button').addEventListener('click', functi
             updateStatus.textContent = 'An error occurred while checking for updates.';
         });
 });
+
+// Function to control services
+async function controlService(serviceName, action) {
+    try {
+        const response = await fetch(`/service/control/${serviceName}/${action}`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast(`${serviceName.toUpperCase()} service ${action} successful`, 'success');
+            // Update status after a brief delay to allow service to change state
+            setTimeout(() => updateServiceStatus(serviceName), 1000);
+        } else {
+            showToast(`Failed to ${action} ${serviceName} service: ${data.error}`, 'danger');
+        }
+    } catch (error) {
+        showToast(`Error controlling service: ${error}`, 'danger');
+    }
+}
+
+// Function to update service status
+async function updateServiceStatus(serviceName) {
+    try {
+        const response = await fetch(`/service/status/${serviceName}`);
+        const data = await response.json();
+        
+        const statusElement = document.getElementById(`${serviceName}-service-status`);
+        const dotElement = statusElement.querySelector('.status-dot');
+        const textElement = statusElement.querySelector('.status-text');
+        
+        // Update status dot and text
+        dotElement.className = `status-dot ${data.status}`;
+        textElement.textContent = data.message;
+        
+    } catch (error) {
+        console.error(`Error updating ${serviceName} status:`, error);
+    }
+}
+
+// Function to update all service statuses
+function updateAllServiceStatuses() {
+    ['metar', 'settings', 'scheduler'].forEach(service => {
+        updateServiceStatus(service);
+    });
+}
+
+// Update statuses on page load and periodically
+document.addEventListener('DOMContentLoaded', () => {
+    updateAllServiceStatuses();
+    // Update every 10 seconds
+    setInterval(updateAllServiceStatuses, 10000);
+});
