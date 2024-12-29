@@ -10,7 +10,7 @@ import re
 import time
 import threading
 import importlib
-
+import logging
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -442,8 +442,7 @@ def update_weather():
 
 @app.route('/scan-networks', methods=['GET'])
 def scan_networks():
-    import subprocess
-    import logging
+
 
     logging.basicConfig(level=logging.DEBUG)
 
@@ -676,7 +675,15 @@ def control_service(service_name, action):
         return jsonify({"error": "Invalid action"}), 400
     
     try:
-        subprocess.run(['sudo', 'systemctl', action, f'{service_name}.service'], check=True)
+        if service_name == 'metar' and action == 'stop':
+            # First stop the service
+            subprocess.run(['sudo', 'systemctl', 'stop', 'metar.service'], check=True)
+            # Then run blank.py to turn off the LEDs
+            subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/blank.py'], check=True)
+        else:
+            # Handle all other service control actions normally
+            subprocess.run(['sudo', 'systemctl', action, f'{service_name}.service'], check=True)
+        
         return jsonify({
             "message": f"Service {action} successful",
             "status": "running" if action in ['start', 'restart'] else "stopped"
