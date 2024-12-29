@@ -443,47 +443,21 @@
  	<div class="mt-4">
 		<button type="submit" class="btn btn-primary" onclick="saveAndRestart()">Save</button>
 	</div>
-	<!-- Restart METAR Service Button -->
-	<div class="mt-4">
-		<div class="dropdown-container">
-			<div>
-				<a href="{{ url_for('restart_metar') }}" class="btn btn-primary">Restart METAR Service</a>
-				<span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-			</div>
-			<div class="dropdown-content" style="display: none;">
-				This will restart the service that runs the lights.<br>
-				Be sure to save before restarting this service.
-			</div>
-		</div>
-	</div>
 
-	<div class="mt-4">
-		<div class="dropdown-container">
-			<div>
-				<button id="restart-settings-button" class="btn btn-primary">Restart Settings Service</button>
-				<span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-			</div>
-			<div class="dropdown-content" style="display: none;">
-				This will restart the service that runs this website
-			</div>
-		</div>
-	</div>
-	<div id="restart-settings-status" style="margin-top: 10px; color: green; font-weight: bold;"></div>
-
-	<div class="mt-4">
-		<div class="dropdown-container">
-			<div>
-				<a href="{{ url_for('update_weather') }}" class="btn btn-primary">Update Weather</a>
-				<span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-			</div>
-			<div class="dropdown-content" style="display: none;">
-				This will force an immediate weather update for all airports.<br>
-			</div>
-		</div>
-		<div style="margin-top: 5px;">
-			<span style="color: grey; font-size: smaller;">WX Last Updated: {{ weather_last_modified }}</span>
-		</div>
-	</div>
+ 	<div class="mt-4">
+ 		<div class="dropdown-container">
+ 			<div>
+ 				<a href="{{ url_for('update_weather') }}" class="btn btn-primary">Update Weather</a>
+ 				<span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
+ 			</div>
+ 			<div class="dropdown-content" style="display: none;">
+ 				This will force an immediate weather update for all airports.<br>
+ 			</div>
+ 		</div>
+ 		<div style="margin-top: 5px;">
+ 			<span style="color: grey; font-size: smaller;">WX Last Updated: {{ weather_last_modified }}</span>
+ 		</div>
+ 	</div>
 
 	<div class="mt-4">
 		<div class="dropdown-container">
