@@ -504,6 +504,7 @@ input[type="color"]::-webkit-color-swatch {
     margin-top: 10px;
     max-height: 300px;
     overflow-y: auto;
+    overflow-x: auto;  /* Add horizontal scrolling */
     background-color: #1a1a1a;
     border-radius: 4px;
     display: none;
@@ -514,8 +515,9 @@ input[type="color"]::-webkit-color-swatch {
     margin: 0;
     font-family: monospace;
     font-size: 12px;
-    white-space: pre-wrap;
+    white-space: pre;  /* Changed from pre-wrap to pre */
     color: #e0e0e0;
+    overflow-x: auto;  /* Add horizontal scrolling */
 }
 
 .service-logs.show {
