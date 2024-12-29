@@ -693,14 +693,16 @@ def get_service_logs(service_name):
     try:
         # Get the last 50 lines of the service log
         result = subprocess.run(
-            ['journalctl', '-u', f'{service_name}.service', '-n', '50', '--no-pager'],
+            ['sudo', 'journalctl', '-u', f'{service_name}.service', '-n', '50', '--no-pager'],
             capture_output=True, text=True
         )
+        print(f"Log output for {service_name}: {result.stdout[:100]}...")  # Debug print
         return jsonify({
             "logs": result.stdout,
             "success": True
         })
     except Exception as e:
+        print(f"Error getting logs: {str(e)}")  # Debug print
         return jsonify({
             "error": str(e),
             "success": False

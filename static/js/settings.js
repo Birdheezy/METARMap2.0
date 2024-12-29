@@ -406,18 +406,25 @@ async function toggleLogs(serviceName) {
     const logsDiv = document.getElementById(`${serviceName}-service-logs`);
     const logsContent = logsDiv.querySelector('.logs-content');
     
+    console.log(`Toggling logs for ${serviceName}`); // Debug log
+    
     if (logsDiv.style.display === 'none') {
         try {
+            console.log('Fetching logs...'); // Debug log
             const response = await fetch(`/service/logs/${serviceName}`);
             const data = await response.json();
+            
+            console.log('Received log data:', data); // Debug log
             
             if (data.success) {
                 logsContent.textContent = data.logs;
                 logsDiv.style.display = 'block';
+                console.log('Logs displayed successfully'); // Debug log
             } else {
                 showToast(`Failed to fetch logs: ${data.error}`, 'danger');
             }
         } catch (error) {
+            console.error('Error in toggleLogs:', error); // Debug log
             showToast(`Error fetching logs: ${error}`, 'danger');
         }
     } else {
