@@ -655,23 +655,12 @@ def get_service_status(service_name):
             capture_output=True, text=True
         )
         status = result.stdout.strip()
-        print(f"Service {service_name} status: '{status}'")  # Debug print
-        
-        # Add more detailed status info
-        detailed_result = subprocess.run(
-            ['systemctl', 'status', f'{service_name}.service'],
-            capture_output=True, text=True
-        )
-        print(f"Detailed status: {detailed_result.stdout}")  # Debug print
-        
         is_running = status == "active"
         return jsonify({
             "status": "running" if is_running else "stopped",
-            "message": f"Service is {status}",
-            "raw_status": status  # Include raw status in response
+            "message": f"Service is {status}"
         })
     except Exception as e:
-        print(f"Error checking service status: {str(e)}")  # Debug print
         return jsonify({
             "status": "unknown",
             "message": str(e)
@@ -698,6 +687,24 @@ def control_service(service_name, action):
         })
     except subprocess.CalledProcessError as e:
         return jsonify({"error": f"Failed to {action} service: {str(e)}"}), 500
+
+@app.route('/service/logs/<service_name>', methods=['GET'])
+def get_service_logs(service_name):
+    try:
+        # Get the last 50 lines of the service log
+        result = subprocess.run(
+            ['journalctl', '-u', f'{service_name}.service', '-n', '50', '--no-pager'],
+            capture_output=True, text=True
+        )
+        return jsonify({
+            "logs": result.stdout,
+            "success": True
+        })
+    except Exception as e:
+        return jsonify({
+            "error": str(e),
+            "success": False
+        }), 500
 
 if __name__ == '__main__':
     if ENABLE_HTTPS:

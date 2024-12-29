@@ -473,18 +473,6 @@
 		<div id="update-status" class="mt-2"></div>
 		<div id="update-button-container" class="mt-2"></div>
 	</div>
-
-	<div class="mt-4">
-		<div class="dropdown-container">
-			<div>
-				<a href="{{ url_for('stop_and_blank') }}" class="btn btn-primary">Stop METAR</a>
-				<span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-			</div>
-			<div class="dropdown-content" style="display: none;">
-				This will stop the metar service and turn off the LED's
-			</div>
-		</div>
-	</div>
 </section>
 
 <section>
@@ -497,9 +485,13 @@
             <button class="btn btn-primary service-btn" onclick="controlService('metar', 'start')">Start</button>
             <button class="btn btn-primary service-btn" onclick="controlService('metar', 'stop')">Stop</button>
             <button class="btn btn-primary service-btn" onclick="controlService('metar', 'restart')">Restart</button>
+            <button class="btn btn-secondary" onclick="toggleLogs('metar')">Show Logs</button>
         </div>
         <div class="service-status" id="metar-service-status">
             Status: <span class="status-dot"></span> <span class="status-text">Checking...</span>
+        </div>
+        <div class="service-logs" id="metar-service-logs" style="display: none;">
+            <pre class="logs-content"></pre>
         </div>
     </div>
 

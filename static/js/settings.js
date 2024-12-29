@@ -401,3 +401,52 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update every 10 seconds
     setInterval(updateAllServiceStatuses, 10000);
 });
+
+async function toggleLogs(serviceName) {
+    const logsDiv = document.getElementById(`${serviceName}-service-logs`);
+    const logsContent = logsDiv.querySelector('.logs-content');
+    
+    if (logsDiv.style.display === 'none') {
+        try {
+            const response = await fetch(`/service/logs/${serviceName}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                logsContent.textContent = data.logs;
+                logsDiv.style.display = 'block';
+            } else {
+                showToast(`Failed to fetch logs: ${data.error}`, 'danger');
+            }
+        } catch (error) {
+            showToast(`Error fetching logs: ${error}`, 'danger');
+        }
+    } else {
+        logsDiv.style.display = 'none';
+    }
+}
+
+// Add auto-refresh for logs when they're visible
+setInterval(() => {
+    ['metar', 'settings', 'scheduler'].forEach(service => {
+        const logsDiv = document.getElementById(`${service}-service-logs`);
+        if (logsDiv && logsDiv.style.display !== 'none') {
+            updateServiceLogs(service);
+        }
+    });
+}, 5000); // Update every 5 seconds
+
+async function updateServiceLogs(serviceName) {
+    const logsDiv = document.getElementById(`${serviceName}-service-logs`);
+    const logsContent = logsDiv.querySelector('.logs-content');
+    
+    try {
+        const response = await fetch(`/service/logs/${serviceName}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            logsContent.textContent = data.logs;
+        }
+    } catch (error) {
+        console.error(`Error updating logs: ${error}`);
+    }
+}

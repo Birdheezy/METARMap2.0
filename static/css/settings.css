@@ -499,3 +499,25 @@ input[type="color"]::-webkit-color-swatch {
 .status-dot.unknown {
     background-color: #ffc107;
 }
+
+.service-logs {
+    margin-top: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    background-color: #1a1a1a;
+    border-radius: 4px;
+    display: none;
+}
+
+.logs-content {
+    padding: 10px;
+    margin: 0;
+    font-family: monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    color: #e0e0e0;
+}
+
+.service-logs.show {
+    display: block;
+}
