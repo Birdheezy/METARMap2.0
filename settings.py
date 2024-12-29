@@ -655,11 +655,23 @@ def get_service_status(service_name):
             capture_output=True, text=True
         )
         status = result.stdout.strip()
+        print(f"Service {service_name} status: '{status}'")  # Debug print
+        
+        # Add more detailed status info
+        detailed_result = subprocess.run(
+            ['systemctl', 'status', f'{service_name}.service'],
+            capture_output=True, text=True
+        )
+        print(f"Detailed status: {detailed_result.stdout}")  # Debug print
+        
+        is_running = status == "active"
         return jsonify({
-            "status": "running" if status == "active" else "stopped",
-            "message": f"Service is {status}"
+            "status": "running" if is_running else "stopped",
+            "message": f"Service is {status}",
+            "raw_status": status  # Include raw status in response
         })
     except Exception as e:
+        print(f"Error checking service status: {str(e)}")  # Debug print
         return jsonify({
             "status": "unknown",
             "message": str(e)
