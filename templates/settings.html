@@ -485,7 +485,7 @@
             <button class="btn btn-primary service-btn" onclick="controlService('metar', 'start')">Start</button>
             <button class="btn btn-primary service-btn" onclick="controlService('metar', 'stop')">Stop</button>
             <button class="btn btn-primary service-btn" onclick="controlService('metar', 'restart')">Restart</button>
-            <button type="button" class="btn btn-primary service-btn" onclick="toggleLogs('metar')">Show Logs</button>
+            <button type="button" class="btn btn-primary service-btn" onclick="toggleLogs('metar')">Logs</button>
         </div>
         <div class="service-status" id="metar-service-status">
             Status: <span class="status-dot"></span> <span class="status-text">Checking...</span>
@@ -502,9 +502,13 @@
             <button class="btn btn-primary service-btn" onclick="controlService('settings', 'start')">Start</button>
             <button class="btn btn-primary service-btn" onclick="controlService('settings', 'stop')">Stop</button>
             <button class="btn btn-primary service-btn" onclick="controlService('settings', 'restart')">Restart</button>
+            <button type="button" class="btn btn-primary service-btn" onclick="toggleLogs('settings')">Logs</button>
         </div>
         <div class="service-status" id="settings-service-status">
             Status: <span class="status-dot"></span> <span class="status-text">Checking...</span>
+        </div>
+        <div class="service-logs" id="settings-service-logs" style="display: none;">
+            <pre class="logs-content"></pre>
         </div>
     </div>
 
@@ -515,9 +519,13 @@
             <button class="btn btn-primary service-btn" onclick="controlService('scheduler', 'start')">Start</button>
             <button class="btn btn-primary service-btn" onclick="controlService('scheduler', 'stop')">Stop</button>
             <button class="btn btn-primary service-btn" onclick="controlService('scheduler', 'restart')">Restart</button>
+            <button type="button" class="btn btn-primary service-btn" onclick="toggleLogs('scheduler')">Logs</button>
         </div>
         <div class="service-status" id="scheduler-service-status">
             Status: <span class="status-dot"></span> <span class="status-text">Checking...</span>
+        </div>
+        <div class="service-logs" id="scheduler-service-logs" style="display: none;">
+            <pre class="logs-content"></pre>
         </div>
     </div>
 </section>
