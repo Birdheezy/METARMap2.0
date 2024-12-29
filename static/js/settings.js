@@ -402,29 +402,33 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateAllServiceStatuses, 10000);
 });
 
-async function toggleLogs(serviceName) {
+async function toggleLogs(serviceName, event) {
+    if (event) {
+        event.preventDefault();
+    }
+    
     const logsDiv = document.getElementById(`${serviceName}-service-logs`);
     const logsContent = logsDiv.querySelector('.logs-content');
     
-    console.log(`Toggling logs for ${serviceName}`); // Debug log
+    console.log(`Toggling logs for ${serviceName}`);
     
     if (logsDiv.style.display === 'none') {
         try {
-            console.log('Fetching logs...'); // Debug log
+            console.log('Fetching logs...');
             const response = await fetch(`/service/logs/${serviceName}`);
             const data = await response.json();
             
-            console.log('Received log data:', data); // Debug log
+            console.log('Received log data:', data);
             
             if (data.success) {
                 logsContent.textContent = data.logs;
                 logsDiv.style.display = 'block';
-                console.log('Logs displayed successfully'); // Debug log
+                console.log('Logs displayed successfully');
             } else {
                 showToast(`Failed to fetch logs: ${data.error}`, 'danger');
             }
         } catch (error) {
-            console.error('Error in toggleLogs:', error); // Debug log
+            console.error('Error in toggleLogs:', error);
             showToast(`Error fetching logs: ${error}`, 'danger');
         }
     } else {
