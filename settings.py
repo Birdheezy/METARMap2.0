@@ -584,7 +584,7 @@ def apply_updates():
         # Restart services
         subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
 
-        return jsonify({"message": "Updates applied successfully!"}), 200
+        return jsonify({"message": "Updates applied successfully! Please restart METAR and settings services."}), 200
 
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
