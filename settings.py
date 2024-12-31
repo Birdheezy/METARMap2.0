@@ -652,6 +652,16 @@ def get_git_tracked_files(project_dir):
     except subprocess.CalledProcessError as e:
         raise Exception(f"Failed to get Git tracked files: {e.stderr}")
 
+@app.route('/weather-status', methods=['GET'])
+def get_weather_status():
+    weather_file_path = '/home/pi/weather.json'
+    try:
+        last_modified_timestamp = os.path.getmtime(weather_file_path)
+        last_updated = datetime.datetime.fromtimestamp(last_modified_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        return jsonify({"last_updated": last_updated}), 200
+    except FileNotFoundError:
+        return jsonify({"last_updated": "Weather data not available"}), 404
+
 if __name__ == '__main__':
     if ENABLE_HTTPS:
         app.run(
