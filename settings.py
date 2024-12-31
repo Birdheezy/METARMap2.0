@@ -715,9 +715,22 @@ def get_weather_status():
     try:
         last_modified_timestamp = os.path.getmtime(weather_file_path)
         last_updated = datetime.datetime.fromtimestamp(last_modified_timestamp).strftime('%Y-%m-%d %H:%M:%S')
-        return jsonify({"last_updated": last_updated}), 200
+        return jsonify({
+            "last_updated": last_updated,
+            "success": True
+        }), 200
     except FileNotFoundError:
-        return jsonify({"last_updated": "Weather data not available"}), 404
+        return jsonify({
+            "last_updated": "Weather data not available",
+            "success": False,
+            "error": "Weather file not found"
+        }), 404
+    except Exception as e:
+        return jsonify({
+            "last_updated": "Weather data not available",
+            "success": False,
+            "error": str(e)
+        }), 500
 
 if __name__ == '__main__':
     if ENABLE_HTTPS:
