@@ -260,13 +260,6 @@ def edit_settings():
                     f.write(updated_airports)
             flash('Configuration updated successfully!', 'success')
 
-            # After successful update, restart the scheduler service
-            try:
-                subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
-                flash('Configuration updated and scheduler service restarted!', 'success')
-            except subprocess.CalledProcessError as e:
-                flash(f'Config updated but failed to restart scheduler: {str(e)}', 'warning')
-
         except ValueError as e:
             flash(str(e), 'danger')  # Show specific error messages
         except Exception as e:
