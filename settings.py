@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify # type: ignore
 import subprocess
 import os
 from config import *  # Import all variables from config.py
@@ -672,7 +672,25 @@ def control_service(service_name, action):
         return jsonify({"error": "Invalid action"}), 400
     
     try:
-        if service_name == 'metar' and action == 'stop':
+        if service_name == 'settings' and action == 'restart':
+            # For settings service restart, send success response before restarting
+            response = jsonify({
+                "message": "Settings service restart initiated",
+                "status": "restarting",
+                "special_case": "settings_restart"
+            })
+            # Force the response to be sent immediately
+            response.headers['Connection'] = 'close'
+            
+            # Schedule the restart to happen after response is sent
+            def restart_after_response():
+                time.sleep(1)  # Brief delay to ensure response is sent
+                subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
+            
+            threading.Thread(target=restart_after_response).start()
+            return response
+
+        elif service_name == 'metar' and action == 'stop':
             # First stop the service
             subprocess.run(['sudo', 'systemctl', 'stop', 'metar.service'], check=True)
             # Then run blank.py to turn off the LEDs
@@ -691,18 +709,27 @@ def control_service(service_name, action):
 @app.route('/service/logs/<service_name>', methods=['GET'])
 def get_service_logs(service_name):
     try:
-        # Get the last 50 lines of the service log
-        result = subprocess.run(
-            ['sudo', 'journalctl', '-u', f'{service_name}.service', '-n', '50', '--no-pager'],
-            capture_output=True, text=True
-        )
-        print(f"Log output for {service_name}: {result.stdout[:100]}...")  # Debug print
+        if service_name == 'metar':
+            # For METAR service, get more lines but not reversed
+            result = subprocess.run(
+                ['sudo', 'journalctl', '-u', 'metar.service', '-n', '100', '--no-pager'],
+                capture_output=True,
+                text=True
+            )
+        else:
+            # For other services
+            result = subprocess.run(
+                ['sudo', 'journalctl', '-u', f'{service_name}.service', '-n', '50', '--no-pager'],
+                capture_output=True,
+                text=True
+            )
+        
         return jsonify({
             "logs": result.stdout,
             "success": True
         })
     except Exception as e:
-        print(f"Error getting logs: {str(e)}")  # Debug print
+        print(f"Error getting logs: {str(e)}")
         return jsonify({
             "error": str(e),
             "success": False

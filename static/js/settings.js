@@ -358,14 +358,30 @@ async function controlService(serviceName, action) {
         const data = await response.json();
         
         if (response.ok) {
-            showToast(`${serviceName.toUpperCase()} service ${action} successful`, 'success');
-            // Update status after a brief delay to allow service to change state
-            setTimeout(() => updateServiceStatus(serviceName), 1000);
+            if (data.special_case === "settings_restart") {
+                showToast("Settings service is restarting... Please wait for the page to reload.", 'success');
+                // Wait a few seconds then reload the page
+                setTimeout(() => {
+                    window.location.reload();
+                }, 5000);
+            } else {
+                showToast(`${serviceName.toUpperCase()} service ${action} successful`, 'success');
+                // Update status after a brief delay to allow service to change state
+                setTimeout(() => updateServiceStatus(serviceName), 1000);
+            }
         } else {
             showToast(`Failed to ${action} ${serviceName} service: ${data.error}`, 'danger');
         }
     } catch (error) {
-        showToast(`Error controlling service: ${error}`, 'danger');
+        if (serviceName === 'settings' && action === 'restart') {
+            showToast("Settings service is restarting... Please wait for the page to reload.", 'success');
+            // Wait a few seconds then reload the page
+            setTimeout(() => {
+                window.location.reload();
+            }, 5000);
+        } else {
+            showToast(`Error controlling service: ${error}`, 'danger');
+        }
     }
 }
 
@@ -402,62 +418,52 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateAllServiceStatuses, 10000);
 });
 
-async function toggleLogs(serviceName, event) {
-    if (event) {
-        event.preventDefault();
-    }
-    
+// Add this at the top with other global variables
+const logIntervals = {};
+
+function toggleLogs(serviceName) {
     const logsDiv = document.getElementById(`${serviceName}-service-logs`);
-    const logsContent = logsDiv.querySelector('.logs-content');
-    
-    console.log(`Toggling logs for ${serviceName}`);
-    
-    if (logsDiv.style.display === 'none') {
-        try {
-            console.log('Fetching logs...');
-            const response = await fetch(`/service/logs/${serviceName}`);
-            const data = await response.json();
-            
-            console.log('Received log data:', data);
-            
-            if (data.success) {
-                logsContent.textContent = data.logs;
-                logsDiv.style.display = 'block';
-                console.log('Logs displayed successfully');
-            } else {
-                showToast(`Failed to fetch logs: ${data.error}`, 'danger');
-            }
-        } catch (error) {
-            console.error('Error in toggleLogs:', error);
-            showToast(`Error fetching logs: ${error}`, 'danger');
+    const isVisible = logsDiv.style.display !== 'none';
+
+    if (!isVisible) {
+        // Clear any existing interval first
+        if (logIntervals[serviceName]) {
+            clearInterval(logIntervals[serviceName]);
         }
+        
+        // Initial fetch
+        fetchServiceLogs(serviceName);
+        logsDiv.style.display = 'block';
+        
+        // Start new interval
+        logIntervals[serviceName] = setInterval(() => {
+            fetchServiceLogs(serviceName);
+        }, 5000);
     } else {
+        // Clear interval when hiding logs
+        if (logIntervals[serviceName]) {
+            clearInterval(logIntervals[serviceName]);
+            delete logIntervals[serviceName];
+        }
         logsDiv.style.display = 'none';
     }
 }
 
-// Add auto-refresh for logs when they're visible
-setInterval(() => {
-    ['metar', 'settings', 'scheduler'].forEach(service => {
-        const logsDiv = document.getElementById(`${service}-service-logs`);
-        if (logsDiv && logsDiv.style.display !== 'none') {
-            updateServiceLogs(service);
-        }
-    });
-}, 5000); // Update every 5 seconds
+// Clean up intervals when leaving the page
+window.addEventListener('beforeunload', () => {
+    Object.values(logIntervals).forEach(interval => clearInterval(interval));
+});
 
-async function updateServiceLogs(serviceName) {
-    const logsDiv = document.getElementById(`${serviceName}-service-logs`);
-    const logsContent = logsDiv.querySelector('.logs-content');
-    
-    try {
-        const response = await fetch(`/service/logs/${serviceName}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            logsContent.textContent = data.logs;
-        }
-    } catch (error) {
-        console.error(`Error updating logs: ${error}`);
-    }
+function fetchServiceLogs(serviceName) {
+    fetch(`/service/logs/${serviceName}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const logsContent = document.querySelector(`#${serviceName}-service-logs .logs-content`);
+                if (logsContent) {
+                    logsContent.textContent = data.logs || 'No logs available';
+                }
+            }
+        })
+        .catch(error => console.error('Error fetching logs:', error));
 }

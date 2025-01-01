@@ -223,7 +223,7 @@ def update_leds(weather_data):
     lightning_airports = weather.get_lightning_airports(weather_data)
     snowy_airports = weather.get_snowy_airports(weather_data)
     # Print header
-    print(f"{'Airport':<10} {'Flight Cat':<12} {'Wind Speed':<12} {'Wind Gust':<12} {'Windy':<6} {'Lightning':<10} {'Snowy':<10}")
+    print(f"{'Airport':<10} {'Flight Cat':<12} {'Wind Speed':<12} {'Wind Gust':<12} {'Windy':<6} {'Lightning':<10} {'Snowy':<6} {'Brightness':<10}")
     print("-" * 80)  # Separator line for better readability
 
     # Update LEDs based on flt_cat and print details
