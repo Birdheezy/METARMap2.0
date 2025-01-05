@@ -3,8 +3,8 @@ import schedule
 import time
 import subprocess
 from datetime import datetime
-import importlib  # For reloading the config module
-import config  # Import config for dynamic updates
+import importlib
+import config 
 import logging
 
 # Configure logging to write to systemd journal
