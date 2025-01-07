@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify # type: ignore
 import subprocess
 import os
 from config import *  # Import all variables from config.py
@@ -10,7 +10,7 @@ import re
 import time
 import threading
 import importlib
-
+import logging
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -260,13 +260,6 @@ def edit_settings():
                     f.write(updated_airports)
             flash('Configuration updated successfully!', 'success')
 
-            # After successful update, restart the scheduler service
-            try:
-                subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
-                flash('Configuration updated and scheduler service restarted!', 'success')
-            except subprocess.CalledProcessError as e:
-                flash(f'Config updated but failed to restart scheduler: {str(e)}', 'warning')
-
         except ValueError as e:
             flash(str(e), 'danger')  # Show specific error messages
         except Exception as e:
@@ -367,13 +360,9 @@ def restart_metar():
 @app.route('/restart_settings', methods=['GET'])
 def restart_settings():
     try:
-        # Start the restart process in a separate thread
         threading.Thread(target=restart_service_thread).start()
-
-        # Immediately return a success response to the client
         return jsonify({"message": "Settings service is restarting."}), 200
     except Exception as e:
-        # Handle any exceptions and return a proper error response
         return jsonify({"error": f"Error restarting settings service: {str(e)}"}), 500
 
 
@@ -442,8 +431,7 @@ def update_weather():
 
 @app.route('/scan-networks', methods=['GET'])
 def scan_networks():
-    import subprocess
-    import logging
+
 
     logging.basicConfig(level=logging.DEBUG)
 
@@ -589,7 +577,7 @@ def apply_updates():
         # Restart services
         subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
 
-        return jsonify({"message": "Updates applied successfully!"}), 200
+        return jsonify({"message": "Updates applied successfully! Please restart METAR and settings services."}), 200
 
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
@@ -652,15 +640,117 @@ def get_git_tracked_files(project_dir):
     except subprocess.CalledProcessError as e:
         raise Exception(f"Failed to get Git tracked files: {e.stderr}")
 
+@app.route('/service/status/<service_name>', methods=['GET'])
+def get_service_status(service_name):
+    try:
+        result = subprocess.run(
+            ['systemctl', 'is-active', f'{service_name}.service'],
+            capture_output=True, text=True
+        )
+        status = result.stdout.strip()
+        is_running = status == "active"
+        return jsonify({
+            "status": "running" if is_running else "stopped",
+            "message": f"Service is {status}"
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "unknown",
+            "message": str(e)
+        }), 500
+
+@app.route('/service/control/<service_name>/<action>', methods=['POST'])
+def control_service(service_name, action):
+    if action not in ['start', 'stop', 'restart']:
+        return jsonify({"error": "Invalid action"}), 400
+    
+    try:
+        if service_name == 'settings' and action == 'restart':
+            # For settings service restart, send success response before restarting
+            response = jsonify({
+                "message": "Settings service restart initiated",
+                "status": "restarting",
+                "special_case": "settings_restart"
+            })
+            # Force the response to be sent immediately
+            response.headers['Connection'] = 'close'
+            
+            # Schedule the restart to happen after response is sent
+            def restart_after_response():
+                time.sleep(1)  # Brief delay to ensure response is sent
+                subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
+            
+            threading.Thread(target=restart_after_response).start()
+            return response
+
+        elif service_name == 'metar' and action == 'stop':
+            # First stop the service
+            subprocess.run(['sudo', 'systemctl', 'stop', 'metar.service'], check=True)
+            # Then run blank.py to turn off the LEDs
+            subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/blank.py'], check=True)
+        else:
+            # Handle all other service control actions normally
+            subprocess.run(['sudo', 'systemctl', action, f'{service_name}.service'], check=True)
+        
+        return jsonify({
+            "message": f"Service {action} successful",
+            "status": "running" if action in ['start', 'restart'] else "stopped"
+        })
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": f"Failed to {action} service: {str(e)}"}), 500
+
+@app.route('/service/logs/<service_name>', methods=['GET'])
+def get_service_logs(service_name):
+    try:
+        if service_name == 'metar':
+            # For METAR service, get more lines but not reversed
+            result = subprocess.run(
+                ['sudo', 'journalctl', '-u', 'metar.service', '-n', '100', '--no-pager'],
+                capture_output=True,
+                text=True
+            )
+        else:
+            # For other services
+            result = subprocess.run(
+                ['sudo', 'journalctl', '-u', f'{service_name}.service', '-n', '50', '--no-pager'],
+                capture_output=True,
+                text=True
+            )
+        
+        return jsonify({
+            "logs": result.stdout,
+            "success": True
+        })
+    except Exception as e:
+        print(f"Error getting logs: {str(e)}")
+        return jsonify({
+            "error": str(e),
+            "success": False
+        }), 500
+
+
 @app.route('/weather-status', methods=['GET'])
 def get_weather_status():
     weather_file_path = '/home/pi/weather.json'
     try:
         last_modified_timestamp = os.path.getmtime(weather_file_path)
         last_updated = datetime.datetime.fromtimestamp(last_modified_timestamp).strftime('%Y-%m-%d %H:%M:%S')
-        return jsonify({"last_updated": last_updated}), 200
+        return jsonify({
+            "last_updated": last_updated,
+            "success": True
+        }), 200
     except FileNotFoundError:
-        return jsonify({"last_updated": "Weather data not available"}), 404
+        return jsonify({
+            "last_updated": "Weather data not available",
+            "success": False,
+            "error": "Weather file not found"
+        }), 404
+    except Exception as e:
+        return jsonify({
+            "last_updated": "Weather data not available",
+            "success": False,
+            "error": str(e)
+        }), 500
 
 if __name__ == '__main__':
     if ENABLE_HTTPS:

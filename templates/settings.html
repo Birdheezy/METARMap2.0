@@ -443,32 +443,6 @@
  	<div class="mt-4">
 		<button type="submit" class="btn btn-primary" onclick="saveAndRestart()">Save</button>
 	</div>
-	<!-- Restart METAR Service Button -->
-	<div class="mt-4">
-		<div class="dropdown-container">
-			<div>
-				<a href="{{ url_for('restart_metar') }}" class="btn btn-primary">Restart METAR Service</a>
-				<span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-			</div>
-			<div class="dropdown-content" style="display: none;">
-				This will restart the service that runs the lights.<br>
-				Be sure to save before restarting this service.
-			</div>
-		</div>
-	</div>
-
-	<div class="mt-4">
-		<div class="dropdown-container">
-			<div>
-				<button id="restart-settings-button" class="btn btn-primary">Restart Settings Service</button>
-				<span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-			</div>
-			<div class="dropdown-content" style="display: none;">
-				This will restart the service that runs this website
-			</div>
-		</div>
-	</div>
-	<div id="restart-settings-status" style="margin-top: 10px; color: green; font-weight: bold;"></div>
 
 	<div class="mt-4">
 		<div class="dropdown-container">
@@ -499,22 +473,68 @@
 		<div id="update-status" class="mt-2"></div>
 		<div id="update-button-container" class="mt-2"></div>
 	</div>
-
-	<div class="mt-4">
-		<div class="dropdown-container">
-			<div>
-				<a href="{{ url_for('stop_and_blank') }}" class="btn btn-primary">Stop METAR</a>
-				<span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-			</div>
-			<div class="dropdown-content" style="display: none;">
-				This will stop the metar service and turn off the LED's
-			</div>
-		</div>
-	</div>
 </section>
 
-</form>
+    </form>
 </div>
+
+<div class="container">
+    <section>
+        <h2>Service Controls</h2>
+
+        <!-- METAR Service Controls -->
+        <div class="service-control-panel">
+            <h3>METAR Service</h3>
+            <div class="service-buttons">
+                <button class="btn btn-primary service-btn" onclick="controlService('metar', 'start')">Start</button>
+                <button class="btn btn-primary service-btn" onclick="controlService('metar', 'stop')">Stop</button>
+                <button class="btn btn-primary service-btn" onclick="controlService('metar', 'restart')">Restart</button>
+                <button type="button" class="btn btn-primary service-btn" onclick="toggleLogs('metar')">Logs</button>
+            </div>
+            <div class="service-status" id="metar-service-status">
+                Status: <span class="status-dot"></span> <span class="status-text">Checking...</span>
+            </div>
+            <div class="service-logs" id="metar-service-logs" style="display: none;">
+                <pre class="logs-content"></pre>
+            </div>
+        </div>
+
+        <!-- Settings Service Controls -->
+        <div class="service-control-panel">
+            <h3>Settings Service</h3>
+            <div class="service-buttons">
+                <button class="btn btn-primary service-btn" onclick="controlService('settings', 'start')">Start</button>
+                <button class="btn btn-primary service-btn" onclick="controlService('settings', 'stop')">Stop</button>
+                <button class="btn btn-primary service-btn" onclick="controlService('settings', 'restart')">Restart</button>
+                <button type="button" class="btn btn-primary service-btn" onclick="toggleLogs('settings')">Logs</button>
+            </div>
+            <div class="service-status" id="settings-service-status">
+                Status: <span class="status-dot"></span> <span class="status-text">Checking...</span>
+            </div>
+            <div class="service-logs" id="settings-service-logs" style="display: none;">
+                <pre class="logs-content"></pre>
+            </div>
+        </div>
+
+        <!-- Scheduler Service Controls -->
+        <div class="service-control-panel">
+            <h3>Scheduler Service</h3>
+            <div class="service-buttons">
+                <button class="btn btn-primary service-btn" onclick="controlService('scheduler', 'start')">Start</button>
+                <button class="btn btn-primary service-btn" onclick="controlService('scheduler', 'stop')">Stop</button>
+                <button class="btn btn-primary service-btn" onclick="controlService('scheduler', 'restart')">Restart</button>
+                <button type="button" class="btn btn-primary service-btn" onclick="toggleLogs('scheduler')">Logs</button>
+            </div>
+            <div class="service-status" id="scheduler-service-status">
+                Status: <span class="status-dot"></span> <span class="status-text">Checking...</span>
+            </div>
+            <div class="service-logs" id="scheduler-service-logs" style="display: none;">
+                <pre class="logs-content"></pre>
+            </div>
+        </div>
+    </section>
+</div>
+
 <script type="text/javascript">
     const messages = [];
     {% with messages = get_flashed_messages(with_categories=true) %}
