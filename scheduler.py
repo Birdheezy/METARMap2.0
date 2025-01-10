@@ -5,13 +5,6 @@ import subprocess
 from datetime import datetime
 import importlib  # For reloading the config module
 import config  # Import config for dynamic updates
-import logging
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(message)s'  # Only include the message, let journald handle the timestamp
-)
 
 def turn_on_lights():
     """Restart the metar.service to turn on the lights."""
@@ -35,8 +28,27 @@ def turn_off_lights():
         logging.error(f"Error turning off lights: {e}")
 
 
+def is_metar_running():
+    """Check if METAR service is running.
+    Returns:
+        bool: True if service is running, False otherwise
+    """
+    try:
+        result = subprocess.run(
+            ['systemctl', 'is-active', 'metar.service'],
+            capture_output=True,
+            text=True
+        )
+        return result.stdout.strip() == "active"
+    except subprocess.CalledProcessError:
+        return False
+
 def update_weather():
-    """Run the weather update script."""
+    """Run the weather update script only if METAR service is running."""
+    if not is_metar_running():
+        logging.info("Skipping weather update - METAR service is not running.")
+        return
+
     try:
         subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/weather.py'], check=True)
         logging.info("Weather data updated successfully.")
@@ -55,7 +67,7 @@ def schedule_lights():
     # Only schedule weather updates if enabled in config
     if config.UPDATE_WEATHER:
         schedule_weather_updates()
-        logging.info("Weather updates are enabled.")
+        print("Weather updates are enabled.")
     else:
         logging.info("Weather updates are disabled in settings.")
 
@@ -71,13 +83,14 @@ def schedule_lights():
         schedule.every().day.at(off_time).do(turn_off_lights)
         logging.info(f"Scheduled lights off at {off_time}.")
     else:
-        logging.info("Lights scheduling is disabled.")
+        print("Lights scheduling is disabled.")
 
 
 def monitor_config_changes(config_file):
     """Monitor config.py for changes and reload schedules dynamically."""
     last_modified = os.path.getmtime(config_file)
     last_check = time.time()  # Initialize with timestamp
+    last_service_status = is_metar_running()  # Initial service status
 
     while True:
         current_time = time.time()  # Get current timestamp
@@ -85,8 +98,18 @@ def monitor_config_changes(config_file):
         # Run scheduled tasks every second
         schedule.run_pending()
         
+        # Check METAR service status
+        current_status = is_metar_running()
+        if current_status != last_service_status:
+            last_service_status = current_status
+            if current_status:
+                logging.info("METAR service is now running, rescheduling updates...")
+                schedule_lights()  # This will schedule weather updates if enabled
+            else:
+                logging.info("METAR service has stopped, weather updates will be skipped.")
+        
         # Check for config changes every few seconds
-        if current_time - last_check >= 5:  # Check config file every 5 seconds
+        if current_time - last_check >= 5:
             current_modified = os.path.getmtime(config_file)
             if current_modified != last_modified:
                 logging.info("Detected config.py changes. Reloading schedules...")
