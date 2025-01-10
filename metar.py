@@ -223,7 +223,6 @@ def update_leds(weather_data):
         
     # Get list of airports, including "SKIP" entries
     airport_list = weather.get_airports_with_skip(AIRPORTS_FILE)
-    logging.info(f"Updating {len(airport_list)} airports")
 
     # Detect windy airports
     windy_airports = weather.get_windy_airports(weather_data)
