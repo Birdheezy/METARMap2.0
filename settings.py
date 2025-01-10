@@ -702,29 +702,34 @@ def control_service(service_name, action):
 @app.route('/service/logs/<service_name>', methods=['GET'])
 def get_service_logs(service_name):
     try:
-        if service_name == 'metar':
-            # For METAR service, get more lines but not reversed
-            result = subprocess.run(
-                ['sudo', 'journalctl', '-u', 'metar.service', '-n', '100', '--no-pager'],
-                capture_output=True,
-                text=True
-            )
-        else:
-            # For other services
-            result = subprocess.run(
-                ['sudo', 'journalctl', '-u', f'{service_name}.service', '-n', '50', '--no-pager'],
-                capture_output=True,
-                text=True
-            )
+        # Get logs for any service with consistent formatting, limited to last 100 lines
+        result = subprocess.run(
+            ['sudo', 'journalctl', '-u', f'{service_name}.service', '-n', '100',
+             '-o', 'short-precise', '--no-pager', '--no-hostname'],
+            capture_output=True,
+            text=True,
+            check=True  # This will raise an exception if the command fails
+        )
+        
+        if result.stderr:
+            print(f"Warning getting logs for {service_name}: {result.stderr}")
         
         return jsonify({
-            "logs": result.stdout,
+            "logs": result.stdout if result.stdout else "No logs available",
             "success": True
         })
-    except Exception as e:
-        print(f"Error getting logs: {str(e)}")
+    except subprocess.CalledProcessError as e:
+        error_msg = f"Error getting logs for {service_name}: {e.stderr}"
+        print(error_msg)
         return jsonify({
-            "error": str(e),
+            "error": error_msg,
+            "success": False
+        }), 500
+    except Exception as e:
+        error_msg = f"Unexpected error getting logs for {service_name}: {str(e)}"
+        print(error_msg)
+        return jsonify({
+            "error": error_msg,
             "success": False
         }), 500
 
