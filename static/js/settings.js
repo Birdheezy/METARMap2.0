@@ -404,11 +404,27 @@ async function updateServiceStatus(serviceName) {
     }
 }
 
+// Function to update weather status
+function updateWeatherStatus() {
+    fetch('/weather-status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const weatherStatusSpan = document.querySelector('span[style*="color: grey"]');
+                if (weatherStatusSpan) {
+                    weatherStatusSpan.textContent = 'WX Last Updated: ' + data.last_updated;
+                }
+            }
+        })
+        .catch(error => console.error('Error updating weather status:', error));
+}
+
 // Function to update all service statuses
 function updateAllServiceStatuses() {
     ['metar', 'settings', 'scheduler'].forEach(service => {
         updateServiceStatus(service);
     });
+    updateWeatherStatus();  // Add weather status update
 }
 
 // Update statuses on page load and periodically
