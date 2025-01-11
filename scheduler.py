@@ -5,6 +5,13 @@ import subprocess
 from datetime import datetime
 import importlib  # For reloading the config module
 import config  # Import config for dynamic updates
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s'  # Only include the message, let journald handle the timestamp
+)
 
 def turn_on_lights():
     """Restart the metar.service to turn on the lights."""
