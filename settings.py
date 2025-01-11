@@ -757,6 +757,83 @@ def get_weather_status():
             "error": str(e)
         }), 500
 
+@app.route('/list_backups')
+def list_backups():
+    try:
+        backup_dir = os.path.join('/home/pi', 'BACKUP')
+        if not os.path.exists(backup_dir):
+            return jsonify({'backups': []})
+            
+        # Get all backup directories and sort by modification time (newest first)
+        backups = sorted(
+            [d for d in os.listdir(backup_dir) if d.startswith('backup_')],
+            key=lambda x: os.path.getmtime(os.path.join(backup_dir, x)),
+            reverse=True
+        )
+        
+        # Format the timestamps for display
+        formatted_backups = []
+        for backup in backups:
+            timestamp = backup.replace('backup_', '')
+            try:
+                # Parse the timestamp from the folder name
+                dt = datetime.datetime.strptime(timestamp, '%Y%m%d_%H%M%S')
+                formatted_backups.append({
+                    'name': backup,
+                    'timestamp': dt.strftime('%Y-%m-%d %H:%M:%S')
+                })
+            except ValueError:
+                continue
+                
+        return jsonify({'backups': formatted_backups})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/restore_backup/<backup_name>', methods=['POST'])
+def restore_backup(backup_name):
+    try:
+        backup_dir = os.path.join('/home/pi', 'BACKUP')
+        backup_path = os.path.join(backup_dir, backup_name)
+        
+        if not os.path.exists(backup_path):
+            return jsonify({'error': 'Backup not found'}), 404
+            
+        # Stop services before restore
+        subprocess.run(['sudo', 'systemctl', 'stop', 'metar.service'], check=True)
+        subprocess.run(['sudo', 'systemctl', 'stop', 'settings.service'], check=True)
+        
+        # Restore files from backup
+        for root, dirs, files in os.walk(backup_path):
+            for file in files:
+                # Get the relative path
+                rel_path = os.path.relpath(os.path.join(root, file), backup_path)
+                source = os.path.join(root, file)
+                dest = os.path.join('/home/pi', rel_path)
+                
+                # Create destination directory if it doesn't exist
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                
+                # Copy the file
+                shutil.copy2(source, dest)
+        
+        # Fix permissions
+        subprocess.run(['sudo', 'chown', '-R', 'pi:pi', '/home/pi'], check=True)
+        
+        # Restart services
+        subprocess.run(['sudo', 'systemctl', 'start', 'metar.service'], check=True)
+        subprocess.run(['sudo', 'systemctl', 'start', 'settings.service'], check=True)
+        
+        return jsonify({'message': 'Backup restored successfully'}), 200
+        
+    except Exception as e:
+        # Try to restart services even if restore failed
+        try:
+            subprocess.run(['sudo', 'systemctl', 'start', 'metar.service'])
+            subprocess.run(['sudo', 'systemctl', 'start', 'settings.service'])
+        except:
+            pass
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     if ENABLE_HTTPS:
         app.run(

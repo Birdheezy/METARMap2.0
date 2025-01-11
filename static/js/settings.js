@@ -481,3 +481,80 @@ function fetchServiceLogs(serviceName) {
         })
         .catch(error => console.error('Error fetching logs:', error));
 }
+
+// Function to update backup list
+function updateBackupList() {
+    const backupList = document.getElementById('backup-list');
+    const restoreStatus = document.getElementById('restore-status');
+    
+    fetch('/list_backups')
+        .then(response => response.json())
+        .then(data => {
+            if (data.backups && data.backups.length > 0) {
+                const backupHtml = data.backups.map(backup => `
+                    <div class="backup-item" style="margin: 10px 0; display: flex; justify-content: space-between; align-items: center;">
+                        <span>${backup.timestamp}</span>
+                        <button class="btn btn-secondary restore-button" 
+                                data-backup="${backup.name}"
+                                onclick="restoreBackup('${backup.name}')">
+                            Restore
+                        </button>
+                    </div>
+                `).join('');
+                backupList.innerHTML = backupHtml;
+            } else {
+                backupList.innerHTML = '<p>No backups available</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching backups:', error);
+            backupList.innerHTML = '<p>Error loading backups</p>';
+        });
+}
+
+// Function to restore a backup
+function restoreBackup(backupName) {
+    if (!confirm('Are you sure you want to restore this backup? This will restart all services.')) {
+        return;
+    }
+    
+    const restoreStatus = document.getElementById('restore-status');
+    restoreStatus.textContent = 'Restoring backup...';
+    
+    // Disable all restore buttons
+    document.querySelectorAll('.restore-button').forEach(button => {
+        button.disabled = true;
+    });
+    
+    fetch(`/restore_backup/${backupName}`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            restoreStatus.textContent = 'Backup restored successfully. Page will reload in 5 seconds...';
+            setTimeout(() => {
+                window.location.reload();
+            }, 5000);
+        } else if (data.error) {
+            restoreStatus.textContent = 'Error: ' + data.error;
+            // Re-enable restore buttons
+            document.querySelectorAll('.restore-button').forEach(button => {
+                button.disabled = false;
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error restoring backup:', error);
+        restoreStatus.textContent = 'Error restoring backup';
+        // Re-enable restore buttons
+        document.querySelectorAll('.restore-button').forEach(button => {
+            button.disabled = false;
+        });
+    });
+}
+
+// Update backup list when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    updateBackupList();
+});
