@@ -492,9 +492,9 @@ function updateBackupList() {
         .then(data => {
             if (data.backups && data.backups.length > 0) {
                 const backupHtml = data.backups.map(backup => `
-                    <div class="backup-item" style="margin: 10px 0; display: flex; justify-content: space-between; align-items: center;">
-                        <span>${backup.timestamp}</span>
-                        <button class="btn btn-secondary restore-button" 
+                    <div class="service-buttons" style="margin: 10px 0;">
+                        <span style="color: #eaeaea; margin-right: 15px;">${backup.timestamp}</span>
+                        <button class="btn btn-primary service-btn restore-button" 
                                 data-backup="${backup.name}"
                                 onclick="restoreBackup('${backup.name}')">
                             Restore
@@ -503,12 +503,12 @@ function updateBackupList() {
                 `).join('');
                 backupList.innerHTML = backupHtml;
             } else {
-                backupList.innerHTML = '<p>No backups available</p>';
+                backupList.innerHTML = '<p style="color: #eaeaea;">No backups available</p>';
             }
         })
         .catch(error => {
             console.error('Error fetching backups:', error);
-            backupList.innerHTML = '<p>Error loading backups</p>';
+            backupList.innerHTML = '<p style="color: #eaeaea;">Error loading backups</p>';
         });
 }
 
