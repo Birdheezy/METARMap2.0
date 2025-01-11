@@ -406,13 +406,19 @@ async function updateServiceStatus(serviceName) {
 
 // Function to update weather status
 function updateWeatherStatus() {
+    console.log('Fetching weather status...');
     fetch('/weather-status')
         .then(response => response.json())
         .then(data => {
+            console.log('Weather status response:', data);
             if (data.success) {
                 const weatherStatusSpan = document.querySelector('span[style*="color: grey"]');
+                console.log('Found weather status span:', weatherStatusSpan);
                 if (weatherStatusSpan) {
                     weatherStatusSpan.textContent = 'WX Last Updated: ' + data.last_updated;
+                    console.log('Updated weather status text to:', data.last_updated);
+                } else {
+                    console.log('Weather status span not found');
                 }
             }
         })
