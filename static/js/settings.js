@@ -348,3 +348,122 @@ document.getElementById('check-updates-button').addEventListener('click', functi
             updateStatus.textContent = 'An error occurred while checking for updates.';
         });
 });
+
+// Function to control services
+async function controlService(serviceName, action) {
+    try {
+        const response = await fetch(`/service/control/${serviceName}/${action}`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (response.ok) {
+            if (data.special_case === "settings_restart") {
+                showToast("Settings service is restarting... Please wait for the page to reload.", 'success');
+                // Wait a few seconds then reload the page
+                setTimeout(() => {
+                    window.location.reload();
+                }, 5000);
+            } else {
+                showToast(`${serviceName.toUpperCase()} service ${action} successful`, 'success');
+                // Update status after a brief delay to allow service to change state
+                setTimeout(() => updateServiceStatus(serviceName), 1000);
+            }
+        } else {
+            showToast(`Failed to ${action} ${serviceName} service: ${data.error}`, 'danger');
+        }
+    } catch (error) {
+        if (serviceName === 'settings' && action === 'restart') {
+            showToast("Settings service is restarting... Please wait for the page to reload.", 'success');
+            // Wait a few seconds then reload the page
+            setTimeout(() => {
+                window.location.reload();
+            }, 5000);
+        } else {
+            showToast(`Error controlling service: ${error}`, 'danger');
+        }
+    }
+}
+
+// Function to update service status
+async function updateServiceStatus(serviceName) {
+    try {
+        const response = await fetch(`/service/status/${serviceName}`);
+        const data = await response.json();
+        
+        const statusElement = document.getElementById(`${serviceName}-service-status`);
+        const dotElement = statusElement.querySelector('.status-dot');
+        const textElement = statusElement.querySelector('.status-text');
+        
+        // Update status dot and text
+        dotElement.className = `status-dot ${data.status}`;
+        textElement.textContent = data.message;
+        
+    } catch (error) {
+        console.error(`Error updating ${serviceName} status:`, error);
+    }
+}
+
+// Function to update all service statuses
+function updateAllServiceStatuses() {
+    ['metar', 'settings', 'scheduler'].forEach(service => {
+        updateServiceStatus(service);
+    });
+}
+
+// Update statuses on page load and periodically
+document.addEventListener('DOMContentLoaded', () => {
+    updateAllServiceStatuses();
+    // Update every 10 seconds
+    setInterval(updateAllServiceStatuses, 10000);
+});
+
+// Add this at the top with other global variables
+const logIntervals = {};
+
+function toggleLogs(serviceName) {
+    const logsDiv = document.getElementById(`${serviceName}-service-logs`);
+    const isVisible = logsDiv.style.display !== 'none';
+
+    if (!isVisible) {
+        // Clear any existing interval first
+        if (logIntervals[serviceName]) {
+            clearInterval(logIntervals[serviceName]);
+        }
+        
+        // Initial fetch
+        fetchServiceLogs(serviceName);
+        logsDiv.style.display = 'block';
+        
+        // Start new interval
+        logIntervals[serviceName] = setInterval(() => {
+            fetchServiceLogs(serviceName);
+        }, 5000);
+    } else {
+        // Clear interval when hiding logs
+        if (logIntervals[serviceName]) {
+            clearInterval(logIntervals[serviceName]);
+            delete logIntervals[serviceName];
+        }
+        logsDiv.style.display = 'none';
+    }
+}
+
+// Clean up intervals when leaving the page
+window.addEventListener('beforeunload', () => {
+    Object.values(logIntervals).forEach(interval => clearInterval(interval));
+});
+
+function fetchServiceLogs(serviceName) {
+    fetch(`/service/logs/${serviceName}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const logsContent = document.querySelector(`#${serviceName}-service-logs .logs-content`);
+                if (logsContent) {
+                    logsContent.textContent = data.logs || 'No logs available';
+                }
+            }
+        })
+        .catch(error => console.error('Error fetching logs:', error));
+}
