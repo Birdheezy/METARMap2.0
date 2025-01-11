@@ -3,8 +3,20 @@ import schedule
 import time
 import subprocess
 from datetime import datetime
-import importlib  # For reloading the config module
-import config  # Import config for dynamic updates
+import importlib
+import config 
+import logging
+
+# Configure logging to write to systemd journal
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+def log_message(message):
+    """Helper function to log timestamped messages."""
+    logging.info(message)
 
 def turn_on_lights():
     """Restart the metar.service to turn on the lights."""
@@ -66,8 +78,11 @@ def schedule_lights():
 
     # Only schedule weather updates if enabled in config
     if config.UPDATE_WEATHER:
-        schedule_weather_updates()
-        print("Weather updates are enabled.")
+        if is_metar_running():
+            schedule_weather_updates()
+            logging.info("Weather updates are enabled and METAR service is running.")
+        else:
+            logging.info("Weather will update once metar service starts running.")
     else:
         logging.info("Weather updates are disabled in settings.")
 
@@ -83,7 +98,7 @@ def schedule_lights():
         schedule.every().day.at(off_time).do(turn_off_lights)
         logging.info(f"Scheduled lights off at {off_time}.")
     else:
-        print("Lights scheduling is disabled.")
+        logging.info("Lights on/off scheduling is disabled.")
 
 
 def monitor_config_changes(config_file):
