@@ -598,15 +598,28 @@ setup_ssl() {
     # Update config.py to enable HTTPS
     local CONFIG_FILE="/home/pi/config.py"
     if [ -f "$CONFIG_FILE" ]; then
+        echo "Updating config.py to enable HTTPS..."
+        
         # Create backup
-        cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
+        sudo cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
         
-        # Replace ENABLE_HTTPS value regardless of current setting
-        sed -i 's/ENABLE_HTTPS = .*/ENABLE_HTTPS = True/' "$CONFIG_FILE"
+        # Replace ENABLE_HTTPS value or add it if it doesn't exist
+        if grep -q "ENABLE_HTTPS" "$CONFIG_FILE"; then
+            sudo sed -i 's/ENABLE_HTTPS *= *False/ENABLE_HTTPS = True/' "$CONFIG_FILE"
+            sudo sed -i 's/ENABLE_HTTPS *= *True/ENABLE_HTTPS = True/' "$CONFIG_FILE"
+        else
+            echo "ENABLE_HTTPS = True" | sudo tee -a "$CONFIG_FILE" > /dev/null
+        fi
         
-        echo -e "${GREEN}✓ SSL certificate generated and config.py updated${NC}"
+        # Verify the change
+        if grep -q "ENABLE_HTTPS = True" "$CONFIG_FILE"; then
+            echo -e "${GREEN}✓ Successfully enabled HTTPS in config.py${NC}"
+        else
+            echo -e "${RED}Warning: Failed to update ENABLE_HTTPS in config.py${NC}"
+        fi
     else
-        echo -e "${RED}Warning: config.py not found. SSL certificate is installed but config.py was not updated${NC}"
+        echo -e "${RED}Error: config.py not found at $CONFIG_FILE${NC}"
+        return 1
     fi
 
     return 0
@@ -616,20 +629,37 @@ setup_ssl() {
 disable_https() {
     local CONFIG_FILE="/home/pi/config.py"
     if [ -f "$CONFIG_FILE" ]; then
+        echo "Updating config.py to disable HTTPS..."
+        
         # Create backup
-        cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
+        sudo cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
         
-        # Replace ENABLE_HTTPS value regardless of current setting
-        sed -i 's/ENABLE_HTTPS = .*/ENABLE_HTTPS = False/' "$CONFIG_FILE"
+        # Replace ENABLE_HTTPS value or add it if it doesn't exist
+        if grep -q "ENABLE_HTTPS" "$CONFIG_FILE"; then
+            sudo sed -i 's/ENABLE_HTTPS *= *True/ENABLE_HTTPS = False/' "$CONFIG_FILE"
+            sudo sed -i 's/ENABLE_HTTPS *= *False/ENABLE_HTTPS = False/' "$CONFIG_FILE"
+        else
+            echo "ENABLE_HTTPS = False" | sudo tee -a "$CONFIG_FILE" > /dev/null
+        fi
         
-        echo -e "${GREEN}✓ HTTPS disabled in config.py${NC}"
+        # Verify the change
+        if grep -q "ENABLE_HTTPS = False" "$CONFIG_FILE"; then
+            echo -e "${GREEN}✓ Successfully disabled HTTPS in config.py${NC}"
+        else
+            echo -e "${RED}Warning: Failed to update ENABLE_HTTPS in config.py${NC}"
+        fi
     else
-        echo -e "${RED}Warning: config.py not found. Cannot update HTTPS setting${NC}"
+        echo -e "${RED}Error: config.py not found at $CONFIG_FILE${NC}"
+        return 1
     fi
 }
 
 # Add SSL setup prompt
 echo -e "\n${GREEN}=== SSL Certificate Setup ===${NC}"
+echo "Setting up HTTPS will:"
+echo "1. Generate a self-signed SSL certificate"
+echo "2. Enable HTTPS in config.py"
+echo "3. Configure the web interface to use HTTPS (port 443)"
 read -e -p "Would you like to setup HTTPS with a self-signed certificate? [N/y]: " SSL_CHOICE
 SSL_CHOICE=${SSL_CHOICE:-n}
 case ${SSL_CHOICE,,} in
@@ -637,8 +667,9 @@ case ${SSL_CHOICE,,} in
         setup_ssl
         ;;
     [Nn]*|"")
+        echo "Disabling HTTPS..."
         disable_https
-        echo "HTTPS disabled"
+        echo -e "${GREEN}HTTPS disabled${NC}"
         ;;
     *)
         echo -e "${RED}Invalid input${NC}"

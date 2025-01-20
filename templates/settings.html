@@ -501,14 +501,14 @@
 
     <!-- System Restore Section -->
     <section id="system-restore" class="mt-4">
-        <h3>System Restore</h3>
-        <div class="dropdown-container">
-            <div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <h3>System Restore</h3>
+            <div class="dropdown-container" style="margin-top: 5px;">
                 <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
-            </div>
-            <div class="dropdown-content" style="display: none;">
-                This will restore your system to a previous backup state.<br>
-                Note: Applying updates after restore will overwrite restored files.
+                <div class="dropdown-content" style="display: none;">
+                    This will restore your system to a previous backup state.<br>
+                    Note: Applying updates after restore will overwrite restored files.
+                </div>
             </div>
         </div>
         <div class="service-control-panel">
@@ -517,7 +517,7 @@
             </div>
             <div id="restore-status" style="margin-top: 10px;"></div>
         </div>
-    </section>
+    </section> 
 
     <!-- Service Controls Section -->
     <section>
