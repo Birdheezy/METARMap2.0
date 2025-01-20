@@ -23,6 +23,7 @@ There is now a batch script that will guide you through the setup. After first b
 
 After writing the OS to the SD card, a window should pop up. If you copy setup.sh to that folder, you can then connect via SSH and run `sudo mv /boot/firmware/setup.sh /home/pi/`. 
 This will move setup.sh to the home/pi folder, where you can then run `sudo bash setup.sh`
+If you get an error run `sed -i 's/\r$//' setup.sh`
 
 ## Pi Setup
 I suggest using a Pi zero 2 w. It's cheap enough and more than powerful enough for this project. a pi zero w will work it's just a little slower.
