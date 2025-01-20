@@ -189,15 +189,40 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         function toggleTooltip(icon) {
-            const tooltipContent = icon.parentElement.nextElementSibling;
-            const isExpanded = icon.getAttribute('aria-expanded') === 'true';
+            // First try to find dropdown content as next sibling of parent
+            let tooltipContent = icon.parentElement.nextElementSibling;
+            
+            // If not found, try to find it within the same container
+            if (!tooltipContent || !tooltipContent.classList.contains('dropdown-content')) {
+                tooltipContent = icon.parentElement.querySelector('.dropdown-content');
+            }
+            
+            // If still not found, look for it in the parent's parent
+            if (!tooltipContent) {
+                tooltipContent = icon.parentElement.parentElement.querySelector('.dropdown-content');
+            }
 
-            if (isExpanded) {
-                tooltipContent.style.display = 'none';
-                icon.setAttribute('aria-expanded', 'false');
-            } else {
-                tooltipContent.style.display = 'block';
-                icon.setAttribute('aria-expanded', 'true');
+            if (tooltipContent) {
+                const isExpanded = icon.getAttribute('aria-expanded') === 'true';
+                
+                // Hide any other visible tooltips first
+                document.querySelectorAll('.dropdown-content').forEach(content => {
+                    if (content !== tooltipContent) {
+                        content.style.display = 'none';
+                        const otherIcon = content.parentElement.querySelector('.tooltip-icon');
+                        if (otherIcon) {
+                            otherIcon.setAttribute('aria-expanded', 'false');
+                        }
+                    }
+                });
+
+                if (isExpanded) {
+                    tooltipContent.style.display = 'none';
+                    icon.setAttribute('aria-expanded', 'false');
+                } else {
+                    tooltipContent.style.display = 'block';
+                    icon.setAttribute('aria-expanded', 'true');
+                }
             }
         }
     });
@@ -484,47 +509,53 @@ function fetchServiceLogs(serviceName) {
 
 // Function to update backup list
 function updateBackupList() {
-    const backupList = document.getElementById('backup-list');
+    const backupSelect = document.getElementById('backup-select');
+    const restoreButton = document.getElementById('restore-button');
     const restoreStatus = document.getElementById('restore-status');
     
     fetch('/list_backups')
         .then(response => response.json())
         .then(data => {
+            backupSelect.innerHTML = '<option value="">Select a backup...</option>';
             if (data.backups && data.backups.length > 0) {
-                const backupHtml = data.backups.map(backup => `
-                    <div class="service-buttons" style="margin: 10px 0;">
-                        <span style="color: #eaeaea; margin-right: 15px;">${backup.timestamp}</span>
-                        <button class="btn btn-primary service-btn restore-button" 
-                                data-backup="${backup.name}"
-                                onclick="restoreBackup('${backup.name}')">
-                            Restore
-                        </button>
-                    </div>
-                `).join('');
-                backupList.innerHTML = backupHtml;
+                data.backups.forEach(backup => {
+                    const option = document.createElement('option');
+                    option.value = backup.name;
+                    option.textContent = backup.timestamp;
+                    backupSelect.appendChild(option);
+                });
+                backupSelect.disabled = false;
             } else {
-                backupList.innerHTML = '<p style="color: #eaeaea;">No backups available</p>';
+                backupSelect.innerHTML = '<option value="">No backups available</option>';
+                backupSelect.disabled = true;
             }
         })
         .catch(error => {
             console.error('Error fetching backups:', error);
-            backupList.innerHTML = '<p style="color: #eaeaea;">Error loading backups</p>';
+            backupSelect.innerHTML = '<option value="">Error loading backups</option>';
+            backupSelect.disabled = true;
         });
 }
 
-// Function to restore a backup
-function restoreBackup(backupName) {
+// Function to restore selected backup
+function restoreSelectedBackup() {
+    const backupSelect = document.getElementById('backup-select');
+    const backupName = backupSelect.value;
+    
+    if (!backupName) {
+        return;
+    }
+    
     if (!confirm('Are you sure you want to restore this backup? This will restart all services.')) {
         return;
     }
     
     const restoreStatus = document.getElementById('restore-status');
-    restoreStatus.textContent = 'Restoring backup...';
+    const restoreButton = document.getElementById('restore-button');
     
-    // Disable all restore buttons
-    document.querySelectorAll('.restore-button').forEach(button => {
-        button.disabled = true;
-    });
+    restoreStatus.textContent = 'Restoring backup...';
+    restoreButton.disabled = true;
+    backupSelect.disabled = true;
     
     fetch(`/restore_backup/${backupName}`, {
         method: 'POST'
@@ -538,24 +569,27 @@ function restoreBackup(backupName) {
             }, 5000);
         } else if (data.error) {
             restoreStatus.textContent = 'Error: ' + data.error;
-            // Re-enable restore buttons
-            document.querySelectorAll('.restore-button').forEach(button => {
-                button.disabled = false;
-            });
+            restoreButton.disabled = false;
+            backupSelect.disabled = false;
         }
     })
     .catch(error => {
         console.error('Error restoring backup:', error);
         restoreStatus.textContent = 'Error restoring backup';
-        // Re-enable restore buttons
-        document.querySelectorAll('.restore-button').forEach(button => {
-            button.disabled = false;
-        });
+        restoreButton.disabled = false;
+        backupSelect.disabled = false;
     });
 }
 
-// Update backup list when page loads
+// Add event listener for backup selection change
 document.addEventListener('DOMContentLoaded', () => {
+    const backupSelect = document.getElementById('backup-select');
+    const restoreButton = document.getElementById('restore-button');
+    
+    backupSelect.addEventListener('change', () => {
+        restoreButton.disabled = !backupSelect.value;
+    });
+    
     updateBackupList();
 });
 
@@ -637,3 +671,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+function confirmSettingsStop() {
+    if (confirm("Warning: Stopping the settings service will take this settings website offline.\n\nYou will need to power cycle your METARMap to restore access to the settings website.\n\nAre you sure you want to stop the settings service?")) {
+        controlService('settings', 'stop');
+    }
+}

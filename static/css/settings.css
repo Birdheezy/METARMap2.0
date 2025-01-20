@@ -254,7 +254,7 @@ textarea {
 }
 
 .mb-3 {
-    margin-bottom: 10px; /* Adds space between input fields and the next section */
+    margin-bottom: 25px;
 }
 
 .mt-4 {
@@ -366,6 +366,7 @@ textarea {
 }
 section {
     margin-bottom: 30px;
+    position: relative;
 }
 
 /* Tooltip text - initially hidden */
@@ -448,15 +449,38 @@ section {
 
 /* Update dropdown content styling to match */
 .dropdown-content {
+    display: none;
     background-color: #1f1f1f;
     color: #eaeaea;
     border: 1px solid #007bff;
     border-radius: 5px;
     padding: 10px;
     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
-    margin-top: 5px;
+    margin-top: 10px;
+    width: 100%;
     max-width: 300px;
     line-height: 1.4;
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Remove special cases for timezone and system restore sections */
+#timezone-settings, #system-restore {
+    text-align: center;
+}
+
+#timezone-settings h3, #system-restore h3 {
+    display: inline;
+    margin: 0;
+}
+
+/* Update general dropdown container and content styling */
+.dropdown-container {
+    position: relative;
+    display: block;
+    text-align: center;
+    margin-bottom: 20px;
 }
 
 input[type="color"] {
