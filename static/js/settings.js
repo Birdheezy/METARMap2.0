@@ -558,3 +558,82 @@ function restoreBackup(backupName) {
 document.addEventListener('DOMContentLoaded', () => {
     updateBackupList();
 });
+
+// Function to populate timezone dropdown
+function populateTimezones() {
+    const select = document.getElementById('timezone-select');
+    const status = document.getElementById('timezone-status');
+    
+    fetch('/get_timezones')
+        .then(response => response.json())
+        .then(data => {
+            if (data.timezones) {
+                select.innerHTML = ''; // Clear loading option
+                data.timezones.forEach(tz => {
+                    const option = document.createElement('option');
+                    option.value = tz;
+                    option.textContent = tz;
+                    if (tz === data.current) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading timezones:', error);
+            status.textContent = 'Error loading timezones';
+        });
+}
+
+// Function to update timezone
+function updateTimezone(timezone) {
+    const status = document.getElementById('timezone-status');
+    status.textContent = 'Updating timezone...';
+    
+    fetch('/set_timezone', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ timezone: timezone })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            status.textContent = data.message;
+            showToast('Timezone updated successfully', 'success');
+        } else {
+            status.textContent = data.error || 'Failed to update timezone';
+            showToast('Failed to update timezone', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating timezone:', error);
+        status.textContent = 'Error updating timezone';
+        showToast('Error updating timezone', 'danger');
+    });
+}
+
+// Add event listeners when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    // Existing event listeners...
+    
+    // Populate timezone dropdown
+    populateTimezones();
+    
+    // Add change event listener for timezone select
+    const timezoneSelect = document.getElementById('timezone-select');
+    if (timezoneSelect) {
+        timezoneSelect.addEventListener('change', (event) => {
+            if (event.target.value) {
+                if (confirm('Are you sure you want to change the timezone? This will restart the scheduler service.')) {
+                    updateTimezone(event.target.value);
+                } else {
+                    // Reset to previous selection
+                    populateTimezones();
+                }
+            }
+        });
+    }
+});

@@ -11,6 +11,10 @@ import time
 import threading
 import importlib
 import logging
+import json
+import signal
+import sys
+import pytz  # Add this import at the top
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -832,6 +836,46 @@ def restore_backup(backup_name):
             subprocess.run(['sudo', 'systemctl', 'start', 'settings.service'])
         except:
             pass
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_timezones', methods=['GET'])
+def get_timezones():
+    try:
+        # Get list of all available timezones
+        timezones = pytz.all_timezones
+        
+        # Get current system timezone
+        current_tz = subprocess.run(['timedatectl', 'show', '--property=Timezone'], 
+                                  capture_output=True, text=True).stdout.strip().split('=')[1]
+        
+        return jsonify({
+            'timezones': timezones,
+            'current': current_tz
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/set_timezone', methods=['POST'])
+def set_timezone():
+    try:
+        timezone = request.json.get('timezone')
+        if not timezone:
+            return jsonify({'error': 'No timezone provided'}), 400
+            
+        # Validate timezone
+        if timezone not in pytz.all_timezones:
+            return jsonify({'error': 'Invalid timezone'}), 400
+            
+        # Set system timezone
+        subprocess.run(['sudo', 'timedatectl', 'set-timezone', timezone], check=True)
+        
+        return jsonify({
+            'message': f'Timezone updated to {timezone}',
+            'success': True
+        })
+    except subprocess.CalledProcessError as e:
+        return jsonify({'error': f'Failed to set timezone: {str(e)}'}), 500
+    except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':

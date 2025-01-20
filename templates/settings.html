@@ -479,6 +479,26 @@
 </div>
 
 <div class="container">
+    <!-- Timezone Settings Section -->
+    <section id="timezone-settings" class="mt-4">
+        <h3>Timezone Settings</h3>
+        <div class="dropdown-container">
+            <div>
+                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">ℹ️</span>
+            </div>
+            <div class="dropdown-content" style="display: none;">
+                Select your timezone to ensure all time-based features work correctly.<br>
+                This will update the system timezone for accurate scheduling.
+            </div>
+        </div>
+        <div class="service-control-panel">
+            <select id="timezone-select" class="form-control" style="max-width: 300px; margin: 0 auto;">
+                <option value="">Loading timezones...</option>
+            </select>
+            <div id="timezone-status" style="margin-top: 10px;"></div>
+        </div>
+    </section>
+
     <!-- System Restore Section -->
     <section id="system-restore" class="mt-4">
         <h3>System Restore</h3>
