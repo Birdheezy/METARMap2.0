@@ -1,7 +1,7 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify # type: ignore
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 import subprocess
 import os
-from config import *  # Import all variables from config.py
+from config import *
 import datetime
 import config
 import shutil
@@ -14,7 +14,7 @@ import logging
 import json
 import signal
 import sys
-import pytz  # Add this import at the top
+
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -841,8 +841,10 @@ def restore_backup(backup_name):
 @app.route('/get_timezones', methods=['GET'])
 def get_timezones():
     try:
-        # Get list of all available timezones
-        timezones = pytz.all_timezones
+        # Get list of all available timezones using timedatectl
+        result = subprocess.run(['timedatectl', 'list-timezones'], 
+                              capture_output=True, text=True, check=True)
+        timezones = result.stdout.strip().split('\n')
         
         # Get current system timezone
         current_tz = subprocess.run(['timedatectl', 'show', '--property=Timezone'], 
@@ -862,12 +864,19 @@ def set_timezone():
         if not timezone:
             return jsonify({'error': 'No timezone provided'}), 400
             
-        # Validate timezone
-        if timezone not in pytz.all_timezones:
+        # Validate timezone by checking if it exists in the list
+        result = subprocess.run(['timedatectl', 'list-timezones'], 
+                              capture_output=True, text=True, check=True)
+        available_timezones = result.stdout.strip().split('\n')
+        
+        if timezone not in available_timezones:
             return jsonify({'error': 'Invalid timezone'}), 400
             
         # Set system timezone
         subprocess.run(['sudo', 'timedatectl', 'set-timezone', timezone], check=True)
+        
+        # Restart scheduler service to apply timezone change
+        subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
         
         return jsonify({
             'message': f'Timezone updated to {timezone}',
