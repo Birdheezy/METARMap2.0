@@ -841,17 +841,29 @@ def restore_backup(backup_name):
 @app.route('/get_timezones', methods=['GET'])
 def get_timezones():
     try:
-        # Get list of all available timezones using timedatectl
-        result = subprocess.run(['timedatectl', 'list-timezones'], 
-                              capture_output=True, text=True, check=True)
-        timezones = result.stdout.strip().split('\n')
+        # Common US/North American timezones
+        common_timezones = [
+            'America/New_York',     # Eastern
+            'America/Chicago',      # Central
+            'America/Denver',       # Mountain
+            'America/Phoenix',      # Arizona (no DST)
+            'America/Los_Angeles',  # Pacific
+            'America/Anchorage',    # Alaska
+            'Pacific/Honolulu',     # Hawaii
+            'America/Puerto_Rico',  # Atlantic
+            'America/Vancouver',    # Pacific Canada
+            'America/Edmonton',     # Mountain Canada
+            'America/Winnipeg',     # Central Canada
+            'America/Toronto',      # Eastern Canada
+            'America/Halifax'       # Atlantic Canada
+        ]
         
         # Get current system timezone
         current_tz = subprocess.run(['timedatectl', 'show', '--property=Timezone'], 
                                   capture_output=True, text=True).stdout.strip().split('=')[1]
         
         return jsonify({
-            'timezones': timezones,
+            'timezones': common_timezones,
             'current': current_tz
         })
     except Exception as e:

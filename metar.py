@@ -80,7 +80,6 @@ def check_lights_off():
             print("Lights turned off due to time restrictions.")
             return True  # Indicate that lights are off
 
-    print("Lights remain on.")  # Debugging statement to know if lights are staying on
     return False  # Indicate that lights should remain on
 
 def calculate_dimmed_color(base_color, dim_brightness):

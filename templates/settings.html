@@ -189,42 +189,49 @@
     </section>
     <section>
         <h2>Color Settings</h2>
-        <table class="table table-borderless color-settings-table" style="margin: 0 auto;">
-            <tr>
-                <td class="color-picker-container">
-                    <label for="vfr-color-picker">VFR Color:</label>
-                    <input type="color" id="vfr-color-picker" name="vfr_color" value="{{ vfr_color }}">
-                </td>
-                <td class="color-picker-container">
-                    <label for="mvfr-color-picker">MVFR Color:</label>
-                    <input type="color" id="mvfr-color-picker" name="mvfr_color" value="{{ mvfr_color }}">
-                </td>
-                <td class="color-picker-container">
-                    <label for="ifr-color-picker">IFR Color:</label>
-                    <input type="color" id="ifr-color-picker" name="ifr_color" value="{{ ifr_color }}">
-                </td>
-            </tr>
-            <tr>
-                <td class="color-picker-container">
-                    <label for="lifr-color-picker">LIFR Color:</label>
-                    <input type="color" id="lifr-color-picker" name="lifr_color" value="{{ lifr_color }}">
-                </td>
-                <td class="color-picker-container">
-                    <label for="lightening-color-picker">Lightening Color:</label>
-                    <input type="color" id="lightening-color-picker" name="lightening_color" value="{{ lightening_color }}">
-                </td>
-                <td class="color-picker-container">
-                    <label for="missing-color-picker">Missing Color:</label>
-                    <input type="color" id="missing-color-picker" name="missing_color" value="{{ missing_color }}">
-                </td>
-            </tr>
-            <tr>
-                <td class="color-picker-container">
-                    <label for="snowy-color-picker">Snowy Color:</label>
-                    <input type="color" id="snowy-color-picker" name="snowy_color" value="{{ snowy_color }}">
-                </td>
-            </tr>
-        </table>
+        <div class="color-settings-container">
+            <!-- Flight Categories Column -->
+            <div class="color-column">
+                <h3>Flight Categories</h3>
+                <div class="color-picker-list">
+                    <div class="color-picker-row">
+                        <label for="vfr-color-picker">VFR Color:</label>
+                        <input type="color" id="vfr-color-picker" name="vfr_color" value="{{ vfr_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="mvfr-color-picker">MVFR Color:</label>
+                        <input type="color" id="mvfr-color-picker" name="mvfr_color" value="{{ mvfr_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="ifr-color-picker">IFR Color:</label>
+                        <input type="color" id="ifr-color-picker" name="ifr_color" value="{{ ifr_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="lifr-color-picker">LIFR Color:</label>
+                        <input type="color" id="lifr-color-picker" name="lifr_color" value="{{ lifr_color }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Special Conditions Column -->
+            <div class="color-column">
+                <h3>Special Conditions</h3>
+                <div class="color-picker-list">
+                    <div class="color-picker-row">
+                        <label for="lightening-color-picker">Lightning Color:</label>
+                        <input type="color" id="lightening-color-picker" name="lightening_color" value="{{ lightening_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="snowy-color-picker">Snowy Color:</label>
+                        <input type="color" id="snowy-color-picker" name="snowy_color" value="{{ snowy_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="missing-color-picker">Missing Color:</label>
+                        <input type="color" id="missing-color-picker" name="missing_color" value="{{ missing_color }}">
+                    </div>
+                </div>
+            </div>
+        </div>
     </section>
 
 
@@ -341,25 +348,6 @@
         <section>
             <h2>Advanced Settings</h2>
 
-            <!-- System Restore -->
-            <div class="dropdown-container">
-                <label style="display: flex; align-items: center;">
-                    <h3 style="margin: 0;">System Restore</h3>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                </label>
-                <div class="dropdown-content" style="display: none;">
-                    This will restore your system to a previous backup state.<br>
-                    Note: Applying updates after restore will overwrite restored files.
-                </div>
-            </div>
-            <div class="service-control-panel">
-                <select id="backup-select" class="form-control" style="max-width: 300px; margin: 0 auto;">
-                    <option value="">Loading backups...</option>
-                </select>
-                <button id="restore-button" class="btn btn-primary service-btn" style="margin-top: 10px;" onclick="restoreSelectedBackup()" disabled>Restore Selected Backup</button>
-                <div id="restore-status" style="margin-top: 10px;"></div>
-            </div>
-
             <!-- Number of Windy Animation Steps -->
             <div class="mb-3">
                 <div class="dropdown-container">
@@ -389,7 +377,7 @@
                         <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                     </label>
                     <div class="dropdown-content" style="display: none;">
-                        Enter the GPIO pin in the format "D<number>", e.g., "D18".
+                        Enter the GPIO pin number only, e.g., "18".
                     </div>
                 </div>
                 <input type="text" class="form-control input-small" name="PIXEL_PIN" id="pixel_pin" 
@@ -434,14 +422,35 @@
                 <div class="toggle-wrapper">
                     <input type="checkbox" id="legend" name="legend" class="toggle-input" {% if legend %}checked{% endif %}>
                     <label for="legend" class="toggle-label">Enable LED Legend</label>
+                    <div class="dropdown-container" style="margin-left: 10px;">
+                        <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false" onclick="event.stopPropagation()">i</span>
+                        <div class="dropdown-content" style="display: none;">
+                            When enabled, LEDs at the end of the strand will show what each color means.<br>
+                            Starting from the end of the strand the colors are:<br>
+                            Snowy, Windy, Lightning, Missing, LIFR, IFR, MVFR, VFR
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div style="font-size: 0.9em; color: #cccccc; margin-top: 15px; margin-bottom: 20px; text-align: center; max-width: 400px; margin-left: auto; margin-right: auto;">
-                "Enable LED Legend" will light up LED's at<br>
-                the end of the strand to show what each color means.<br>
-                Starting from the end of the strand, the colors are:<br>
-                Snowy, Windy, Lightning, Missing, LIFR, IFR, MVFR, VFR
+            <br>
+            <!-- System Restore -->
+            <div class="dropdown-container">
+                <label style="display: flex; align-items: center;">
+                    <h2 style="margin: 0;">System Restore</h2>
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                </label>
+                <div class="dropdown-content" style="display: none;">
+                    This will restore your system to a previous backup state.<br>
+                    Note: Applying updates after restore will overwrite restored files.
+                </div>
+            </div>
+            <div class="service-control-panel">
+                <select id="backup-select" class="form-control" style="max-width: 300px; margin: 0 auto;">
+                    <option value="">Loading backups...</option>
+                </select>
+                <button id="restore-button" class="btn btn-primary service-btn" style="margin-top: 10px;" onclick="restoreSelectedBackup()" disabled>Restore Selected Backup</button>
+                <div id="restore-status" style="margin-top: 10px;"></div>
             </div>
         </section>
     </section>
@@ -499,7 +508,7 @@
     			</div>
     		</div>
     		<div style="margin-top: 5px;">
-    			<span style="color: grey; font-size: smaller;">WX Last Updated: {{ weather_last_modified }}</span>
+    			<span style="color: grey; font-size: 0.9em; display: block; text-align: center;">WX Last Updated: {{ weather_last_modified }}</span>
     		</div>
     	</div>
 

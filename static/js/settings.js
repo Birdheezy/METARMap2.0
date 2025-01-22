@@ -427,6 +427,18 @@ async function updateServiceStatus(serviceName) {
     }
 }
 
+// Function to format date as MM-DD-YYYY HH:MM:SS
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${month}-${day}-${year} ${hours}:${minutes}:${seconds}`;
+}
+
 // Function to update weather status
 function updateWeatherStatus() {
     fetch('/weather-status')
@@ -435,7 +447,22 @@ function updateWeatherStatus() {
             if (data.success) {
                 const weatherStatusSpan = document.querySelector('span[style*="color: grey"]');
                 if (weatherStatusSpan) {
-                    weatherStatusSpan.textContent = 'WX Last Updated: ' + data.last_updated;
+                    const lastUpdated = new Date(data.last_updated);
+                    const now = new Date();
+                    const minutesSinceUpdate = Math.floor((now - lastUpdated) / (1000 * 60));
+                    
+                    // Get the update interval from the input field (in minutes)
+                    const updateIntervalInput = document.querySelector('input[name="weather_update_interval"]');
+                    const expectedInterval = updateIntervalInput ? parseInt(updateIntervalInput.value) : 5;
+                    
+                    // For testing: trigger warning after 1x interval instead of 2x
+                    if (minutesSinceUpdate > expectedInterval) {
+                        weatherStatusSpan.style.color = '#dc3545'; // Bootstrap danger red
+                        weatherStatusSpan.textContent = `WX Last Updated: ${formatDate(data.last_updated)} (Warning: Data may be stale)`;
+                    } else {
+                        weatherStatusSpan.style.color = 'grey';
+                        weatherStatusSpan.textContent = `WX Last Updated: ${formatDate(data.last_updated)}`;
+                    }
                 }
             }
         })

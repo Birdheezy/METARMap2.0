@@ -507,7 +507,6 @@ input[type="color"]::-webkit-color-swatch {
 
 /* Service Control Panel Styling */
 .service-control-panel {
-    background-color: #1f1f1f;
     border-radius: 8px;
     padding: 15px;
     margin: 15px auto;
@@ -580,4 +579,70 @@ input[type="color"]::-webkit-color-swatch {
 
 .service-logs.show {
     display: block;
+}
+
+/* Color Settings Section */
+.color-settings-container {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-top: 20px;
+}
+
+.color-column {
+    width: 200px;  /* Fixed width instead of flex: 1 */
+}
+
+.color-column h3 {
+    color: #007bff;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.color-picker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.color-picker-row {
+    display: flex;
+    align-items: center;
+}
+
+.color-picker-row label {
+    width: 120px;
+    margin-right: 10px;
+}
+
+.color-picker-row input[type="color"] {
+    width: 50px;
+}
+
+.toggle-wrapper .dropdown-container {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.toggle-wrapper .dropdown-container .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0;
+}
+
+.toggle-wrapper .dropdown-content {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 10px;
+    z-index: 1000;
+    width: 300px;
+    text-align: center;
+}
+
+.toggle-wrapper .tooltip-icon {
+    margin-left: 5px;
 }
