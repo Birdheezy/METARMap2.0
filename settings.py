@@ -1,7 +1,7 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify # type: ignore
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 import subprocess
 import os
-from config import *  # Import all variables from config.py
+from config import *
 import datetime
 import config
 import shutil
@@ -11,6 +11,12 @@ import time
 import threading
 import importlib
 import logging
+import json
+import signal
+import sys
+import schedule
+import weather
+
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -72,8 +78,22 @@ def turn_off_leds():
     
 @app.route('/update-weather', methods=['POST'])
 def refresh_weather():
-    subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/weather.py'], check=True)
-    return jsonify({"status": "Weather updated successfully"}), 200
+    try:
+        # Call weather module functions directly
+        metar_data = weather.fetch_metar()
+        if metar_data:
+            parsed_data = weather.parse_weather(metar_data)
+            if parsed_data:
+                # Save the weather data
+                with open('/home/pi/weather.json', 'w') as json_file:
+                    json.dump(parsed_data, json_file, indent=4)
+                return jsonify({"status": "Weather updated successfully"}), 200
+            else:
+                return jsonify({"status": "Failed to parse weather data"}), 500
+        else:
+            return jsonify({"status": "Failed to fetch weather data"}), 500
+    except Exception as e:
+        return jsonify({"status": f"Error updating weather: {str(e)}"}), 500
 
 @app.route('/leds/status', methods=['GET'])
 def get_led_status():
@@ -423,9 +443,20 @@ def stop_and_blank():
 @app.route('/update-weather')
 def update_weather():
     try:
-        subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/weather.py'], check=True)
-        flash('Weather Has Been Updated!', 'success')
-    except subprocess.CalledProcessError as e:
+        # Call weather module functions directly
+        metar_data = weather.fetch_metar()
+        if metar_data:
+            parsed_data = weather.parse_weather(metar_data)
+            if parsed_data:
+                # Save the weather data
+                with open('/home/pi/weather.json', 'w') as json_file:
+                    json.dump(parsed_data, json_file, indent=4)
+                flash('Weather Has Been Updated!', 'success')
+            else:
+                flash('Failed to parse weather data', 'danger')
+        else:
+            flash('Failed to fetch weather data', 'danger')
+    except Exception as e:
         flash(f'Weather Update Has Failed... {str(e)}', 'danger')
     return redirect(url_for('edit_settings'))
 
@@ -756,6 +787,144 @@ def get_weather_status():
             "success": False,
             "error": str(e)
         }), 500
+
+@app.route('/list_backups')
+def list_backups():
+    try:
+        backup_dir = os.path.join('/home/pi', 'BACKUP')
+        if not os.path.exists(backup_dir):
+            return jsonify({'backups': []})
+            
+        # Get all backup directories and sort by modification time (newest first)
+        backups = sorted(
+            [d for d in os.listdir(backup_dir) if d.startswith('backup_')],
+            key=lambda x: os.path.getmtime(os.path.join(backup_dir, x)),
+            reverse=True
+        )
+        
+        # Format the timestamps for display
+        formatted_backups = []
+        for backup in backups:
+            timestamp = backup.replace('backup_', '')
+            try:
+                # Parse the timestamp from the folder name
+                dt = datetime.datetime.strptime(timestamp, '%Y%m%d_%H%M%S')
+                formatted_backups.append({
+                    'name': backup,
+                    'timestamp': dt.strftime('%Y-%m-%d %H:%M:%S')
+                })
+            except ValueError:
+                continue
+                
+        return jsonify({'backups': formatted_backups})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/restore_backup/<backup_name>', methods=['POST'])
+def restore_backup(backup_name):
+    try:
+        backup_dir = os.path.join('/home/pi', 'BACKUP')
+        backup_path = os.path.join(backup_dir, backup_name)
+        
+        if not os.path.exists(backup_path):
+            return jsonify({'error': 'Backup not found'}), 404
+            
+        # Stop services before restore
+        subprocess.run(['sudo', 'systemctl', 'stop', 'metar.service'], check=True)
+        subprocess.run(['sudo', 'systemctl', 'stop', 'settings.service'], check=True)
+        
+        # Restore files from backup
+        for root, dirs, files in os.walk(backup_path):
+            for file in files:
+                # Get the relative path
+                rel_path = os.path.relpath(os.path.join(root, file), backup_path)
+                source = os.path.join(root, file)
+                dest = os.path.join('/home/pi', rel_path)
+                
+                # Create destination directory if it doesn't exist
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                
+                # Copy the file
+                shutil.copy2(source, dest)
+        
+        # Fix permissions
+        subprocess.run(['sudo', 'chown', '-R', 'pi:pi', '/home/pi'], check=True)
+        
+        # Restart services
+        subprocess.run(['sudo', 'systemctl', 'start', 'metar.service'], check=True)
+        subprocess.run(['sudo', 'systemctl', 'start', 'settings.service'], check=True)
+        
+        return jsonify({'message': 'Backup restored successfully'}), 200
+        
+    except Exception as e:
+        # Try to restart services even if restore failed
+        try:
+            subprocess.run(['sudo', 'systemctl', 'start', 'metar.service'])
+            subprocess.run(['sudo', 'systemctl', 'start', 'settings.service'])
+        except:
+            pass
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_timezones', methods=['GET'])
+def get_timezones():
+    try:
+        # Common US/North American timezones
+        common_timezones = [
+            'America/New_York',     # Eastern
+            'America/Chicago',      # Central
+            'America/Denver',       # Mountain
+            'America/Phoenix',      # Arizona (no DST)
+            'America/Los_Angeles',  # Pacific
+            'America/Anchorage',    # Alaska
+            'Pacific/Honolulu',     # Hawaii
+            'America/Puerto_Rico',  # Atlantic
+            'America/Vancouver',    # Pacific Canada
+            'America/Edmonton',     # Mountain Canada
+            'America/Winnipeg',     # Central Canada
+            'America/Toronto',      # Eastern Canada
+            'America/Halifax'       # Atlantic Canada
+        ]
+        
+        # Get current system timezone
+        current_tz = subprocess.run(['timedatectl', 'show', '--property=Timezone'], 
+                                  capture_output=True, text=True).stdout.strip().split('=')[1]
+        
+        return jsonify({
+            'timezones': common_timezones,
+            'current': current_tz
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/set_timezone', methods=['POST'])
+def set_timezone():
+    try:
+        timezone = request.json.get('timezone')
+        if not timezone:
+            return jsonify({'error': 'No timezone provided'}), 400
+            
+        # Validate timezone by checking if it exists in the list
+        result = subprocess.run(['timedatectl', 'list-timezones'], 
+                              capture_output=True, text=True, check=True)
+        available_timezones = result.stdout.strip().split('\n')
+        
+        if timezone not in available_timezones:
+            return jsonify({'error': 'Invalid timezone'}), 400
+            
+        # Set system timezone
+        subprocess.run(['sudo', 'timedatectl', 'set-timezone', timezone], check=True)
+        
+        # Restart scheduler service to apply timezone change
+        subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
+        
+        return jsonify({
+            'message': f'Timezone updated to {timezone}',
+            'success': True
+        })
+    except subprocess.CalledProcessError as e:
+        return jsonify({'error': f'Failed to set timezone: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     if ENABLE_HTTPS:

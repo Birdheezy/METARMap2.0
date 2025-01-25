@@ -189,15 +189,40 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         function toggleTooltip(icon) {
-            const tooltipContent = icon.parentElement.nextElementSibling;
-            const isExpanded = icon.getAttribute('aria-expanded') === 'true';
+            // First try to find dropdown content as next sibling of parent
+            let tooltipContent = icon.parentElement.nextElementSibling;
+            
+            // If not found, try to find it within the same container
+            if (!tooltipContent || !tooltipContent.classList.contains('dropdown-content')) {
+                tooltipContent = icon.parentElement.querySelector('.dropdown-content');
+            }
+            
+            // If still not found, look for it in the parent's parent
+            if (!tooltipContent) {
+                tooltipContent = icon.parentElement.parentElement.querySelector('.dropdown-content');
+            }
 
-            if (isExpanded) {
-                tooltipContent.style.display = 'none';
-                icon.setAttribute('aria-expanded', 'false');
-            } else {
-                tooltipContent.style.display = 'block';
-                icon.setAttribute('aria-expanded', 'true');
+            if (tooltipContent) {
+                const isExpanded = icon.getAttribute('aria-expanded') === 'true';
+                
+                // Hide any other visible tooltips first
+                document.querySelectorAll('.dropdown-content').forEach(content => {
+                    if (content !== tooltipContent) {
+                        content.style.display = 'none';
+                        const otherIcon = content.parentElement.querySelector('.tooltip-icon');
+                        if (otherIcon) {
+                            otherIcon.setAttribute('aria-expanded', 'false');
+                        }
+                    }
+                });
+
+                if (isExpanded) {
+                    tooltipContent.style.display = 'none';
+                    icon.setAttribute('aria-expanded', 'false');
+                } else {
+                    tooltipContent.style.display = 'block';
+                    icon.setAttribute('aria-expanded', 'true');
+                }
             }
         }
     });
@@ -211,84 +236,82 @@ document.querySelectorAll('a.btn-primary').forEach(button => {
 document.addEventListener("DOMContentLoaded", () => {
     console.log("settings.js is running");
 
+    // Only try to set up the restart button if it exists
     const restartButton = document.getElementById("restart-settings-button");
-    const statusDiv = document.getElementById("restart-settings-status");
+    if (restartButton) {
+        restartButton.addEventListener("click", (event) => {
+            event.preventDefault();
+            console.log("Restart Settings button clicked");
 
-    if (!restartButton) {
-        console.error("Restart Settings button not found!");
-        return;
+            // Disable the button to prevent double-clicks
+            restartButton.disabled = true;
+            console.log("Restart Settings button disabled.");
+
+            const statusDiv = document.getElementById("restart-settings-status");
+
+            // Update the status message if the div exists
+            if (statusDiv) {
+                statusDiv.textContent = "Restarting Settings Service...";
+                console.log("Status updated to 'Restarting Settings Service...'");
+            }
+
+            // Send a request to restart the service
+            fetch('/restart_settings')
+                .then((response) => {
+                    if (response.ok) {
+                        console.log("Settings service restarting...");
+
+                        if (statusDiv) {
+                            // Start a countdown before showing the refresh button
+                            let countdown = 3; // Seconds
+                            const countdownInterval = setInterval(() => {
+                                statusDiv.textContent = `Please wait ${countdown} seconds before refreshing...`;
+                                console.log(`Countdown: ${countdown}`);
+                                countdown--;
+
+                                if (countdown < 0) {
+                                    clearInterval(countdownInterval);
+
+                                    // Clear the status message
+                                    statusDiv.textContent = "";
+
+                                    // Add the "Refresh Page" button
+                                    const refreshButton = document.createElement("button");
+                                    refreshButton.textContent = "Refresh Page";
+                                    refreshButton.classList.add("btn", "btn-secondary", "mt-3");
+                                    refreshButton.addEventListener("click", () => {
+                                        console.log("Refreshing the page...");
+                                        location.reload();
+                                    });
+
+                                    // Append the button
+                                    statusDiv.appendChild(refreshButton);
+                                    console.log("Refresh button added.");
+                                }
+                            }, 1000); // 1 second interval
+                        }
+                    } else {
+                        console.error("Failed to restart settings service.");
+                        if (statusDiv) {
+                            statusDiv.textContent = "Failed to restart settings service.";
+                        }
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error restarting settings service:", error);
+                    if (statusDiv) {
+                        statusDiv.textContent = "An error occurred while restarting the service.";
+                    }
+                })
+                .finally(() => {
+                    // Re-enable the restart button after 10 seconds
+                    setTimeout(() => {
+                        restartButton.disabled = false;
+                        console.log("Restart Settings button re-enabled.");
+                    }, 10000); // Adjust the delay as needed
+                });
+        });
     }
-
-    restartButton.addEventListener("click", (event) => {
-        event.preventDefault();
-        console.log("Restart Settings button clicked");
-
-        // Disable the button to prevent double-clicks
-        restartButton.disabled = true;
-        console.log("Restart Settings button disabled.");
-
-        // Update the status message
-        if (statusDiv) {
-            statusDiv.textContent = "Restarting Settings Service...";
-            console.log("Status updated to 'Restarting Settings Service...'");
-        }
-
-        // Send a request to restart the service
-        fetch('/restart_settings')
-            .then((response) => {
-                if (response.ok) {
-                    console.log("Settings service restarting...");
-
-                    if (statusDiv) {
-                        // Start a countdown before showing the refresh button
-                        let countdown = 3; // Seconds
-                        const countdownInterval = setInterval(() => {
-                            statusDiv.textContent = `Please wait ${countdown} seconds before refreshing...`;
-                            console.log(`Countdown: ${countdown}`);
-                            countdown--;
-
-                            if (countdown < 0) {
-                                clearInterval(countdownInterval);
-
-                                // Clear the status message
-                                statusDiv.textContent = "";
-
-                                // Add the "Refresh Page" button
-                                const refreshButton = document.createElement("button");
-                                refreshButton.textContent = "Refresh Page";
-                                refreshButton.classList.add("btn", "btn-secondary", "mt-3");
-                                refreshButton.addEventListener("click", () => {
-                                    console.log("Refreshing the page...");
-                                    location.reload();
-                                });
-
-                                // Append the button
-                                statusDiv.appendChild(refreshButton);
-                                console.log("Refresh button added.");
-                            }
-                        }, 1000); // 1 second interval
-                    }
-                } else {
-                    console.error("Failed to restart settings service.");
-                    if (statusDiv) {
-                        statusDiv.textContent = "Failed to restart settings service.";
-                    }
-                }
-            })
-            .catch((error) => {
-                console.error("Error restarting settings service:", error);
-                if (statusDiv) {
-                    statusDiv.textContent = "An error occurred while restarting the service.";
-                }
-            })
-            .finally(() => {
-                // Re-enable the restart button after 10 seconds
-                setTimeout(() => {
-                    restartButton.disabled = false;
-                    console.log("Restart Settings button re-enabled.");
-                }, 10000); // Adjust the delay as needed
-            });
-    });
 });
 
 document.getElementById('check-updates-button').addEventListener('click', function (event) {
@@ -404,11 +427,55 @@ async function updateServiceStatus(serviceName) {
     }
 }
 
+// Function to format date as MM-DD-YYYY HH:MM:SS
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${month}-${day}-${year} ${hours}:${minutes}:${seconds}`;
+}
+
+// Function to update weather status
+function updateWeatherStatus() {
+    fetch('/weather-status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const statusContainer = document.querySelector('.weather-status .service-status');
+                const statusDot = statusContainer.querySelector('.status-dot');
+                const statusText = statusContainer.querySelector('.status-text');
+                
+                const lastUpdated = new Date(data.last_updated);
+                const now = new Date();
+                const minutesSinceUpdate = Math.floor((now - lastUpdated) / (1000 * 60));
+                
+                // Get the update interval from the input field (in minutes)
+                const updateIntervalInput = document.querySelector('input[name="weather_update_interval"]');
+                const expectedInterval = updateIntervalInput ? parseInt(updateIntervalInput.value) : 5;
+                
+                // Update status dot and text - turn red after 2x the expected interval
+                if (minutesSinceUpdate > (expectedInterval * 2)) {
+                    statusDot.classList.add('stale');
+                } else {
+                    statusDot.classList.remove('stale');
+                }
+                
+                statusText.textContent = `WX Last Updated: ${formatDate(data.last_updated)}`;
+            }
+        })
+        .catch(error => console.error('Error updating weather status:', error));
+}
+
 // Function to update all service statuses
 function updateAllServiceStatuses() {
     ['metar', 'settings', 'scheduler'].forEach(service => {
         updateServiceStatus(service);
     });
+    updateWeatherStatus();  // Add weather status update
 }
 
 // Update statuses on page load and periodically
@@ -466,4 +533,175 @@ function fetchServiceLogs(serviceName) {
             }
         })
         .catch(error => console.error('Error fetching logs:', error));
+}
+
+// Function to update backup list
+function updateBackupList() {
+    const backupSelect = document.getElementById('backup-select');
+    const restoreButton = document.getElementById('restore-button');
+    const restoreStatus = document.getElementById('restore-status');
+    
+    fetch('/list_backups')
+        .then(response => response.json())
+        .then(data => {
+            backupSelect.innerHTML = '<option value="">Select a backup...</option>';
+            if (data.backups && data.backups.length > 0) {
+                data.backups.forEach(backup => {
+                    const option = document.createElement('option');
+                    option.value = backup.name;
+                    option.textContent = backup.timestamp;
+                    backupSelect.appendChild(option);
+                });
+                backupSelect.disabled = false;
+            } else {
+                backupSelect.innerHTML = '<option value="">No backups available</option>';
+                backupSelect.disabled = true;
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching backups:', error);
+            backupSelect.innerHTML = '<option value="">Error loading backups</option>';
+            backupSelect.disabled = true;
+        });
+}
+
+// Function to restore selected backup
+function restoreSelectedBackup() {
+    const backupSelect = document.getElementById('backup-select');
+    const backupName = backupSelect.value;
+    
+    if (!backupName) {
+        return;
+    }
+    
+    if (!confirm('Are you sure you want to restore this backup? This will restart all services.')) {
+        return;
+    }
+    
+    const restoreStatus = document.getElementById('restore-status');
+    const restoreButton = document.getElementById('restore-button');
+    
+    restoreStatus.textContent = 'Restoring backup...';
+    restoreButton.disabled = true;
+    backupSelect.disabled = true;
+    
+    fetch(`/restore_backup/${backupName}`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            restoreStatus.textContent = 'Backup restored successfully. Page will reload in 5 seconds...';
+            setTimeout(() => {
+                window.location.reload();
+            }, 5000);
+        } else if (data.error) {
+            restoreStatus.textContent = 'Error: ' + data.error;
+            restoreButton.disabled = false;
+            backupSelect.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error restoring backup:', error);
+        restoreStatus.textContent = 'Error restoring backup';
+        restoreButton.disabled = false;
+        backupSelect.disabled = false;
+    });
+}
+
+// Add event listener for backup selection change
+document.addEventListener('DOMContentLoaded', () => {
+    const backupSelect = document.getElementById('backup-select');
+    const restoreButton = document.getElementById('restore-button');
+    
+    backupSelect.addEventListener('change', () => {
+        restoreButton.disabled = !backupSelect.value;
+    });
+    
+    updateBackupList();
+});
+
+// Function to populate timezone dropdown
+function populateTimezones() {
+    const select = document.getElementById('timezone-select');
+    const status = document.getElementById('timezone-status');
+    
+    fetch('/get_timezones')
+        .then(response => response.json())
+        .then(data => {
+            if (data.timezones) {
+                select.innerHTML = ''; // Clear loading option
+                data.timezones.forEach(tz => {
+                    const option = document.createElement('option');
+                    option.value = tz;
+                    option.textContent = tz;
+                    if (tz === data.current) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading timezones:', error);
+            status.textContent = 'Error loading timezones';
+        });
+}
+
+// Function to update timezone
+function updateTimezone(timezone) {
+    const status = document.getElementById('timezone-status');
+    status.textContent = 'Updating timezone...';
+    
+    fetch('/set_timezone', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ timezone: timezone })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            status.textContent = data.message;
+            showToast('Timezone updated successfully', 'success');
+        } else {
+            status.textContent = data.error || 'Failed to update timezone';
+            showToast('Failed to update timezone', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating timezone:', error);
+        status.textContent = 'Error updating timezone';
+        showToast('Error updating timezone', 'danger');
+    });
+}
+
+// Add event listeners when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    // Existing event listeners...
+    
+    // Populate timezone dropdown
+    populateTimezones();
+    
+    // Add change event listener for timezone select
+    const timezoneSelect = document.getElementById('timezone-select');
+    if (timezoneSelect) {
+        timezoneSelect.addEventListener('change', (event) => {
+            if (event.target.value) {
+                if (confirm('Are you sure you want to change the timezone? This will restart the scheduler service.')) {
+                    updateTimezone(event.target.value);
+                } else {
+                    // Reset to previous selection
+                    populateTimezones();
+                }
+            }
+        });
+    }
+});
+
+function confirmSettingsStop() {
+    if (confirm("Warning: Stopping the settings service will take this settings website offline.\n\nYou will need to power cycle your METARMap to restore access to the settings website.\n\nAre you sure you want to stop the settings service?")) {
+        controlService('settings', 'stop');
+    }
 }
