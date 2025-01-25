@@ -243,21 +243,6 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target"
 
-WEATHER_SERVICE="[Unit]
-Description=Run Weather Service
-After=network.target
-
-[Service]
-WorkingDirectory=/home/pi/
-ExecStart=sudo /home/pi/metar/bin/python3 /home/pi/weather.py
-Restart=10
-User=root
-StandardOutput=append:/var/log/weather.log
-StandardError=append:/var/log/weather.log
-
-[Install]
-WantedBy=multi-user.target"
-
 SETTINGS_SERVICE="[Unit]
 Description=Run Flask App for Settings
 After=network.target
@@ -333,19 +318,15 @@ setup_aliases() {
     local ALIASES="alias blank='sudo /home/pi/metar/bin/python3 blank.py'
 alias metar='sudo /home/pi/metar/bin/python3 '
 alias startmetar='sudo systemctl start metar.service'
-alias startweather='sudo systemctl start weather.service'
 alias startscheduler='sudo systemctl start scheduler.service'
 alias startsettings='sudo systemctl start settings.service'
 alias stopmetar='sudo systemctl stop metar.service'
-alias stopweather='sudo systemctl stop weather.service'
 alias stopsettings='sudo systemctl stop settings.service'
 alias stopscheduler='sudo systemctl stop scheduler.service'
 alias restartmetar='sudo systemctl restart metar.service'
-alias restartweather='sudo systemctl restart weather.service'
 alias restartsettings='sudo systemctl restart settings.service'
 alias restartscheduler='sudo systemctl restart scheduler.service'
 alias metarstatus='sudo systemctl status metar.service'
-alias weatherstatus='sudo systemctl status weather.service'
 alias settingsstatus='sudo systemctl status settings.service'
 alias schedulerstatus='sudo systemctl status scheduler.service'"
 
@@ -364,7 +345,6 @@ alias schedulerstatus='sudo systemctl status scheduler.service'"
 echo -e "\n${GREEN}=== Service Installation ===${NC}"
 echo "This will install the following services:"
 echo "- METAR service (LED control)"
-echo "- Weather service (weather data fetching)"
 echo "- Settings service (web interface)"
 echo "- Scheduler service (automation)"
 
@@ -374,7 +354,6 @@ case ${SERVICES_CHOICE,,} in
     [Yy]*|"")
         # Create service files
         create_service_file "metar.service" "$METAR_SERVICE"
-        create_service_file "weather.service" "$WEATHER_SERVICE"
         create_service_file "settings.service" "$SETTINGS_SERVICE"
         create_service_file "scheduler.service" "$SCHEDULER_SERVICE"
 

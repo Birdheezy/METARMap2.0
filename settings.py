@@ -14,6 +14,8 @@ import logging
 import json
 import signal
 import sys
+import schedule
+import weather  # Import weather module directly
 
 
 app = Flask(__name__)
@@ -76,8 +78,22 @@ def turn_off_leds():
     
 @app.route('/update-weather', methods=['POST'])
 def refresh_weather():
-    subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/weather.py'], check=True)
-    return jsonify({"status": "Weather updated successfully"}), 200
+    try:
+        # Call weather module functions directly
+        metar_data = weather.fetch_metar()
+        if metar_data:
+            parsed_data = weather.parse_weather(metar_data)
+            if parsed_data:
+                # Save the weather data
+                with open('/home/pi/weather.json', 'w') as json_file:
+                    json.dump(parsed_data, json_file, indent=4)
+                return jsonify({"status": "Weather updated successfully"}), 200
+            else:
+                return jsonify({"status": "Failed to parse weather data"}), 500
+        else:
+            return jsonify({"status": "Failed to fetch weather data"}), 500
+    except Exception as e:
+        return jsonify({"status": f"Error updating weather: {str(e)}"}), 500
 
 @app.route('/leds/status', methods=['GET'])
 def get_led_status():
@@ -427,9 +443,20 @@ def stop_and_blank():
 @app.route('/update-weather')
 def update_weather():
     try:
-        subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/weather.py'], check=True)
-        flash('Weather Has Been Updated!', 'success')
-    except subprocess.CalledProcessError as e:
+        # Call weather module functions directly
+        metar_data = weather.fetch_metar()
+        if metar_data:
+            parsed_data = weather.parse_weather(metar_data)
+            if parsed_data:
+                # Save the weather data
+                with open('/home/pi/weather.json', 'w') as json_file:
+                    json.dump(parsed_data, json_file, indent=4)
+                flash('Weather Has Been Updated!', 'success')
+            else:
+                flash('Failed to parse weather data', 'danger')
+        else:
+            flash('Failed to fetch weather data', 'danger')
+    except Exception as e:
         flash(f'Weather Update Has Failed... {str(e)}', 'danger')
     return redirect(url_for('edit_settings'))
 

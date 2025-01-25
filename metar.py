@@ -9,16 +9,24 @@ from config import *
 import weather
 import datetime
 import subprocess
-import logging  # Add logging import
+import logging
 
-# Configure logging
+# Configure logging with more detailed format for CLI mode
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(message)s'  # Let journald handle timestamp in service mode
 )
 
+logger = logging.getLogger(__name__)
+
+# Log startup with basic system info
+logger.info("METAR service starting up...")
+logger.info(f"Python version: {sys.version.split()[0]}")
+logger.info(f"Board: {board.board_id}")
+logger.info(f"Pixel count: {NUM_PIXELS}")
+logger.info(f"Daytime dimming: {'enabled' if DAYTIME_DIMMING else 'disabled'}")
+
 current_time = datetime.datetime.now().time()
-logging.info("METAR service starting up...")
 
 # Determine brightness level based on the time of day
 def get_current_brightness():
@@ -38,20 +46,24 @@ def update_led_brightness(pixels):
     if pixels.brightness != new_brightness:
         pixels.brightness = new_brightness
         pixels.show()  # Update LEDs to reflect the brightness change
-        print(f"Brightness updated to {new_brightness} based on time.")
+        logger.info(f"Brightness updated to {new_brightness:.2f}")
 
-
-pixel_pin = f"D{PIXEL_PIN}"  # Create "D18"
-pixels = neopixel.NeoPixel(getattr(board, pixel_pin), NUM_PIXELS, brightness=BRIGHTNESS, auto_write=False)
-
+try:
+    pixel_pin = f"D{PIXEL_PIN}"  # Create "D18"
+    pixels = neopixel.NeoPixel(getattr(board, pixel_pin), NUM_PIXELS, brightness=BRIGHTNESS, auto_write=False)
+    logger.info(f"LED strip initialized on pin D{PIXEL_PIN}")
+except Exception as e:
+    logger.error(f"Failed to initialize LED strip: {e}")
+    sys.exit(1)
 
 if DAYTIME_DIMMING:
-    print(f"Daytime dimming is enabled. Current brightness level: {get_current_brightness()}")
+    logger.info(f"Daytime dimming is enabled. Current brightness level: {get_current_brightness()}")
 else:
-    print(f"Daytime dimming is disabled. Using full brightness: {get_current_brightness()}")
+    logger.info(f"Daytime dimming is disabled. Using full brightness: {get_current_brightness()}")
 
 def cleanup(signal, frame):
     """Turn off all LEDs and exit."""
+    logger.info("Received shutdown signal, cleaning up...")
     pixels.fill((0, 0, 0))  # Turn off all LEDs
     pixels.show()
     sys.exit(0)
@@ -60,27 +72,26 @@ def cleanup(signal, frame):
 signal.signal(signal.SIGINT, cleanup)
 
 def check_lights_off():
-    """Check if the current time is within the lights off period and run blank.py if needed."""
-    current_time = datetime.datetime.now().time()  # Get the current time
+    """Check if the current time is within the lights off period."""
+    current_time = datetime.datetime.now().time()
 
-    # Check if the lights off feature is enabled
     if ENABLE_LIGHTS_OFF:
-        # Case 1: LIGHTS_OFF_TIME is later in the day than LIGHTS_ON_TIME (e.g., 19:05 to 17:05 overnight)
+        # Case 1: LIGHTS_OFF_TIME is later than LIGHTS_ON_TIME
         if LIGHTS_OFF_TIME > LIGHTS_ON_TIME:
             if current_time >= LIGHTS_OFF_TIME or current_time < LIGHTS_ON_TIME:
-                # Current time is either later than LIGHTS_OFF_TIME or earlier than LIGHTS_ON_TIME
-                subprocess.run(["sudo", "/home/pi/metar/bin/python3", "/home/pi/blank.py"])
-                print("Lights turned off due to time restrictions.")
-                return True  # Indicate that lights are off
+                logger.info("Lights turned off - outside operational hours")
+                pixels.fill((0, 0, 0))
+                pixels.show()
+                return True
 
-        # Case 2: LIGHTS_OFF_TIME is earlier or equal to LIGHTS_ON_TIME (e.g., 06:00 to 19:00)
+        # Case 2: LIGHTS_OFF_TIME is earlier or equal to LIGHTS_ON_TIME
         elif LIGHTS_OFF_TIME <= current_time < LIGHTS_ON_TIME:
-            # Current time is within the regular lights off time period
-            subprocess.run(["sudo", "/home/pi/metar/bin/python3", "/home/pi/blank.py"])
-            print("Lights turned off due to time restrictions.")
-            return True  # Indicate that lights are off
+            logger.info("Lights turned off - outside operational hours")
+            pixels.fill((0, 0, 0))
+            pixels.show()
+            return True
 
-    return False  # Indicate that lights should remain on
+    return False
 
 def calculate_dimmed_color(base_color, dim_brightness):
     """Calculate the dimmed color by applying the brightness factor."""
@@ -214,54 +225,59 @@ def update_leds(weather_data):
     """Update LEDs based on flt_cat from weather data."""
     
     if check_lights_off():
-        # If lights are off, skip updating the LEDs
-        pixels.fill((0,0,0))
-        pixels.show()
-        logging.info("Lights are off due to schedule")
         return
         
     # Get list of airports, including "SKIP" entries
     airport_list = weather.get_airports_with_skip(AIRPORTS_FILE)
 
-    # Detect windy airports
+    # Detect special conditions
     windy_airports = weather.get_windy_airports(weather_data)
-    if windy_airports:
-        logging.info(f"Detected windy conditions at: {', '.join(windy_airports)}")
-
-    # Detect lightning airports
     lightning_airports = weather.get_lightning_airports(weather_data)
-    if lightning_airports:
-        logging.info(f"Detected lightning at: {', '.join(lightning_airports)}")
-
     snowy_airports = weather.get_snowy_airports(weather_data)
+    missing_airports = weather.get_missing_airports(weather_data)
+
+    if windy_airports:
+        logger.info(f"Detected windy conditions at: {', '.join(windy_airports)}")
+    if lightning_airports:
+        logger.info(f"Detected lightning at: {', '.join(lightning_airports)}")
     if snowy_airports:
-        logging.info(f"Detected snow at: {', '.join(snowy_airports)}")
+        logger.info(f"Detected snow at: {', '.join(snowy_airports)}")
 
-    # Print header
-    print(f"{'Airport':<10} {'Flight Cat':<12} {'Wind Speed':<12} {'Wind Gust':<12} {'Windy':<6} {'Lightning':<10} {'Snowy':<6} {'Brightness':<10}")
-    print("-" * 80)  # Separator line for better readability
+    # Only print status information in CLI mode
+    if __name__ == "__main__":
+        logger.info("\nAirport Status:")
+        logger.info(f"{'Airport':<10} {'Flight Cat':<12} {'Wind Speed':<12} {'Wind Gust':<12} {'Windy':<6} {'Lightning':<10} {'Snowy':<6} {'Brightness':<10}")
+        logger.info("-" * 80)
 
-    # Update LEDs based on flt_cat and print details
-    for index, airport_code in enumerate(airport_list):
-        if airport_code == "SKIP":
-            pixels[index] = (0, 0, 0)  # Turn off LED if airport is SKIP
-        else:
-            # Get flight category, wind data, and lightning status for the airport
-            flt_cat, wind_speed, wind_gust, lightning = weather.get_airport_weather(airport_code, weather_data)
-            
-            # Check if the airport is in the windy_airports and lightning_airports dictionaries
-            is_windy = "Yes" if airport_code in windy_airports else "No"
-            is_lightning = "Yes" if airport_code in lightning_airports else "No"  # Based on lightning detection
-            is_snowy = "Yes" if airport_code in snowy_airports else "No"
+        for index, airport_code in enumerate(airport_list):
+            if airport_code != "SKIP":
+                flt_cat, wind_speed, wind_gust, lightning = weather.get_airport_weather(airport_code, weather_data)
+                is_windy = airport_code in windy_airports
+                is_snowy = airport_code in snowy_airports
+                logger.info(f"{airport_code:<10} {flt_cat:<12} {wind_speed:<2} kt {' '*8} {wind_gust:<2} kt {' '*8} {'Yes' if is_windy else 'No':<6} {'Yes' if lightning else 'No':<10} {'Yes' if is_snowy else 'No':<6} {get_current_brightness():<10}")
 
-            # Print each airport, flight category, wind speed, wind gust, whether it is windy, and lightning
-            print(f"{airport_code:<10} {flt_cat:<12} {str(wind_speed) + ' kt':<12} {str(wind_gust) + ' kt':<12} {is_windy:<6} {is_lightning:<10} {is_snowy:<8} {get_current_brightness():<10}")
+    # Update LEDs based on flt_cat
+    try:
+        for index, airport_code in enumerate(airport_list):
+            if airport_code == "SKIP":
+                pixels[index] = (0, 0, 0)
+            else:
+                flt_cat, wind_speed, wind_gust, lightning = weather.get_airport_weather(airport_code, weather_data)
+                if flt_cat == 'VFR':
+                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in VFR_COLOR)
+                elif flt_cat == 'MVFR':
+                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in MVFR_COLOR)
+                elif flt_cat == 'IFR':
+                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in IFR_COLOR)
+                elif flt_cat == 'LIFR':
+                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in LIFR_COLOR)
+                else:
+                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in MISSING_COLOR)
+                    logger.warning(f"Missing flight category data for {airport_code}")
 
-            # Update LED colors based on flt_cat, applying the BRIGHTNESS factor
-            base_color = weather.get_flt_cat_color(flt_cat)
-            pixels[index] = tuple(int(c * BRIGHTNESS) for c in base_color)
-
-    pixels.show()
+        pixels.show()
+    except Exception as e:
+        logger.error(f"Error updating LEDs: {e}")
 
 
 # Main loop
@@ -273,34 +289,33 @@ while True:
         if not lights_off:
             # Read the weather data and update the LEDs if lights are on
             weather_data = weather.read_weather_data()
+            if weather_data is None:
+                logger.error("Failed to read weather data")
+                time.sleep(5)  # Wait before retry
+                continue
+
             update_leds(weather_data)
             update_led_brightness(pixels)
+            
             if LEGEND:
                 update_legend(pixels)
+                
             time.sleep(ANIMATION_PAUSE)
 
-            # Check for windy airports and animate if any, if WIND_ANIMATION is True
-            if WIND_ANIMATION:
-                windy_airports = weather.get_windy_airports(weather_data)
-                if windy_airports:
-                    animate_windy_airports(windy_airports, weather_data)
+            # Run animations if enabled and conditions are met
+            if WIND_ANIMATION and weather.get_windy_airports(weather_data):
+                animate_windy_airports(weather.get_windy_airports(weather_data), weather_data)
 
-            # Check for lightning airports and animate if any, if LIGHTENING_ANIMATION is True
-            if LIGHTENING_ANIMATION:
-                lightning_airports = weather.get_lightning_airports(weather_data)
-                if lightning_airports:
-                    animate_lightning_airports(lightning_airports, weather_data)
+            if LIGHTENING_ANIMATION and weather.get_lightning_airports(weather_data):
+                animate_lightning_airports(weather.get_lightning_airports(weather_data), weather_data)
 
-            # Check for snowy airports and animate if any, if SNOWY_ANIMATION is True
-            if SNOWY_ANIMATION:
-                snowy_airports = weather.get_snowy_airports(weather_data)
-                if snowy_airports:
-                    animate_snowy_airports(snowy_airports, weather_data)
+            if SNOWY_ANIMATION and weather.get_snowy_airports(weather_data):
+                animate_snowy_airports(weather.get_snowy_airports(weather_data), weather_data)
 
         else:
             # If lights should be off, ensure LEDs are off
             pixels.fill((0, 0, 0))
             pixels.show()
     except Exception as e:
-        logging.error(f"Error in main loop: {str(e)}")
+        logger.error(f"Error in main loop: {str(e)}")
         time.sleep(5)  # Wait before retrying

@@ -3,7 +3,14 @@ import logging
 from config import *
 import json
 import re
+import datetime
+import os
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s'  # Only include the message, let journald handle the timestamp
+)
 
 def get_valid_airports(file_path):
     """Read airport IDs from a file and return a list of valid airport codes."""
@@ -24,26 +31,23 @@ def get_airports_with_skip(file_path):
         return []
 
 def fetch_metar():
+    """Fetch METAR data from aviation weather API."""
     airport_ids = get_valid_airports(AIRPORTS_FILE)
     if not airport_ids:
-        logging.warning("No valid airport IDs found.")
         return None
     
     base_url = "https://aviationweather.gov/api/data/metar"
     params = {
-        'ids': ','.join(airport_ids),  # Comma-separated list of airport IDs
-        'format': 'geojson'  # Request GeoJSON format
+        'ids': ','.join(airport_ids),
+        'format': 'geojson'
     }
 
     try:
         response = requests.get(base_url, params=params)
-        response.raise_for_status()  # Raise an error for bad responses
-        # Print the fully constructed URL that was requested
-        print(f"Encoded URL: {response.url}")
-        logging.info("Fetched METAR data for airports: %s", ','.join(airport_ids))
-        return response.json()  # Return the response as JSON
+        response.raise_for_status()
+        return response.json()
     except requests.exceptions.RequestException as e:
-        logging.error("Failed to fetch METAR data: %s", e)
+        logging.error(f"Failed to fetch METAR data: {e}")
         return None
 
 def read_weather_data():
@@ -175,21 +179,69 @@ def parse_weather(metar_data):
 
     return parsed_data
 
+def get_missing_airports(weather_data):
+    """Return a list of airports with missing weather data."""
+    missing_airports = []
+    for airport_code, weather_info in weather_data.items():
+        if weather_info.get('flt_cat', 'MISSING') == 'MISSING':
+            missing_airports.append(airport_code)
+    return missing_airports
+
 def main():
-    # Fetch METAR data
+    """Main function to fetch and process weather data."""
     metar_data = fetch_metar()
-    if metar_data:
-        # Parse the fetched data
-        parsed_data = parse_weather(metar_data)
-        if parsed_data:
-            # Save parsed data to weather.json
-            with open('weather.json', 'w') as json_file:
-                json.dump(parsed_data, json_file, indent=4)
-            logging.info("Parsed weather data saved to weather.json")
-        else:
-            logging.error("Parsed data is empty.")
-    else:
-        logging.error("Failed to fetch METAR data.")
+    if not metar_data:
+        return
+        
+    parsed_data = parse_weather(metar_data)
+    if not parsed_data:
+        return
+        
+    # Check if data has changed
+    try:
+        with open('weather.json', 'r') as json_file:
+            old_data = json.load(json_file)
+            if old_data == parsed_data:
+                return  # No change in weather data
+    except:
+        pass  # Continue if weather.json doesn't exist
+        
+    # Save new data
+    with open('weather.json', 'w') as json_file:
+        json.dump(parsed_data, json_file, indent=4)
+    
+    # Only log status table if called by scheduler (check parent process)
+    ppid = os.getppid()
+    try:
+        with open(f'/proc/{ppid}/cmdline', 'r') as f:
+            parent_cmd = f.read()
+            if 'scheduler.py' in parent_cmd:
+                # Log weather update with essential information
+                current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                logging.info(f"\nWeather Update at {current_time}")
+                
+                # Get all condition states
+                airport_list = get_airports_with_skip(AIRPORTS_FILE)
+                
+                # Print status table
+                logging.info("\nAirport Status:")
+                logging.info(f"{'Airport':<10} {'Flight Cat':<12} {'Wind Speed':<12} {'Wind Gust':<12} {'Windy':<6} {'Lightning':<10} {'Snowy':<6}")
+                logging.info("-" * 80)
+                
+                # Log status for each airport
+                windy_airports = get_windy_airports(parsed_data)
+                lightning_airports = get_lightning_airports(parsed_data)
+                snowy_airports = get_snowy_airports(parsed_data)
+                
+                for airport_code in airport_list:
+                    if airport_code != "SKIP":
+                        flt_cat, wind_speed, wind_gust, lightning = get_airport_weather(airport_code, parsed_data)
+                        is_windy = airport_code in windy_airports
+                        is_snowy = airport_code in snowy_airports
+                        logging.info(f"{airport_code:<10} {flt_cat:<12} {wind_speed:<2} kt {' '*8} {wind_gust:<2} kt {' '*8} {'Yes' if is_windy else 'No':<6} {'Yes' if lightning else 'No':<10} {'Yes' if is_snowy else 'No':<6}")
+    except:
+        # If we can't check parent process, assume it's not from scheduler
+        pass
 
 if __name__ == "__main__":
     main()
