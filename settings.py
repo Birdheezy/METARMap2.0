@@ -15,7 +15,7 @@ import json
 import signal
 import sys
 import schedule
-import weather  # Import weather module directly
+import weather
 
 
 app = Flask(__name__)

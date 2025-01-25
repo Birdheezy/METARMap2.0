@@ -445,25 +445,26 @@ function updateWeatherStatus() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                const weatherStatusSpan = document.querySelector('span[style*="color: grey"]');
-                if (weatherStatusSpan) {
-                    const lastUpdated = new Date(data.last_updated);
-                    const now = new Date();
-                    const minutesSinceUpdate = Math.floor((now - lastUpdated) / (1000 * 60));
-                    
-                    // Get the update interval from the input field (in minutes)
-                    const updateIntervalInput = document.querySelector('input[name="weather_update_interval"]');
-                    const expectedInterval = updateIntervalInput ? parseInt(updateIntervalInput.value) : 5;
-                    
-                    // For testing: trigger warning after 1x interval instead of 2x
-                    if (minutesSinceUpdate > expectedInterval) {
-                        weatherStatusSpan.style.color = '#dc3545'; // Bootstrap danger red
-                        weatherStatusSpan.textContent = `WX Last Updated: ${formatDate(data.last_updated)} (Warning: Data may be stale)`;
-                    } else {
-                        weatherStatusSpan.style.color = 'grey';
-                        weatherStatusSpan.textContent = `WX Last Updated: ${formatDate(data.last_updated)}`;
-                    }
+                const statusContainer = document.querySelector('.weather-status .service-status');
+                const statusDot = statusContainer.querySelector('.status-dot');
+                const statusText = statusContainer.querySelector('.status-text');
+                
+                const lastUpdated = new Date(data.last_updated);
+                const now = new Date();
+                const minutesSinceUpdate = Math.floor((now - lastUpdated) / (1000 * 60));
+                
+                // Get the update interval from the input field (in minutes)
+                const updateIntervalInput = document.querySelector('input[name="weather_update_interval"]');
+                const expectedInterval = updateIntervalInput ? parseInt(updateIntervalInput.value) : 5;
+                
+                // Update status dot and text - turn red after 2x the expected interval
+                if (minutesSinceUpdate > (expectedInterval * 2)) {
+                    statusDot.classList.add('stale');
+                } else {
+                    statusDot.classList.remove('stale');
                 }
+                
+                statusText.textContent = `WX Last Updated: ${formatDate(data.last_updated)}`;
             }
         })
         .catch(error => console.error('Error updating weather status:', error));
