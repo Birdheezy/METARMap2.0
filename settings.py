@@ -85,7 +85,8 @@ def refresh_weather():
             parsed_data = weather.parse_weather(metar_data)
             if parsed_data:
                 # Save the weather data
-                with open('/home/pi/weather.json', 'w') as json_file:
+                weather_file = os.path.join(os.getcwd(), 'weather.json')
+                with open(weather_file, 'w') as json_file:
                     json.dump(parsed_data, json_file, indent=4)
                 return jsonify({"status": "Weather updated successfully"}), 200
             else:
@@ -534,10 +535,10 @@ def connect_to_network():
 def check_for_updates():
     try:
         # Fetch the latest information from the remote repository
-        subprocess.run(['git', 'fetch'], cwd='/home/pi', check=True)
+        subprocess.run(['git', 'fetch'], cwd=os.getcwd(), check=True)
 
         # Check if there are differences between the local and remote branches
-        result = subprocess.run(['git', 'status', '-uno'], cwd='/home/pi', capture_output=True, text=True)
+        result = subprocess.run(['git', 'status', '-uno'], cwd=os.getcwd(), capture_output=True, text=True)
 
         # Check for indicators that the branch is behind
         if ("Your branch is behind" in result.stdout or
@@ -552,40 +553,56 @@ def check_for_updates():
 @app.route('/apply_updates', methods=['POST'])
 def apply_updates():
     try:
-        # Define paths
-        project_dir = '/home/pi'
+        # Define paths using current working directory
+        project_dir = os.getcwd()
         backup_dir = os.path.join(project_dir, 'BACKUP')
         timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         backup_path = os.path.join(backup_dir, f'backup_{timestamp}')
         
-        # Create backup paths
-        backup_config_path = os.path.join(backup_path, 'config.py')
-        current_config_path = os.path.join(project_dir, 'config.py')
+        # Define important user files
+        airports_path = os.path.join(project_dir, 'airports.txt')
+        config_path = os.path.join(project_dir, 'config.py')
+        temp_airports_path = os.path.join(project_dir, 'airports.txt.tmp')
+        temp_config_path = os.path.join(project_dir, 'config.py.tmp')
         
-        # Create backup
+        # Create backup directory
         os.makedirs(backup_path, exist_ok=True)
+        
+        # Backup and save user files
+        user_files_exist = False
+        if os.path.exists(airports_path):
+            shutil.copy2(airports_path, temp_airports_path)
+            user_files_exist = True
+        if os.path.exists(config_path):
+            shutil.copy2(config_path, temp_config_path)
+            user_files_exist = True
+        
+        # Get list of files to be deleted by the update
+        deleted_files = subprocess.check_output(
+            ['git', 'ls-files', '--deleted'],
+            cwd=project_dir, text=True
+        ).splitlines()
         
         # Backup tracked files
         tracked_files = get_git_tracked_files(project_dir)
         for file_path in tracked_files:
-            if file_path != 'airports.txt':
+            if file_path not in ['airports.txt', 'config.py'] and file_path not in deleted_files:
                 source_path = os.path.join(project_dir, file_path)
                 dest_path = os.path.join(backup_path, file_path)
                 os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-                shutil.copy2(source_path, dest_path)
+                if os.path.exists(source_path):
+                    shutil.copy2(source_path, dest_path)
 
         # Limit backups to 5
         existing_backups = sorted(
-            [os.path.join(backup_dir, d) for d in os.listdir(backup_dir)],
+            [os.path.join(backup_dir, d) for d in os.listdir(backup_dir) if os.path.isdir(os.path.join(backup_dir, d))],
             key=os.path.getmtime
         )
         while len(existing_backups) > 5:
             shutil.rmtree(existing_backups.pop(0))
 
-        # Save airports.txt
-        airports_path = os.path.join(project_dir, 'airports.txt')
-        temp_airports_path = os.path.join(project_dir, 'airports.txt.tmp')
-        os.rename(airports_path, temp_airports_path)
+        # Clean untracked files that will be replaced
+        subprocess.run(['git', 'clean', '-f'], cwd=project_dir, check=True)
 
         # Pull updates
         subprocess.run(['git', 'fetch'], cwd=project_dir, check=True)
@@ -596,21 +613,39 @@ def apply_updates():
         subprocess.run(['git', 'reset', '--hard', f'origin/{current_branch}'], 
                       cwd=project_dir, check=True)
 
-        # Restore airports.txt
-        os.rename(temp_airports_path, airports_path)
-        
-        # Update config using backed up config as source of user settings
-        update_config(backup_config_path, current_config_path)
-        
-        # Fix permissions
-        subprocess.run(['sudo', 'chown', '-R', 'pi:pi', '/home/pi'], check=True)
+        # Restore user files
+        if user_files_exist:
+            if os.path.exists(temp_airports_path):
+                shutil.copy2(temp_airports_path, airports_path)
+                os.remove(temp_airports_path)
+            if os.path.exists(temp_config_path):
+                if os.path.exists(config_path):
+                    # Update config using backed up config as source of user settings
+                    update_config(temp_config_path, config_path)
+                else:
+                    shutil.copy2(temp_config_path, config_path)
+                os.remove(temp_config_path)
 
-        # Restart services
-        subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
+        # Fix permissions - make pi user the owner of all files
+        try:
+            subprocess.run(['sudo', 'chown', '-R', 'pi:pi', project_dir], check=True)
+        except subprocess.CalledProcessError:
+            # If changing ownership fails, log it but don't fail the update
+            logging.warning("Failed to change file ownership to pi:pi")
 
         return jsonify({"message": "Updates applied successfully! Please restart METAR and settings services."}), 200
 
     except Exception as e:
+        # If there was an error, try to restore user files
+        try:
+            if os.path.exists(temp_airports_path):
+                shutil.copy2(temp_airports_path, airports_path)
+                os.remove(temp_airports_path)
+            if os.path.exists(temp_config_path):
+                shutil.copy2(temp_config_path, config_path)
+                os.remove(temp_config_path)
+        except:
+            pass
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 def update_config(backup_config_path, new_config_path):
