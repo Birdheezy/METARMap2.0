@@ -17,7 +17,7 @@ It should be fun to change the settings, update the weather and see what is happ
 ## Community involvement
 I hope people find this project and collaborate on it. I'm not here to make money as this is a passion project. Please submit bug reports and feature requests! If you notice anything wonky in the code, let me know! 
 
-# Install instructions
+# Software Install instructions
 ## Setup.sh
 There is now a batch script that will guide you through the setup. After first boot of the pi, copy over setup.sh to /home/pi and run "sudo bash setup.sh" the script will walk you through everything. 
 
@@ -281,13 +281,13 @@ sudo tailscale up --ssh
 You should now see a url in the terminal window. Highlighting it will copy it to your clipboard. Do that and enter it into your web browser. Follow the instructions to add the pi to your "tailnet". In the 3 dot menu next to your pi, Set key expiry to never. You can also ssh to your pi from that menu. Just ensure you change the username to "pi"
 
 # Hardware Setup
-I use a Raspberry Pi Zero 2 W for my projects. There is now a model with the header already soldered to the board or you can solder your own. It is capable to supporting up to 30 or so lights if you're using .5 for your default brightness. Anything more than than, I'd power inject. There are plenty of youtube videos on that. 
+I use a Raspberry Pi Zero 2 W for my projects. A Pi Zero W also works. You can now find the Zero 2 W with the headers already soldered to the board or you can solder your own. The Zero family is capable of supporting up to 30 or so lit lights if you're using .5 for your default brightness. Anything more and I'd power inject. There are plenty of youtube videos on that. 
 
 I use GPIO pin 18 for data. A pinout can be found here: https://pinout.xyz/
 
 I use WS2811 5v bullet style lights. The code is set up so you can use 1 strand and skip lights so you don't have to cut and solder the strand.  
 
-Be sure the pi is not plugged into power when you plug in your lights. You can use male to female jumper wires (search it on amazon) to make life easy, or you can solder. 
+Be sure the pi is not plugged into power when you plug in or unglug your lights from the Pi. You can use male to female jumper wires (search it on amazon) to make life easy, or you can solder. 
 
 LEDs
 https://tinyurl.com/yk879yje
