@@ -20,6 +20,7 @@ I hope people find this project and collaborate on it. I'm not here to make mone
 # Software Install instructions
 ## Setup.sh
 There is now a batch script that will guide you through the setup. After first boot of the pi, copy over setup.sh to /home/pi and run "sudo bash setup.sh" the script will walk you through everything. 
+If you get an error when running setup.sh, run `sed -i 's/\r$//' setup.sh`. This will fix the line endings then re-run `sudo bash setup.sh`
 
 After writing the OS to the SD card, a window should pop up. If you copy setup.sh to that folder, you can then connect via SSH and run `sudo mv /boot/firmware/setup.sh /home/pi/`. 
 This will move setup.sh to the home/pi folder, where you can then run `sudo bash setup.sh`
