@@ -633,7 +633,7 @@ def apply_updates():
             # If changing ownership fails, log it but don't fail the update
             logging.warning("Failed to change file ownership to pi:pi")
 
-        return jsonify({"message": "Updates applied successfully! Please restart METAR and settings services."}), 200
+        return jsonify({"message": "Updates applied successfully! Please restart METAR, Settings and Scheduler services."}), 200
 
     except Exception as e:
         # If there was an error, try to restore user files
