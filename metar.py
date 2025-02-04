@@ -79,14 +79,12 @@ def check_lights_off():
         # Case 1: LIGHTS_OFF_TIME is later than LIGHTS_ON_TIME
         if LIGHTS_OFF_TIME > LIGHTS_ON_TIME:
             if current_time >= LIGHTS_OFF_TIME or current_time < LIGHTS_ON_TIME:
-                logger.info("Lights turned off - outside operational hours")
                 pixels.fill((0, 0, 0))
                 pixels.show()
                 return True
 
         # Case 2: LIGHTS_OFF_TIME is earlier or equal to LIGHTS_ON_TIME
         elif LIGHTS_OFF_TIME <= current_time < LIGHTS_ON_TIME:
-            logger.info("Lights turned off - outside operational hours")
             pixels.fill((0, 0, 0))
             pixels.show()
             return True
@@ -281,10 +279,19 @@ def update_leds(weather_data):
 
 
 # Main loop
+previous_lights_off = False  # Track previous state
 while True:
     try:
         # Check if the lights should be off based on current time
         lights_off = check_lights_off()
+
+        # Only log when state changes from on to off
+        if lights_off and not previous_lights_off:
+            logger.info("Lights turned off - outside operational hours")
+        elif not lights_off and previous_lights_off:
+            logger.info("Lights turned on - within operational hours")
+
+        previous_lights_off = lights_off  # Update previous state
 
         if not lights_off:
             # Read the weather data and update the LEDs if lights are on
@@ -313,9 +320,10 @@ while True:
                 animate_snowy_airports(weather.get_snowy_airports(weather_data), weather_data)
 
         else:
-            # If lights should be off, ensure LEDs are off
+            # If lights should be off, ensure LEDs are off and sleep
             pixels.fill((0, 0, 0))
             pixels.show()
+            time.sleep(5)  # Sleep longer when lights are off to reduce CPU usage
     except Exception as e:
         logger.error(f"Error in main loop: {str(e)}")
         time.sleep(5)  # Wait before retrying
