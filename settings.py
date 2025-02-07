@@ -62,7 +62,11 @@ def reload_config():
     LEGEND = globals().get('LEGEND', None)
     PIXEL_PIN = globals().get('PIXEL_PIN', None),
     WEATHER_UPDATE_INTERVAL = globals().get('WEATHER_UPDATE_INTERVAL', None)
-    UPDATE_WEATHER = globals().get('UPDATE_WEATHER', None)  # Add this line
+    UPDATE_WEATHER = globals().get('UPDATE_WEATHER', None)
+    STALE_INDICATION = globals().get('STALE_INDICATION', None)
+    STALE_DATA_COLOR = globals().get('STALE_DATA_COLOR', (255, 255, 0))
+    WIFI_DISCONNECTED_COLOR = globals().get('WIFI_DISCONNECTED_COLOR', (255, 0, 255))
+    WIFI_INDICATION = globals().get('WIFI_INDICATION', True)
 
 
 @app.route('/leds/on', methods=['POST'])
@@ -128,8 +132,9 @@ def edit_settings():
                 config_updates["LIGHTENING_ANIMATION"] = 'lightening_animation' in request.form
                 config_updates["SNOWY_ANIMATION"] = 'snowy_animation' in request.form
                 config_updates["ENABLE_HTTPS"] = 'enable_https' in request.form
-                config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form  # Add this line
-                # Float or Integer Settings
+                config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form
+                config_updates["STALE_INDICATION"] = 'stale_indication' in request.form
+            # Float or Integer Settings
                 config_updates["BRIGHTNESS"] = float(request.form.get('brightness', 0))
                 config_updates["DIM_BRIGHTNESS"] = float(request.form.get('dim_brightness', 0))
                 config_updates["DAYTIME_DIM_BRIGHTNESS"] = float(request.form.get('daytime_dim_brightness', 0))
@@ -165,7 +170,7 @@ def edit_settings():
                 "LIFR_COLOR": "lifr_color",
                 "MISSING_COLOR": "missing_color",
                 "LIGHTENING_COLOR": "lightening_color",
-                "SNOWY_COLOR": "snowy_color"  # Add this line
+                "SNOWY_COLOR": "snowy_color"
             }
 
             for key, field_name in color_fields.items():
@@ -180,6 +185,14 @@ def edit_settings():
                     # Save the GRB value
                     config_updates[key] = grb_value
 
+            # Process color values
+            stale_data_color = request.form.get('stale_data_color', '#ffff00')  # Default to yellow
+            if stale_data_color.startswith('#'):
+                stale_data_color = stale_data_color[1:]  # Remove the '#' prefix
+            r = int(stale_data_color[:2], 16)
+            g = int(stale_data_color[2:4], 16)
+            b = int(stale_data_color[4:], 16)
+            config_updates["STALE_DATA_COLOR"] = (g, r, b)  # Store in GRB format
 
             # Define individual settings updates and catch specific errors
             try:
@@ -242,8 +255,6 @@ def edit_settings():
                 raise ValueError("Could not update Weather Update Interval: Please enter a valid number.")
 
 
-
-
             # Boolean values for checkbox-based settings
             config_updates["WIND_ANIMATION"] = 'wind_animation' in request.form
             config_updates["LIGHTENING_ANIMATION"] = 'lightening_animation' in request.form
@@ -252,7 +263,8 @@ def edit_settings():
             config_updates["ENABLE_LIGHTS_OFF"] = 'enable_lights_off' in request.form
             config_updates["LEGEND"] = 'legend' in request.form
             config_updates["ENABLE_HTTPS"] = 'enable_https' in request.form
-            config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form  # Add this line
+            config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form
+            config_updates["STALE_INDICATION"] = 'stale_indication' in request.form
 
             # Update the config.py file
             with open('/home/pi/config.py', 'r') as f:
@@ -305,7 +317,9 @@ def edit_settings():
     lifr_color = '#{:02x}{:02x}{:02x}'.format(config.LIFR_COLOR[1], config.LIFR_COLOR[0], config.LIFR_COLOR[2])  # GRB -> RGB
     missing_color = '#{:02x}{:02x}{:02x}'.format(config.MISSING_COLOR[1], config.MISSING_COLOR[0], config.MISSING_COLOR[2])  # GRB -> RGB
     lightening_color = '#{:02x}{:02x}{:02x}'.format(config.LIGHTENING_COLOR[1], config.LIGHTENING_COLOR[0], config.LIGHTENING_COLOR[2])  # GRB -> RGB
-    snowy_color = '#{:02x}{:02x}{:02x}'.format(config.SNOWY_COLOR[1], config.SNOWY_COLOR[0], config.SNOWY_COLOR[2])  # GRB -> RGB  # Add this line
+    snowy_color = '#{:02x}{:02x}{:02x}'.format(config.SNOWY_COLOR[1], config.SNOWY_COLOR[0], config.SNOWY_COLOR[2])  # GRB -> RGB
+    stale_data_color = '#{:02x}{:02x}{:02x}'.format(config.STALE_DATA_COLOR[1], config.STALE_DATA_COLOR[0], config.STALE_DATA_COLOR[2])  # GRB -> RGB
+    wifi_disconnected_color = '#{:02x}{:02x}{:02x}'.format(config.WIFI_DISCONNECTED_COLOR[1], config.WIFI_DISCONNECTED_COLOR[0], config.WIFI_DISCONNECTED_COLOR[2])
 
     # Get the last modified date of weather.json
     weather_file_path = '/home/pi/weather.json'  # Adjust this path if necessary
@@ -339,7 +353,8 @@ def edit_settings():
         lifr_color=lifr_color,
         missing_color=missing_color,
         lightening_color=lightening_color,
-        snowy_color=snowy_color,  # Add this line
+        snowy_color=snowy_color,
+        stale_data_color=stale_data_color,
         enable_lights_off=config.ENABLE_LIGHTS_OFF,
         legend=config.LEGEND,
         num_pixels=config.NUM_PIXELS,
@@ -360,7 +375,9 @@ def edit_settings():
         daytime_dimming=config.DAYTIME_DIMMING,
         enable_https=config.ENABLE_HTTPS,
         pixel_pin=config.PIXEL_PIN,
-        weather_update_interval=config.WEATHER_UPDATE_INTERVAL
+        weather_update_interval=config.WEATHER_UPDATE_INTERVAL,
+        stale_indication=config.STALE_INDICATION,
+        wifi_disconnected_color=wifi_disconnected_color
     )
 
 

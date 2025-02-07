@@ -229,6 +229,14 @@
                         <label for="missing-color-picker">Missing Color:</label>
                         <input type="color" id="missing-color-picker" name="missing_color" value="{{ missing_color }}">
                     </div>
+                    <div class="color-picker-row">
+                        <label for="stale-data-color-picker">Stale WX Data Color:</label>
+                        <input type="color" id="stale-data-color-picker" name="stale_data_color" value="{{ stale_data_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="wifi-disconnected-color-picker">WiFi Disconnected Color:</label>
+                        <input type="color" id="wifi-disconnected-color-picker" name="wifi_disconnected_color" value="{{ wifi_disconnected_color }}">
+                    </div>
                 </div>
             </div>
         </div>
@@ -431,11 +439,22 @@
                         </div>
                     </div>
                 </div>
+                <div class="toggle-wrapper">
+                    <input type="checkbox" id="stale_indication" name="stale_indication" class="toggle-input" {% if config.STALE_INDICATION %}checked{% endif %}>
+                    <label for="stale_indication" class="toggle-label">Enable Stale Data Indication</label>
+                    <div class="dropdown-container" style="margin-left: 10px;">
+                        <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false" onclick="event.stopPropagation()">i</span>
+                        <div class="dropdown-content" style="display: none;">
+                            When enabled, all LEDs will turn the set color if weather data becomes stale (more than 2x update interval old).<br>
+                            This provides a visual indication that the weather data may be outdated.
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <br>
             <!-- System Restore -->
-            <div class="dropdown-container">
+<!--            <div class="dropdown-container">
                 <label style="display: flex; align-items: center;">
                     <h2 style="margin: 0;">System Restore</h2>
                     <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
@@ -454,7 +473,7 @@
             </div>
         </section>
     </section>
-
+-->
     <!-- Airports Section with Line Numbers -->
     <section id="airports" class="airports">
         <h2>Airports</h2>
