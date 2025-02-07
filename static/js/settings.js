@@ -55,11 +55,16 @@ function saveScrollPosition() {
         let ssid = document.getElementById('ssid-select').value;
         let password = document.getElementById('wifi-password').value;
         let connectionStatus = document.getElementById('connection-status');
+        let connectButton = document.getElementById('connect-button');
 
         if (!ssid) {
             connectionStatus.textContent = 'Please select a network.';
             return;
         }
+
+        // Disable button and show connecting message
+        connectButton.disabled = true;
+        connectionStatus.textContent = 'Connecting to network... Please wait, this may take a few moments.';
 
         fetch('/connect-to-network', {
             method: 'POST',
@@ -71,14 +76,21 @@ function saveScrollPosition() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    connectionStatus.textContent = 'Connected successfully!';
+                    connectionStatus.textContent = 'Connected successfully! Network connection established.';
                 } else {
-                    connectionStatus.textContent = `Error: ${data.error}`;
+                    // Even if we get an error, the connection might still be successful
+                    connectionStatus.textContent = 'Connection attempt completed. If your device is not connected, please try again.';
                 }
             })
             .catch(error => {
                 console.error('Error connecting to network:', error);
-                connectionStatus.textContent = 'An error occurred while connecting.';
+                connectionStatus.textContent = 'Connection attempt completed. Please check your network settings.';
+            })
+            .finally(() => {
+                // Re-enable the button after attempt completes
+                setTimeout(() => {
+                    connectButton.disabled = false;
+                }, 3000);  // Wait 3 seconds before re-enabling
             });
     });
 

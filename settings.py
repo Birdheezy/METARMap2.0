@@ -62,7 +62,11 @@ def reload_config():
     LEGEND = globals().get('LEGEND', None)
     PIXEL_PIN = globals().get('PIXEL_PIN', None),
     WEATHER_UPDATE_INTERVAL = globals().get('WEATHER_UPDATE_INTERVAL', None)
-    UPDATE_WEATHER = globals().get('UPDATE_WEATHER', None)  # Add this line
+    UPDATE_WEATHER = globals().get('UPDATE_WEATHER', None)
+    STALE_INDICATION = globals().get('STALE_INDICATION', None)
+    STALE_DATA_COLOR = globals().get('STALE_DATA_COLOR', (255, 255, 0))
+    WIFI_DISCONNECTED_COLOR = globals().get('WIFI_DISCONNECTED_COLOR', (255, 0, 255))
+    WIFI_INDICATION = globals().get('WIFI_INDICATION', True)
 
 
 @app.route('/leds/on', methods=['POST'])
@@ -85,7 +89,8 @@ def refresh_weather():
             parsed_data = weather.parse_weather(metar_data)
             if parsed_data:
                 # Save the weather data
-                with open('/home/pi/weather.json', 'w') as json_file:
+                weather_file = os.path.join(os.getcwd(), 'weather.json')
+                with open(weather_file, 'w') as json_file:
                     json.dump(parsed_data, json_file, indent=4)
                 return jsonify({"status": "Weather updated successfully"}), 200
             else:
@@ -127,8 +132,9 @@ def edit_settings():
                 config_updates["LIGHTENING_ANIMATION"] = 'lightening_animation' in request.form
                 config_updates["SNOWY_ANIMATION"] = 'snowy_animation' in request.form
                 config_updates["ENABLE_HTTPS"] = 'enable_https' in request.form
-                config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form  # Add this line
-                # Float or Integer Settings
+                config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form
+                config_updates["STALE_INDICATION"] = 'stale_indication' in request.form
+            # Float or Integer Settings
                 config_updates["BRIGHTNESS"] = float(request.form.get('brightness', 0))
                 config_updates["DIM_BRIGHTNESS"] = float(request.form.get('dim_brightness', 0))
                 config_updates["DAYTIME_DIM_BRIGHTNESS"] = float(request.form.get('daytime_dim_brightness', 0))
@@ -164,7 +170,7 @@ def edit_settings():
                 "LIFR_COLOR": "lifr_color",
                 "MISSING_COLOR": "missing_color",
                 "LIGHTENING_COLOR": "lightening_color",
-                "SNOWY_COLOR": "snowy_color"  # Add this line
+                "SNOWY_COLOR": "snowy_color"
             }
 
             for key, field_name in color_fields.items():
@@ -179,6 +185,14 @@ def edit_settings():
                     # Save the GRB value
                     config_updates[key] = grb_value
 
+            # Process color values
+            stale_data_color = request.form.get('stale_data_color', '#ffff00')  # Default to yellow
+            if stale_data_color.startswith('#'):
+                stale_data_color = stale_data_color[1:]  # Remove the '#' prefix
+            r = int(stale_data_color[:2], 16)
+            g = int(stale_data_color[2:4], 16)
+            b = int(stale_data_color[4:], 16)
+            config_updates["STALE_DATA_COLOR"] = (g, r, b)  # Store in GRB format
 
             # Define individual settings updates and catch specific errors
             try:
@@ -241,8 +255,6 @@ def edit_settings():
                 raise ValueError("Could not update Weather Update Interval: Please enter a valid number.")
 
 
-
-
             # Boolean values for checkbox-based settings
             config_updates["WIND_ANIMATION"] = 'wind_animation' in request.form
             config_updates["LIGHTENING_ANIMATION"] = 'lightening_animation' in request.form
@@ -251,7 +263,8 @@ def edit_settings():
             config_updates["ENABLE_LIGHTS_OFF"] = 'enable_lights_off' in request.form
             config_updates["LEGEND"] = 'legend' in request.form
             config_updates["ENABLE_HTTPS"] = 'enable_https' in request.form
-            config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form  # Add this line
+            config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form
+            config_updates["STALE_INDICATION"] = 'stale_indication' in request.form
 
             # Update the config.py file
             with open('/home/pi/config.py', 'r') as f:
@@ -304,7 +317,9 @@ def edit_settings():
     lifr_color = '#{:02x}{:02x}{:02x}'.format(config.LIFR_COLOR[1], config.LIFR_COLOR[0], config.LIFR_COLOR[2])  # GRB -> RGB
     missing_color = '#{:02x}{:02x}{:02x}'.format(config.MISSING_COLOR[1], config.MISSING_COLOR[0], config.MISSING_COLOR[2])  # GRB -> RGB
     lightening_color = '#{:02x}{:02x}{:02x}'.format(config.LIGHTENING_COLOR[1], config.LIGHTENING_COLOR[0], config.LIGHTENING_COLOR[2])  # GRB -> RGB
-    snowy_color = '#{:02x}{:02x}{:02x}'.format(config.SNOWY_COLOR[1], config.SNOWY_COLOR[0], config.SNOWY_COLOR[2])  # GRB -> RGB  # Add this line
+    snowy_color = '#{:02x}{:02x}{:02x}'.format(config.SNOWY_COLOR[1], config.SNOWY_COLOR[0], config.SNOWY_COLOR[2])  # GRB -> RGB
+    stale_data_color = '#{:02x}{:02x}{:02x}'.format(config.STALE_DATA_COLOR[1], config.STALE_DATA_COLOR[0], config.STALE_DATA_COLOR[2])  # GRB -> RGB
+    wifi_disconnected_color = '#{:02x}{:02x}{:02x}'.format(config.WIFI_DISCONNECTED_COLOR[1], config.WIFI_DISCONNECTED_COLOR[0], config.WIFI_DISCONNECTED_COLOR[2])
 
     # Get the last modified date of weather.json
     weather_file_path = '/home/pi/weather.json'  # Adjust this path if necessary
@@ -338,7 +353,8 @@ def edit_settings():
         lifr_color=lifr_color,
         missing_color=missing_color,
         lightening_color=lightening_color,
-        snowy_color=snowy_color,  # Add this line
+        snowy_color=snowy_color,
+        stale_data_color=stale_data_color,
         enable_lights_off=config.ENABLE_LIGHTS_OFF,
         legend=config.LEGEND,
         num_pixels=config.NUM_PIXELS,
@@ -359,7 +375,9 @@ def edit_settings():
         daytime_dimming=config.DAYTIME_DIMMING,
         enable_https=config.ENABLE_HTTPS,
         pixel_pin=config.PIXEL_PIN,
-        weather_update_interval=config.WEATHER_UPDATE_INTERVAL
+        weather_update_interval=config.WEATHER_UPDATE_INTERVAL,
+        stale_indication=config.STALE_INDICATION,
+        wifi_disconnected_color=wifi_disconnected_color
     )
 
 
@@ -534,10 +552,10 @@ def connect_to_network():
 def check_for_updates():
     try:
         # Fetch the latest information from the remote repository
-        subprocess.run(['git', 'fetch'], cwd='/home/pi', check=True)
+        subprocess.run(['git', 'fetch'], cwd=os.getcwd(), check=True)
 
         # Check if there are differences between the local and remote branches
-        result = subprocess.run(['git', 'status', '-uno'], cwd='/home/pi', capture_output=True, text=True)
+        result = subprocess.run(['git', 'status', '-uno'], cwd=os.getcwd(), capture_output=True, text=True)
 
         # Check for indicators that the branch is behind
         if ("Your branch is behind" in result.stdout or
@@ -552,40 +570,52 @@ def check_for_updates():
 @app.route('/apply_updates', methods=['POST'])
 def apply_updates():
     try:
-        # Define paths
-        project_dir = '/home/pi'
+        # Define paths using current working directory
+        project_dir = os.getcwd()
         backup_dir = os.path.join(project_dir, 'BACKUP')
         timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         backup_path = os.path.join(backup_dir, f'backup_{timestamp}')
         
-        # Create backup paths
-        backup_config_path = os.path.join(backup_path, 'config.py')
-        current_config_path = os.path.join(project_dir, 'config.py')
+        # Define important user files
+        airports_path = os.path.join(project_dir, 'airports.txt')
+        config_path = os.path.join(project_dir, 'config.py')
         
-        # Create backup
+        # Create backup directory
         os.makedirs(backup_path, exist_ok=True)
+        
+        # Save user files content
+        airports_content = None
+        config_content = None
+        if os.path.exists(airports_path):
+            with open(airports_path, 'r') as f:
+                airports_content = f.read()
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                config_content = f.read()
+        
+        # Get list of files to be deleted by the update
+        deleted_files = subprocess.check_output(
+            ['git', 'ls-files', '--deleted'],
+            cwd=project_dir, text=True
+        ).splitlines()
         
         # Backup tracked files
         tracked_files = get_git_tracked_files(project_dir)
         for file_path in tracked_files:
-            if file_path != 'airports.txt':
+            if file_path not in ['airports.txt', 'config.py'] and file_path not in deleted_files:
                 source_path = os.path.join(project_dir, file_path)
                 dest_path = os.path.join(backup_path, file_path)
                 os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-                shutil.copy2(source_path, dest_path)
+                if os.path.exists(source_path):
+                    shutil.copy2(source_path, dest_path)
 
         # Limit backups to 5
         existing_backups = sorted(
-            [os.path.join(backup_dir, d) for d in os.listdir(backup_dir)],
+            [os.path.join(backup_dir, d) for d in os.listdir(backup_dir) if os.path.isdir(os.path.join(backup_dir, d))],
             key=os.path.getmtime
         )
         while len(existing_backups) > 5:
             shutil.rmtree(existing_backups.pop(0))
-
-        # Save airports.txt
-        airports_path = os.path.join(project_dir, 'airports.txt')
-        temp_airports_path = os.path.join(project_dir, 'airports.txt.tmp')
-        os.rename(airports_path, temp_airports_path)
 
         # Pull updates
         subprocess.run(['git', 'fetch'], cwd=project_dir, check=True)
@@ -593,29 +623,48 @@ def apply_updates():
             ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], 
             cwd=project_dir, text=True
         ).strip()
+        
+        # Stash any local changes
+        subprocess.run(['git', 'stash', 'save', '--include-untracked'], cwd=project_dir, check=True)
+        
+        # Reset to the latest version
         subprocess.run(['git', 'reset', '--hard', f'origin/{current_branch}'], 
                       cwd=project_dir, check=True)
 
-        # Restore airports.txt
-        os.rename(temp_airports_path, airports_path)
-        
-        # Update config using backed up config as source of user settings
-        update_config(backup_config_path, current_config_path)
-        
-        # Fix permissions
-        subprocess.run(['sudo', 'chown', '-R', 'pi:pi', '/home/pi'], check=True)
+        # Restore user files from saved content
+        if airports_content is not None:
+            with open(airports_path, 'w') as f:
+                f.write(airports_content)
+        if config_content is not None:
+            with open(config_path, 'w') as f:
+                f.write(config_content)
 
-        # Restart services
-        subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
+        # Fix permissions - make pi user the owner of all files
+        try:
+            subprocess.run(['sudo', 'chown', '-R', 'pi:pi', project_dir], check=True)
+        except subprocess.CalledProcessError:
+            # If changing ownership fails, log it but don't fail the update
+            logging.warning("Failed to change file ownership to pi:pi")
 
         return jsonify({"message": "Updates applied successfully! Please restart METAR, Settings and Scheduler services."}), 200
 
     except Exception as e:
+        # If there was an error, try to restore user files
+        try:
+            if airports_content is not None:
+                with open(airports_path, 'w') as f:
+                    f.write(airports_content)
+            if config_content is not None:
+                with open(config_path, 'w') as f:
+                    f.write(config_content)
+        except:
+            pass
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 def update_config(backup_config_path, new_config_path):
     """
-    Merge user settings from backup with new config from repo
+    Merge user settings from backup with new config from repo while preserving structure
+    and adding any new configuration options.
     backup_config_path: Path to backed up user config
     new_config_path: Path to new config pulled from repo
     """
@@ -639,21 +688,28 @@ def update_config(backup_config_path, new_config_path):
         for line in new_lines:
             if '=' in line:
                 key = line.split('=')[0].strip()
-                if key.isupper() and key in user_config:
-                    # Preserve user's value
-                    final_lines.append(f"{key} = {repr(user_config[key])}\n")
+                if key.isupper():  # This is a configuration variable
+                    if key in user_config:
+                        # Preserve user's value for existing keys
+                        final_lines.append(f"{key} = {repr(user_config[key])}\n")
+                    else:
+                        # Keep new config value for new keys
+                        final_lines.append(line)
                 else:
-                    # Keep new config value
+                    # Not a config variable, keep the line as is
                     final_lines.append(line)
             else:
+                # Keep comments and other lines
                 final_lines.append(line)
 
         # Write merged config back to file
         with open(new_config_path, 'w') as f:
             f.writelines(final_lines)
 
+        logger.info("Config updated successfully - new keys added and user values preserved")
+
     except Exception as e:
-        print(f"Error updating config: {str(e)}")
+        logger.error(f"Error updating config: {str(e)}")
         raise
 
 def get_git_tracked_files(project_dir):
