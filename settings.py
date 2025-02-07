@@ -579,20 +579,19 @@ def apply_updates():
         # Define important user files
         airports_path = os.path.join(project_dir, 'airports.txt')
         config_path = os.path.join(project_dir, 'config.py')
-        temp_airports_path = os.path.join(project_dir, 'airports.txt.tmp')
-        temp_config_path = os.path.join(project_dir, 'config.py.tmp')
         
         # Create backup directory
         os.makedirs(backup_path, exist_ok=True)
         
-        # Backup and save user files
-        user_files_exist = False
+        # Save user files content
+        airports_content = None
+        config_content = None
         if os.path.exists(airports_path):
-            shutil.copy2(airports_path, temp_airports_path)
-            user_files_exist = True
+            with open(airports_path, 'r') as f:
+                airports_content = f.read()
         if os.path.exists(config_path):
-            shutil.copy2(config_path, temp_config_path)
-            user_files_exist = True
+            with open(config_path, 'r') as f:
+                config_content = f.read()
         
         # Get list of files to be deleted by the update
         deleted_files = subprocess.check_output(
@@ -618,30 +617,27 @@ def apply_updates():
         while len(existing_backups) > 5:
             shutil.rmtree(existing_backups.pop(0))
 
-        # Clean untracked files that will be replaced
-        subprocess.run(['git', 'clean', '-f'], cwd=project_dir, check=True)
-
         # Pull updates
         subprocess.run(['git', 'fetch'], cwd=project_dir, check=True)
         current_branch = subprocess.check_output(
             ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], 
             cwd=project_dir, text=True
         ).strip()
+        
+        # Stash any local changes
+        subprocess.run(['git', 'stash', 'save', '--include-untracked'], cwd=project_dir, check=True)
+        
+        # Reset to the latest version
         subprocess.run(['git', 'reset', '--hard', f'origin/{current_branch}'], 
                       cwd=project_dir, check=True)
 
-        # Restore user files
-        if user_files_exist:
-            if os.path.exists(temp_airports_path):
-                shutil.copy2(temp_airports_path, airports_path)
-                os.remove(temp_airports_path)
-            if os.path.exists(temp_config_path):
-                if os.path.exists(config_path):
-                    # Update config using backed up config as source of user settings
-                    update_config(temp_config_path, config_path)
-                else:
-                    shutil.copy2(temp_config_path, config_path)
-                os.remove(temp_config_path)
+        # Restore user files from saved content
+        if airports_content is not None:
+            with open(airports_path, 'w') as f:
+                f.write(airports_content)
+        if config_content is not None:
+            with open(config_path, 'w') as f:
+                f.write(config_content)
 
         # Fix permissions - make pi user the owner of all files
         try:
@@ -655,19 +651,20 @@ def apply_updates():
     except Exception as e:
         # If there was an error, try to restore user files
         try:
-            if os.path.exists(temp_airports_path):
-                shutil.copy2(temp_airports_path, airports_path)
-                os.remove(temp_airports_path)
-            if os.path.exists(temp_config_path):
-                shutil.copy2(temp_config_path, config_path)
-                os.remove(temp_config_path)
+            if airports_content is not None:
+                with open(airports_path, 'w') as f:
+                    f.write(airports_content)
+            if config_content is not None:
+                with open(config_path, 'w') as f:
+                    f.write(config_content)
         except:
             pass
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 def update_config(backup_config_path, new_config_path):
     """
-    Merge user settings from backup with new config from repo
+    Merge user settings from backup with new config from repo while preserving structure
+    and adding any new configuration options.
     backup_config_path: Path to backed up user config
     new_config_path: Path to new config pulled from repo
     """
@@ -691,21 +688,28 @@ def update_config(backup_config_path, new_config_path):
         for line in new_lines:
             if '=' in line:
                 key = line.split('=')[0].strip()
-                if key.isupper() and key in user_config:
-                    # Preserve user's value
-                    final_lines.append(f"{key} = {repr(user_config[key])}\n")
+                if key.isupper():  # This is a configuration variable
+                    if key in user_config:
+                        # Preserve user's value for existing keys
+                        final_lines.append(f"{key} = {repr(user_config[key])}\n")
+                    else:
+                        # Keep new config value for new keys
+                        final_lines.append(line)
                 else:
-                    # Keep new config value
+                    # Not a config variable, keep the line as is
                     final_lines.append(line)
             else:
+                # Keep comments and other lines
                 final_lines.append(line)
 
         # Write merged config back to file
         with open(new_config_path, 'w') as f:
             f.writelines(final_lines)
 
+        logger.info("Config updated successfully - new keys added and user values preserved")
+
     except Exception as e:
-        print(f"Error updating config: {str(e)}")
+        logger.error(f"Error updating config: {str(e)}")
         raise
 
 def get_git_tracked_files(project_dir):
