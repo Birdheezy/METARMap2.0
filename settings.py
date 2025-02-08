@@ -547,171 +547,6 @@ def connect_to_network():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
-@app.route('/check_for_updates', methods=['GET'])
-def check_for_updates():
-    try:
-        # Fetch the latest information from the remote repository
-        subprocess.run(['git', 'fetch'], cwd=os.getcwd(), check=True)
-
-        # Check if there are differences between the local and remote branches
-        result = subprocess.run(['git', 'status', '-uno'], cwd=os.getcwd(), capture_output=True, text=True)
-
-        # Check for indicators that the branch is behind
-        if ("Your branch is behind" in result.stdout or
-                "have diverged" in result.stdout or
-                "can be fast-forwarded" in result.stdout):
-            return jsonify({"updates_available": True, "message": "Updates are available!"}), 200
-        else:
-            return jsonify({"updates_available": False, "message": "No updates available."}), 200
-    except subprocess.CalledProcessError as e:
-        return jsonify({"error": f"Failed to check for updates: {e.stderr}"}), 500
-
-@app.route('/apply_updates', methods=['POST'])
-def apply_updates():
-    try:
-        # Define paths using current working directory
-        project_dir = os.getcwd()
-        backup_dir = os.path.join(project_dir, 'BACKUP')
-        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_path = os.path.join(backup_dir, f'backup_{timestamp}')
-        
-        # Define important user files
-        airports_path = os.path.join(project_dir, 'airports.txt')
-        config_path = os.path.join(project_dir, 'config.py')
-        
-        # Create backup directory
-        os.makedirs(backup_path, exist_ok=True)
-        
-        # Save user files content
-        airports_content = None
-        config_content = None
-        if os.path.exists(airports_path):
-            with open(airports_path, 'r') as f:
-                airports_content = f.read()
-        if os.path.exists(config_path):
-            with open(config_path, 'r') as f:
-                config_content = f.read()
-        
-        # Get list of files to be deleted by the update
-        deleted_files = subprocess.check_output(
-            ['git', 'ls-files', '--deleted'],
-            cwd=project_dir, text=True
-        ).splitlines()
-        
-        # Backup tracked files
-        tracked_files = get_git_tracked_files(project_dir)
-        for file_path in tracked_files:
-            if file_path not in ['airports.txt', 'config.py'] and file_path not in deleted_files:
-                source_path = os.path.join(project_dir, file_path)
-                dest_path = os.path.join(backup_path, file_path)
-                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-                if os.path.exists(source_path):
-                    shutil.copy2(source_path, dest_path)
-
-        # Limit backups to 5
-        existing_backups = sorted(
-            [os.path.join(backup_dir, d) for d in os.listdir(backup_dir) if os.path.isdir(os.path.join(backup_dir, d))],
-            key=os.path.getmtime
-        )
-        while len(existing_backups) > 5:
-            shutil.rmtree(existing_backups.pop(0))
-
-        # Pull updates
-        subprocess.run(['git', 'fetch'], cwd=project_dir, check=True)
-        current_branch = subprocess.check_output(
-            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], 
-            cwd=project_dir, text=True
-        ).strip()
-        
-        # Stash any local changes
-        subprocess.run(['git', 'stash', 'save', '--include-untracked'], cwd=project_dir, check=True)
-        
-        # Reset to the latest version
-        subprocess.run(['git', 'reset', '--hard', f'origin/{current_branch}'], 
-                      cwd=project_dir, check=True)
-
-        # Restore user files from saved content
-        if airports_content is not None:
-            with open(airports_path, 'w') as f:
-                f.write(airports_content)
-        if config_content is not None:
-            with open(config_path, 'w') as f:
-                f.write(config_content)
-
-        # Fix permissions - make pi user the owner of all files
-        try:
-            subprocess.run(['sudo', 'chown', '-R', 'pi:pi', project_dir], check=True)
-        except subprocess.CalledProcessError:
-            # If changing ownership fails, log it but don't fail the update
-            logging.warning("Failed to change file ownership to pi:pi")
-
-        return jsonify({"message": "Updates applied successfully! Please restart METAR, Settings and Scheduler services."}), 200
-
-    except Exception as e:
-        # If there was an error, try to restore user files
-        try:
-            if airports_content is not None:
-                with open(airports_path, 'w') as f:
-                    f.write(airports_content)
-            if config_content is not None:
-                with open(config_path, 'w') as f:
-                    f.write(config_content)
-        except:
-            pass
-        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
-
-def update_config(backup_config_path, new_config_path):
-    """
-    Merge user settings from backup with new config from repo while preserving structure
-    and adding any new configuration options.
-    backup_config_path: Path to backed up user config
-    new_config_path: Path to new config pulled from repo
-    """
-    try:
-        # Load backed up user config
-        user_config = {}
-        with open(backup_config_path, 'r') as f:
-            exec(f.read(), {}, user_config)
-
-        # Load new config from repo
-        repo_config = {}
-        with open(new_config_path, 'r') as f:
-            exec(f.read(), {}, repo_config)
-
-        # Read new config line by line to preserve structure and comments
-        with open(new_config_path, 'r') as f:
-            new_lines = f.readlines()
-
-        # Update values in new config with user's existing settings
-        final_lines = []
-        for line in new_lines:
-            if '=' in line:
-                key = line.split('=')[0].strip()
-                if key.isupper():  # This is a configuration variable
-                    if key in user_config:
-                        # Preserve user's value for existing keys
-                        final_lines.append(f"{key} = {repr(user_config[key])}\n")
-                    else:
-                        # Keep new config value for new keys
-                        final_lines.append(line)
-                else:
-                    # Not a config variable, keep the line as is
-                    final_lines.append(line)
-            else:
-                # Keep comments and other lines
-                final_lines.append(line)
-
-        # Write merged config back to file
-        with open(new_config_path, 'w') as f:
-            f.writelines(final_lines)
-
-        logger.info("Config updated successfully - new keys added and user values preserved")
-
-    except Exception as e:
-        logger.error(f"Error updating config: {str(e)}")
-        raise
-
 def get_git_tracked_files(project_dir):
     """Get list of files tracked by Git in the project directory."""
     try:
@@ -981,6 +816,108 @@ def set_timezone():
         return jsonify({'error': f'Failed to set timezone: {str(e)}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/apply_updates', methods=['POST'])
+def apply_updates():
+    try:
+        project_dir = os.getcwd()
+        
+        # Save current user configurations
+        config_content = None
+        airports_content = None
+        
+        if os.path.exists('config.py'):
+            with open('config.py', 'r') as f:
+                config_content = f.read()
+        if os.path.exists('airports.txt'):
+            with open('airports.txt', 'r') as f:
+                airports_content = f.read()
+        
+        # Get list of tracked files before update
+        tracked_files = get_git_tracked_files(project_dir)
+        
+        # Fetch and apply updates
+        subprocess.run(['git', 'fetch'], cwd=project_dir, check=True)
+        current_branch = subprocess.check_output(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+            cwd=project_dir, text=True
+        ).strip()
+        
+        # Reset only tracked files
+        subprocess.run(['git', 'checkout', f'origin/{current_branch}', '--'] + tracked_files, 
+                      cwd=project_dir, check=True)
+        
+        # Restore user configurations
+        if config_content is not None:
+            # Get new config template
+            with open('config.py', 'r') as f:
+                new_config = f.read()
+            
+            # Update config using the new template while preserving user values
+            update_config(config_content, new_config)
+            
+        if airports_content is not None:
+            with open('airports.txt', 'w') as f:
+                f.write(airports_content)
+
+        # Fix permissions
+        try:
+            subprocess.run(['sudo', 'chown', '-R', 'pi:pi', project_dir], check=True)
+        except subprocess.CalledProcessError:
+            logging.warning("Failed to change file ownership to pi:pi")
+
+        return jsonify({
+            "message": "Updates applied successfully! Please restart METAR, Settings and Scheduler services."
+        }), 200
+
+    except Exception as e:
+        # If there was an error, restore user files
+        try:
+            if config_content is not None:
+                with open('config.py', 'w') as f:
+                    f.write(config_content)
+            if airports_content is not None:
+                with open('airports.txt', 'w') as f:
+                    f.write(airports_content)
+        except:
+            pass
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+def update_config(old_config, new_config):
+    """
+    Update config.py with new template while preserving user values.
+    
+    Args:
+        old_config (str): Current config.py content
+        new_config (str): New config template content
+    """
+    try:
+        # Execute old config to get current values
+        old_values = {}
+        exec(old_config, {}, old_values)
+        
+        # Parse new config line by line
+        final_lines = []
+        for line in new_config.splitlines():
+            if '=' in line:
+                key = line.split('=')[0].strip()
+                if key.isupper() and key in old_values:
+                    # Preserve user's value
+                    final_lines.append(f"{key} = {repr(old_values[key])}")
+                else:
+                    # Keep new config line (might be a new setting)
+                    final_lines.append(line)
+            else:
+                # Keep comments and other lines
+                final_lines.append(line)
+        
+        # Write updated config
+        with open('config.py', 'w') as f:
+            f.write('\n'.join(final_lines))
+            
+    except Exception as e:
+        logging.error(f"Error updating config: {str(e)}")
+        raise
 
 if __name__ == '__main__':
     if ENABLE_HTTPS:
