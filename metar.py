@@ -10,6 +10,7 @@ import weather
 import datetime
 import subprocess
 import logging
+import os  # Add this at the top with other imports
 
 # Configure logging with more detailed format for CLI mode
 logging.basicConfig(
@@ -18,6 +19,11 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+# Global variables for WiFi checking
+last_wifi_check_time = 0
+last_wifi_status = False
+
 
 # Log startup with basic system info
 logger.info("METAR service starting up...")
@@ -219,14 +225,104 @@ def animate_snowy_airports(snowy_airports, weather_data):
 
 #from config import BRIGHTNESS  # Import BRIGHTNESS from config.py
 
+def is_weather_stale():
+    try:
+        weather_file_time = os.path.getmtime('weather.json')
+        current_time = time.time()
+        time_since_update = current_time - weather_file_time
+        stale_threshold = WEATHER_UPDATE_INTERVAL * 2
+        is_stale = time_since_update > stale_threshold
+
+        # Add debug logging
+        logger.info(f"Weather staleness check: Time since update: {time_since_update:.1f}s, Threshold: {stale_threshold:.1f}s, Is stale: {is_stale}")
+
+        return is_stale
+    except Exception as e:
+        logger.error(f"Error checking weather staleness: {e}")
+        return True  # If we can't check the file, assume data is stale
+
+def is_wifi_connected():
+    """Check if connected to an external WiFi network by verifying both connection state and IP address."""
+    try:
+        # First check if we have a valid IP address that's not localhost/link-local
+        ip_check = subprocess.run(
+            ['ip', 'addr', 'show', 'wlan0'],
+            capture_output=True, text=True, check=True
+        )
+
+        # Look for an inet (IPv4) address that's not a link-local address
+        has_valid_ip = False
+        for line in ip_check.stdout.splitlines():
+            if 'inet ' in line and not '169.254.' in line:
+                has_valid_ip = True
+                break
+
+        if not has_valid_ip:
+            return False
+
+        # Then verify we have an actual connection
+        connection_check = subprocess.run(
+            ['iwconfig', 'wlan0'],
+            capture_output=True, text=True, check=True
+        )
+
+        # Check for "ESSID" and "Access Point" entries
+        has_connection = False
+        for line in connection_check.stdout.splitlines():
+            if 'ESSID:' in line and 'ESSID:off/any' not in line:
+                has_connection = True
+            if 'Access Point: ' in line and 'Not-Associated' not in line:
+                has_connection = True
+
+        return has_connection
+
+    except Exception as e:
+        logger.error(f"Error checking WiFi connection: {e}")
+        return False  # If we can't check, assume disconnected
+
+def check_wifi_status():
+    """Check WiFi status only every WIFI_CHECK_INTERVAL seconds."""
+    global last_wifi_check_time, last_wifi_status
+    current_time = time.time()
+
+    # Only check if enough time has passed since last check
+    if current_time - last_wifi_check_time >= WIFI_CHECK_INTERVAL:  # Now using from config.py
+        last_wifi_status = is_wifi_connected()
+        last_wifi_check_time = current_time
+        logger.info(f"WiFi check performed: {'Connected' if last_wifi_status else 'Disconnected'}")
+
+    return last_wifi_status
+
 def update_leds(weather_data):
     """Update LEDs based on flt_cat from weather data."""
-    
+
     if check_lights_off():
         return
-        
-    # Get list of airports, including "SKIP" entries
+
+    # Get list of airports, including "SKIP" entries first
     airport_list = weather.get_airports_with_skip(AIRPORTS_FILE)
+
+    # Check for WiFi disconnection if the feature is enabled
+    if WIFI_INDICATION and not check_wifi_status():
+        for index, airport_code in enumerate(airport_list):
+            if airport_code == "SKIP":
+                pixels[index] = (0, 0, 0)  # Keep SKIP LEDs off
+            else:
+                pixels[index] = tuple(int(c * BRIGHTNESS) for c in WIFI_DISCONNECTED_COLOR)
+        pixels.show()
+        logger.warning("WiFi disconnected - displaying warning color")
+        return
+
+    # Check for stale weather data if the feature is enabled
+    if STALE_INDICATION and is_weather_stale():
+        for index, airport_code in enumerate(airport_list):
+            if airport_code == "SKIP":
+                pixels[index] = (0, 0, 0)  # Keep SKIP LEDs off
+            else:
+                pixels[index] = tuple(int(c * BRIGHTNESS) for c in STALE_DATA_COLOR)
+        pixels.show()
+        logger.warning("Weather data is stale - displaying warning color")
+        return
 
     # Detect special conditions
     windy_airports = weather.get_windy_airports(weather_data)
@@ -301,23 +397,25 @@ while True:
                 time.sleep(5)  # Wait before retry
                 continue
 
+            # Update LEDs - this will handle WiFi and stale data states
             update_leds(weather_data)
             update_led_brightness(pixels)
-            
+
             if LEGEND:
                 update_legend(pixels)
-                
+
             time.sleep(ANIMATION_PAUSE)
 
-            # Run animations if enabled and conditions are met
-            if WIND_ANIMATION and weather.get_windy_airports(weather_data):
-                animate_windy_airports(weather.get_windy_airports(weather_data), weather_data)
+            # Only run animations if we have good data
+            if not (STALE_INDICATION and is_weather_stale()) and not (WIFI_INDICATION and not check_wifi_status()):
+                if WIND_ANIMATION and weather.get_windy_airports(weather_data):
+                    animate_windy_airports(weather.get_windy_airports(weather_data), weather_data)
 
-            if LIGHTENING_ANIMATION and weather.get_lightning_airports(weather_data):
-                animate_lightning_airports(weather.get_lightning_airports(weather_data), weather_data)
+                if LIGHTENING_ANIMATION and weather.get_lightning_airports(weather_data):
+                    animate_lightning_airports(weather.get_lightning_airports(weather_data), weather_data)
 
-            if SNOWY_ANIMATION and weather.get_snowy_airports(weather_data):
-                animate_snowy_airports(weather.get_snowy_airports(weather_data), weather_data)
+                if SNOWY_ANIMATION and weather.get_snowy_airports(weather_data):
+                    animate_snowy_airports(weather.get_snowy_airports(weather_data), weather_data)
 
         else:
             # If lights should be off, ensure LEDs are off and sleep
