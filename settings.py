@@ -822,32 +822,59 @@ def apply_update():
 
         # Smart merge of config.py
         if os.path.exists('/tmp/config.py.tmp'):
+            # Read both config files
             with open('/tmp/config.py.tmp', 'r') as f:
                 old_config = f.read()
             with open('config.py', 'r') as f:
                 new_config = f.read()
 
-            # Extract user settings from old config
+            # Extract settings from both configs
             old_settings = {}
-            exec(old_config, {}, old_settings)
-
-            # Update new config with old settings
             new_settings = {}
+            exec(old_config, {}, old_settings)
             exec(new_config, {}, new_settings)
 
-            # Merge configurations
-            for key in old_settings:
-                if key in new_settings and not key.startswith('__'):
-                    new_settings[key] = old_settings[key]
+            # Remove Python internals
+            old_settings = {k: v for k, v in old_settings.items() if not k.startswith('__')}
+            new_settings = {k: v for k, v in new_settings.items() if not k.startswith('__')}
 
-            # Write merged config
-            with open('config.py', 'w') as f:
-                for key, value in new_settings.items():
-                    if not key.startswith('__'):
+            # Merge settings (prefer old values for existing settings)
+            merged_settings = new_settings.copy()
+            for key, value in old_settings.items():
+                if key in merged_settings:
+                    merged_settings[key] = value
+
+            # Read the new config file line by line to preserve structure and comments
+            with open('config.py', 'r') as f:
+                config_lines = f.readlines()
+
+            # Process each line, replacing values while preserving structure
+            new_config_lines = []
+            for line in config_lines:
+                line = line.rstrip()
+                if '=' in line and not line.strip().startswith('#'):
+                    # Extract the variable name
+                    var_name = line.split('=')[0].strip()
+                    if var_name in merged_settings:
+                        # Format the value based on its type
+                        value = merged_settings[var_name]
                         if isinstance(value, str):
-                            f.write(f'{key} = "{value}"\n')
+                            new_line = f"{var_name} = '{value}'"
+                        elif isinstance(value, datetime.time):
+                            new_line = f"{var_name} = datetime.time({value.hour}, {value.minute})"
+                        elif isinstance(value, (tuple, list)):
+                            new_line = f"{var_name} = {value}"
                         else:
-                            f.write(f'{key} = {value}\n')
+                            new_line = f"{var_name} = {value}"
+                        new_config_lines.append(new_line)
+                    else:
+                        new_config_lines.append(line)
+                else:
+                    new_config_lines.append(line)
+
+            # Write the merged config
+            with open('config.py', 'w') as f:
+                f.write('\n'.join(new_config_lines))
 
             os.remove('/tmp/config.py.tmp')
 
