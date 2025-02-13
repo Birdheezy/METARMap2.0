@@ -890,9 +890,21 @@ def apply_update():
         # Set ownership to pi user
         subprocess.run(['sudo', 'chown', '-R', 'pi:pi', '/home/pi'], check=True)
 
+        # Restart all services to apply changes
+        try:
+            # First restart scheduler (which handles weather updates)
+            subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
+            # Then restart metar service (which handles LED display)
+            subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
+            # Finally, restart settings service (which will trigger the page refresh)
+            subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
+            restart_message = "Update applied successfully. All services have been restarted."
+        except subprocess.CalledProcessError as e:
+            restart_message = f"Update applied but service restart failed: {str(e)}"
+
         return jsonify({
             'success': True,
-            'message': 'Update applied successfully'
+            'message': restart_message
         })
 
     except Exception as e:
