@@ -5,7 +5,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Check if script is run with sudo
-if [ "$EUID" -ne 0 ]; then 
+if [ "$EUID" -ne 0 ]; then
     echo -e "${RED}Please run as root (use sudo)${NC}"
     exit 1
 fi
@@ -157,27 +157,27 @@ setup_wifi_broadcast() {
     echo "2. Set SSID to: METAR Pi"
     echo "3. Set Password to: METAR-Pi-Password"
     echo "4. Set IP address to: 192.168.8.1"
-    
+
     read -p "Ready to proceed? (y/n): " PROCEED
-    
+
     if [[ $PROCEED =~ ^[Yy]$ ]]; then
         # Download and extract
         if curl "https://www.raspberryconnect.com/images/scripts/AccessPopup.tar.gz" -o AccessPopup.tar.gz; then
             tar -xvf ./AccessPopup.tar.gz
             cd AccessPopup
-            
+
             echo -e "\n${GREEN}Starting interactive installer...${NC}"
             echo "After completion, this script will resume."
-            
+
             # Launch interactive installer
             sudo ./installconfig.sh
-            
+
             # Return to original directory
             cd ..
-            
+
             # Cleanup
             rm -rf AccessPopup.tar.gz
-            
+
             echo -e "\n${GREEN}WiFi broadcast setup completed${NC}"
             return 0
         else
@@ -210,10 +210,10 @@ esac
 install_service() {
     local service_name=$1
     local service_content=$2
-    
+
     echo "Creating ${service_name}..."
     echo "$service_content" | sudo tee "/etc/systemd/system/${service_name}" > /dev/null
-    
+
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}Created ${service_name}${NC}"
         sudo systemctl daemon-reload
@@ -279,10 +279,10 @@ create_service_file() {
     local service_name=$1
     local service_content=$2
     local service_path="/etc/systemd/system/${service_name}"
-    
+
     echo "Creating ${service_name}..."
     echo "$service_content" > "$service_path"
-    
+
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✓ Created ${service_name}${NC}"
         return 0
@@ -297,7 +297,7 @@ enable_services() {
     echo "Reloading systemd daemon..."
     if sudo systemctl daemon-reload; then
         echo -e "${GREEN}✓ Daemon reloaded${NC}"
-        
+
         local services=("metar.service" "settings.service" "scheduler.service")
         for service in "${services[@]}"; do
             echo "Enabling ${service}..."
@@ -332,12 +332,11 @@ alias schedulerstatus='sudo systemctl status scheduler.service'"
 
     # Write aliases to the pi user's .bash_aliases file
     echo "$ALIASES" | sudo -u pi tee /home/pi/.bash_aliases > /dev/null
-    
-    # Source the aliases file as the pi user without sudo
-    su - pi -c 'source /home/pi/.bash_aliases'
-    
+
     echo -e "${GREEN}✓ Aliases installed${NC}"
-    echo "Note: To use aliases in the current session, run: source ~/.bash_aliases or reboot"
+    echo -e "${GREEN}To use the aliases in your current session, run:${NC}"
+    echo -e "    source /home/pi/.bash_aliases"
+    echo -e "Or log out and log back in for aliases to take effect automatically."
     return 0
 }
 
@@ -395,60 +394,60 @@ esac
 # Function to install Tailscale
 install_tailscale() {
     echo -e "\n${GREEN}=== Installing Tailscale ===${NC}"
-    
+
     # Install https transport
     echo "Installing HTTPS transport..."
     if ! sudo apt-get install -y apt-transport-https; then
         echo -e "${RED}Failed to install HTTPS transport${NC}"
         return 1
     fi
-    
+
     # Add Tailscale GPG key
     echo "Adding Tailscale GPG key..."
     if ! curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg > /dev/null; then
         echo -e "${RED}Failed to add Tailscale GPG key${NC}"
         return 1
     fi
-    
+
     # Add Tailscale repository
     echo "Adding Tailscale repository..."
     if ! curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list; then
         echo -e "${RED}Failed to add Tailscale repository${NC}"
         return 1
     fi
-    
+
     # Update package lists
     echo "Updating package lists..."
     if ! sudo apt update; then
         echo -e "${RED}Failed to update package lists${NC}"
         return 1
     fi
-    
+
     # Install Tailscale
     echo "Installing Tailscale..."
     if ! sudo apt install tailscale -y; then
         echo -e "${RED}Failed to install Tailscale${NC}"
         return 1
     fi
-    
+
     # Enable auto-updates
     echo "Enabling auto-updates..."
     if ! sudo tailscale set --auto-update; then
         echo -e "${RED}Failed to enable auto-updates${NC}"
         return 1
     fi
-    
+
     # Start Tailscale
     echo -e "\n${GREEN}Starting Tailscale...${NC}"
     echo "A URL will be displayed. Copy and paste it into your web browser to complete setup."
     echo -e "Press ${GREEN}Enter${NC} when ready..."
     read
-    
+
     if ! sudo tailscale up --ssh; then
         echo -e "${RED}Failed to start Tailscale${NC}"
         return 1
     fi
-    
+
     echo -e "\n${GREEN}Tailscale installation completed${NC}"
     echo "Please make sure to disable key expiry in the Tailscale admin console"
     return 0
@@ -472,7 +471,7 @@ esac
 
 setup_git() {
     echo -e "\n${GREEN}=== Installing Git and Cloning Repository ===${NC}"
-    
+
     # Install Git
     echo "Installing Git..."
     if ! sudo apt install git -y; then
@@ -481,7 +480,7 @@ setup_git() {
     fi
 
     cd /home/pi || return 1
-    
+
     # Let user choose branch
     echo -e "\n${GREEN}Choose which branch to install:${NC}"
     echo "1) main (beta/development branch)"
@@ -491,7 +490,7 @@ setup_git() {
     case $BRANCH_CHOICE in
         1) BRANCH="main" ;;
         2) BRANCH="production" ;;
-        *) 
+        *)
             echo -e "${RED}Invalid choice${NC}"
             return 1
             ;;
@@ -578,10 +577,10 @@ setup_ssl() {
     local CONFIG_FILE="/home/pi/config.py"
     if [ -f "$CONFIG_FILE" ]; then
         echo "Updating config.py to enable HTTPS..."
-        
+
         # Create backup
         sudo cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
-        
+
         # Replace ENABLE_HTTPS value or add it if it doesn't exist
         if grep -q "ENABLE_HTTPS" "$CONFIG_FILE"; then
             sudo sed -i 's/ENABLE_HTTPS *= *False/ENABLE_HTTPS = True/' "$CONFIG_FILE"
@@ -589,7 +588,7 @@ setup_ssl() {
         else
             echo "ENABLE_HTTPS = True" | sudo tee -a "$CONFIG_FILE" > /dev/null
         fi
-        
+
         # Verify the change
         if grep -q "ENABLE_HTTPS = True" "$CONFIG_FILE"; then
             echo -e "${GREEN}✓ Successfully enabled HTTPS in config.py${NC}"
@@ -609,10 +608,10 @@ disable_https() {
     local CONFIG_FILE="/home/pi/config.py"
     if [ -f "$CONFIG_FILE" ]; then
         echo "Updating config.py to disable HTTPS..."
-        
+
         # Create backup
         sudo cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
-        
+
         # Replace ENABLE_HTTPS value or add it if it doesn't exist
         if grep -q "ENABLE_HTTPS" "$CONFIG_FILE"; then
             sudo sed -i 's/ENABLE_HTTPS *= *True/ENABLE_HTTPS = False/' "$CONFIG_FILE"
@@ -620,7 +619,7 @@ disable_https() {
         else
             echo "ENABLE_HTTPS = False" | sudo tee -a "$CONFIG_FILE" > /dev/null
         fi
-        
+
         # Verify the change
         if grep -q "ENABLE_HTTPS = False" "$CONFIG_FILE"; then
             echo -e "${GREEN}✓ Successfully disabled HTTPS in config.py${NC}"

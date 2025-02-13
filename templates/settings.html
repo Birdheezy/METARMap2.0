@@ -88,7 +88,7 @@
     <!-- Animation Settings -->
 
     <section id="animation">
-        
+
         <h2>Animation Settings</h2>
 
         <div class="mb-3">
@@ -247,7 +247,7 @@
         <!-- Time Settings Section -->
         <section id="time-settings">
             <h2>Time Settings</h2>
-            
+
             <!-- Timezone Settings -->
             <div class="dropdown-container">
                 <label style="display: flex; align-items: center;">
@@ -388,7 +388,7 @@
                         Enter the GPIO pin number only, e.g., "18".
                     </div>
                 </div>
-                <input type="text" class="form-control input-small" name="PIXEL_PIN" id="pixel_pin" 
+                <input type="text" class="form-control input-small" name="PIXEL_PIN" id="pixel_pin"
                        value="{{ config.PIXEL_PIN }}" placeholder="e.g., D18">
             </div>
 
@@ -453,27 +453,7 @@
             </div>
 
             <br>
-            <!-- System Restore -->
-<!--            <div class="dropdown-container">
-                <label style="display: flex; align-items: center;">
-                    <h2 style="margin: 0;">System Restore</h2>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                </label>
-                <div class="dropdown-content" style="display: none;">
-                    This will restore your system to a previous backup state.<br>
-                    Note: Applying updates after restore will overwrite restored files.
-                </div>
-            </div>
-            <div class="service-control-panel">
-                <select id="backup-select" class="form-control" style="max-width: 300px; margin: 0 auto;">
-                    <option value="">Loading backups...</option>
-                </select>
-                <button id="restore-button" class="btn btn-primary service-btn" style="margin-top: 10px;" onclick="restoreSelectedBackup()" disabled>Restore Selected Backup</button>
-                <div id="restore-status" style="margin-top: 10px;"></div>
-            </div>
-        </section>
-    </section>
--->
+
     <!-- Airports Section with Line Numbers -->
     <section id="airports" class="airports">
         <h2>Airports</h2>
@@ -537,21 +517,25 @@
                 </div>
     		</div>
     	</div>
+    </section>
 
-    	<div class="mt-4">
-    		<div class="dropdown-container">
-    			<div>
-    				<button id="check-updates-button" class="btn btn-primary">Check for Updates</button>
-    				<span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-    			</div>
-    			<div class="dropdown-content" style="display: none;">
-    				This will check for software updates from the repository.<br>
-    				If updates are available, you'll have the option to install them.
-    			</div>
-    		</div>
-    		<div id="update-status" class="mt-2"></div>
-    		<div id="update-button-container" class="mt-2"></div>
-    	</div>
+    <section>
+        <h2>System Updates</h2>
+        <div class="mb-3">
+            <div class="dropdown-container">
+                <div>
+                    <button type="button" class="btn btn-primary" onclick="checkForUpdates()">Check for Updates</button>
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                </div>
+                <div class="dropdown-content" style="display: none;">
+                    This will check for updates from the Git repository.<br>
+                    Your local configuration files (config.py and airports.txt) will be preserved during updates.<br>
+                    A backup of all repository files will be created before updating.
+                </div>
+            </div>
+            <div id="update-status" class="mt-3"></div>
+            <div id="update-button-container" class="mt-3"></div>
+        </div>
     </section>
 
     </form>

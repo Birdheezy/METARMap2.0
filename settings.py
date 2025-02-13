@@ -24,7 +24,7 @@ app.secret_key = os.urandom(24)
 
 def reload_config():
     importlib.reload(config)
-    
+
     # Update global variables dynamically
     for key in dir(config):
         if key.isupper():  # Only update uppercase variables (configuration constants)
@@ -64,8 +64,8 @@ def reload_config():
     WEATHER_UPDATE_INTERVAL = globals().get('WEATHER_UPDATE_INTERVAL', None)
     UPDATE_WEATHER = globals().get('UPDATE_WEATHER', None)
     STALE_INDICATION = globals().get('STALE_INDICATION', None)
-    STALE_DATA_COLOR = globals().get('STALE_DATA_COLOR', (255, 255, 0))
-    WIFI_DISCONNECTED_COLOR = globals().get('WIFI_DISCONNECTED_COLOR', (255, 0, 255))
+    STALE_DATA_COLOR = globals().get('STALE_DATA_COLOR', None)
+    WIFI_DISCONNECTED_COLOR = globals().get('WIFI_DISCONNECTED_COLOR', None)
     WIFI_INDICATION = globals().get('WIFI_INDICATION', True)
 
 
@@ -79,7 +79,7 @@ def turn_off_leds():
     subprocess.run(['sudo', 'systemctl', 'stop', 'metar.service'])
     subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/blank.py'])
     return jsonify({"status": "LEDs turned off"}), 200
-    
+
 @app.route('/update-weather', methods=['POST'])
 def refresh_weather():
     try:
@@ -178,15 +178,15 @@ def edit_settings():
                 if hex_value:
                     # Convert HEX to RGB tuple
                     r, g, b = (int(hex_value[i:i+2], 16) for i in (1, 3, 5))
-                    
+
                     # Rearrange to GRB for your LEDs
                     grb_value = (g, r, b)
-                    
+
                     # Save the GRB value
                     config_updates[key] = grb_value
 
             # Process color values
-            stale_data_color = request.form.get('stale_data_color', '#ffff00')  # Default to yellow
+            stale_data_color = request.form.get('stale_data_color')
             if stale_data_color.startswith('#'):
                 stale_data_color = stale_data_color[1:]  # Remove the '#' prefix
             r = int(stale_data_color[:2], 16)
@@ -286,12 +286,12 @@ def edit_settings():
             # Reload the configuration to reflect the changes
             reload_config()
             updated_airports = request.form.get("airports")
-            
+
             # Write the updated list to airports.txt
             if updated_airports is not None:
                 with open('/home/pi/airports.txt', 'w') as f:  # Replace with actual path to airports.txt
                     f.write(updated_airports)
-            flash('Configuration updated successfully!', 'success')
+            flash('Configuration updated and METAR service restarted!', 'success')
 
         except ValueError as e:
             flash(str(e), 'danger')  # Show specific error messages
@@ -310,7 +310,7 @@ def edit_settings():
     lights_off_time_minute = config.LIGHTS_OFF_TIME.minute
     lights_on_time_hour = config.LIGHTS_ON_TIME.hour
     lights_on_time_minute = config.LIGHTS_ON_TIME.minute
-    
+
     vfr_color = '#{:02x}{:02x}{:02x}'.format(config.VFR_COLOR[1], config.VFR_COLOR[0], config.VFR_COLOR[2])  # GRB -> RGB
     mvfr_color = '#{:02x}{:02x}{:02x}'.format(config.MVFR_COLOR[1], config.MVFR_COLOR[0], config.MVFR_COLOR[2])  # GRB -> RGB
     ifr_color = '#{:02x}{:02x}{:02x}'.format(config.IFR_COLOR[1], config.IFR_COLOR[0], config.IFR_COLOR[2])  # GRB -> RGB
@@ -413,7 +413,7 @@ def restart_service_thread():
         print("Settings service restarted successfully.")
     except subprocess.CalledProcessError as e:
         print(f"Error restarting settings service: {e}")
-        
+
 def restart_service():
     """Restart the settings service in a separate thread."""
     try:
@@ -512,7 +512,7 @@ def scan_networks():
         logging.debug(f"Parsed networks: {sorted_networks}")
 
         return {'networks': sorted_networks}
-    
+
     except subprocess.CalledProcessError as e:
         logging.error(f"nmcli error: {e.stderr}")
         return {'error': f"Failed to scan networks: {e.stderr}"}, 500
@@ -547,20 +547,6 @@ def connect_to_network():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-def get_git_tracked_files(project_dir):
-    """Get list of files tracked by Git in the project directory."""
-    try:
-        # Get list of tracked files from git
-        result = subprocess.run(
-            ['git', 'ls-files'],
-            cwd=project_dir,
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        return result.stdout.splitlines()
-    except subprocess.CalledProcessError as e:
-        raise Exception(f"Failed to get Git tracked files: {e.stderr}")
 
 @app.route('/service/status/<service_name>', methods=['GET'])
 def get_service_status(service_name):
@@ -585,7 +571,7 @@ def get_service_status(service_name):
 def control_service(service_name, action):
     if action not in ['start', 'stop', 'restart']:
         return jsonify({"error": "Invalid action"}), 400
-    
+
     try:
         if service_name == 'settings' and action == 'restart':
             # For settings service restart, send success response before restarting
@@ -596,12 +582,12 @@ def control_service(service_name, action):
             })
             # Force the response to be sent immediately
             response.headers['Connection'] = 'close'
-            
+
             # Schedule the restart to happen after response is sent
             def restart_after_response():
                 time.sleep(1)  # Brief delay to ensure response is sent
                 subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
-            
+
             threading.Thread(target=restart_after_response).start()
             return response
 
@@ -613,7 +599,7 @@ def control_service(service_name, action):
         else:
             # Handle all other service control actions normally
             subprocess.run(['sudo', 'systemctl', action, f'{service_name}.service'], check=True)
-        
+
         return jsonify({
             "message": f"Service {action} successful",
             "status": "running" if action in ['start', 'restart'] else "stopped"
@@ -632,10 +618,10 @@ def get_service_logs(service_name):
             text=True,
             check=True  # This will raise an exception if the command fails
         )
-        
+
         if result.stderr:
             print(f"Warning getting logs for {service_name}: {result.stderr}")
-        
+
         return jsonify({
             "logs": result.stdout if result.stdout else "No logs available",
             "success": True
@@ -679,83 +665,6 @@ def get_weather_status():
             "error": str(e)
         }), 500
 
-@app.route('/list_backups')
-def list_backups():
-    try:
-        backup_dir = os.path.join('/home/pi', 'BACKUP')
-        if not os.path.exists(backup_dir):
-            return jsonify({'backups': []})
-            
-        # Get all backup directories and sort by modification time (newest first)
-        backups = sorted(
-            [d for d in os.listdir(backup_dir) if d.startswith('backup_')],
-            key=lambda x: os.path.getmtime(os.path.join(backup_dir, x)),
-            reverse=True
-        )
-        
-        # Format the timestamps for display
-        formatted_backups = []
-        for backup in backups:
-            timestamp = backup.replace('backup_', '')
-            try:
-                # Parse the timestamp from the folder name
-                dt = datetime.datetime.strptime(timestamp, '%Y%m%d_%H%M%S')
-                formatted_backups.append({
-                    'name': backup,
-                    'timestamp': dt.strftime('%Y-%m-%d %H:%M:%S')
-                })
-            except ValueError:
-                continue
-                
-        return jsonify({'backups': formatted_backups})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/restore_backup/<backup_name>', methods=['POST'])
-def restore_backup(backup_name):
-    try:
-        backup_dir = os.path.join('/home/pi', 'BACKUP')
-        backup_path = os.path.join(backup_dir, backup_name)
-        
-        if not os.path.exists(backup_path):
-            return jsonify({'error': 'Backup not found'}), 404
-            
-        # Stop services before restore
-        subprocess.run(['sudo', 'systemctl', 'stop', 'metar.service'], check=True)
-        subprocess.run(['sudo', 'systemctl', 'stop', 'settings.service'], check=True)
-        
-        # Restore files from backup
-        for root, dirs, files in os.walk(backup_path):
-            for file in files:
-                # Get the relative path
-                rel_path = os.path.relpath(os.path.join(root, file), backup_path)
-                source = os.path.join(root, file)
-                dest = os.path.join('/home/pi', rel_path)
-                
-                # Create destination directory if it doesn't exist
-                os.makedirs(os.path.dirname(dest), exist_ok=True)
-                
-                # Copy the file
-                shutil.copy2(source, dest)
-        
-        # Fix permissions
-        subprocess.run(['sudo', 'chown', '-R', 'pi:pi', '/home/pi'], check=True)
-        
-        # Restart services
-        subprocess.run(['sudo', 'systemctl', 'start', 'metar.service'], check=True)
-        subprocess.run(['sudo', 'systemctl', 'start', 'settings.service'], check=True)
-        
-        return jsonify({'message': 'Backup restored successfully'}), 200
-        
-    except Exception as e:
-        # Try to restart services even if restore failed
-        try:
-            subprocess.run(['sudo', 'systemctl', 'start', 'metar.service'])
-            subprocess.run(['sudo', 'systemctl', 'start', 'settings.service'])
-        except:
-            pass
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/get_timezones', methods=['GET'])
 def get_timezones():
     try:
@@ -775,11 +684,11 @@ def get_timezones():
             'America/Toronto',      # Eastern Canada
             'America/Halifax'       # Atlantic Canada
         ]
-        
+
         # Get current system timezone
-        current_tz = subprocess.run(['timedatectl', 'show', '--property=Timezone'], 
+        current_tz = subprocess.run(['timedatectl', 'show', '--property=Timezone'],
                                   capture_output=True, text=True).stdout.strip().split('=')[1]
-        
+
         return jsonify({
             'timezones': common_timezones,
             'current': current_tz
@@ -793,21 +702,21 @@ def set_timezone():
         timezone = request.json.get('timezone')
         if not timezone:
             return jsonify({'error': 'No timezone provided'}), 400
-            
+
         # Validate timezone by checking if it exists in the list
-        result = subprocess.run(['timedatectl', 'list-timezones'], 
+        result = subprocess.run(['timedatectl', 'list-timezones'],
                               capture_output=True, text=True, check=True)
         available_timezones = result.stdout.strip().split('\n')
-        
+
         if timezone not in available_timezones:
             return jsonify({'error': 'Invalid timezone'}), 400
-            
+
         # Set system timezone
         subprocess.run(['sudo', 'timedatectl', 'set-timezone', timezone], check=True)
-        
+
         # Restart scheduler service to apply timezone change
         subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
-        
+
         return jsonify({
             'message': f'Timezone updated to {timezone}',
             'success': True
@@ -817,115 +726,161 @@ def set_timezone():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/apply_updates', methods=['POST'])
-def apply_updates():
+@app.route('/check_for_updates')
+def check_for_updates():
     try:
-        project_dir = os.getcwd()
-        
-        # Save current user configurations
-        config_content = None
-        airports_content = None
-        
+        # Get current branch
+        branch_cmd = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                                  capture_output=True, text=True, check=True,
+                                  cwd='/home/pi')
+        current_branch = branch_cmd.stdout.strip()
+
+        # Fetch updates from remote
+        fetch_cmd = subprocess.run(['git', 'fetch', 'origin', current_branch],
+                                 capture_output=True, text=True, check=True,
+                                 cwd='/home/pi')
+
+        # Compare local HEAD with remote HEAD
+        diff_cmd = subprocess.run(['git', 'rev-list', 'HEAD...origin/' + current_branch, '--count'],
+                                capture_output=True, text=True, check=True,
+                                cwd='/home/pi')
+        commits_behind = int(diff_cmd.stdout.strip())
+
+        if commits_behind > 0:
+            # Get the list of files that would be updated
+            files_cmd = subprocess.run(['git', 'diff', '--name-only', 'HEAD...origin/' + current_branch],
+                                     capture_output=True, text=True, check=True,
+                                     cwd='/home/pi')
+            changed_files = files_cmd.stdout.strip().split('\n')
+
+            return jsonify({
+                'has_updates': True,
+                'branch': current_branch,
+                'commits_behind': commits_behind,
+                'files': changed_files
+            })
+        else:
+            return jsonify({
+                'has_updates': False,
+                'branch': current_branch,
+                'message': 'Your system is up to date!'
+            })
+
+    except subprocess.CalledProcessError as e:
+        error_msg = f"Git command failed: {e.stderr.strip() if e.stderr else 'No error output'}"
+        app.logger.error(error_msg)
+        return jsonify({
+            'error': error_msg
+        }), 500
+    except Exception as e:
+        error_msg = f"Error checking for updates: {str(e)}"
+        app.logger.error(error_msg)
+        return jsonify({
+            'error': error_msg
+        }), 500
+
+@app.route('/apply_update', methods=['POST'])
+def apply_update():
+    try:
+        # Get current branch
+        branch_cmd = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                                  capture_output=True, text=True, check=True)
+        current_branch = branch_cmd.stdout.strip()
+
+        # Create backup directory with timestamp
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        backup_dir = f'/home/pi/BACKUP/{timestamp}'
+        os.makedirs(backup_dir, exist_ok=True)
+
+        # Get list of tracked files
+        tracked_files_cmd = subprocess.run(['git', 'ls-files'],
+                                         capture_output=True, text=True, check=True)
+        tracked_files = tracked_files_cmd.stdout.strip().split('\n')
+
+        # Backup tracked files
+        for file in tracked_files:
+            if os.path.exists(file):
+                # Create subdirectories in backup if needed
+                backup_file = os.path.join(backup_dir, file)
+                os.makedirs(os.path.dirname(backup_file), exist_ok=True)
+                shutil.copy2(file, backup_file)
+
+        # Save temporary copies of config.py and airports.txt
         if os.path.exists('config.py'):
-            with open('config.py', 'r') as f:
-                config_content = f.read()
+            shutil.copy2('config.py', '/tmp/config.py.tmp')
         if os.path.exists('airports.txt'):
-            with open('airports.txt', 'r') as f:
-                airports_content = f.read()
-        
-        # Get list of tracked files before update
-        tracked_files = get_git_tracked_files(project_dir)
-        
-        # Fetch and apply updates
-        subprocess.run(['git', 'fetch'], cwd=project_dir, check=True)
-        current_branch = subprocess.check_output(
-            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-            cwd=project_dir, text=True
-        ).strip()
-        
-        # Reset only tracked files
-        subprocess.run(['git', 'checkout', f'origin/{current_branch}', '--'] + tracked_files, 
-                      cwd=project_dir, check=True)
-        
-        # Restore user configurations
-        if config_content is not None:
-            # Get new config template
+            shutil.copy2('airports.txt', '/tmp/airports.txt.tmp')
+
+        # Force pull from remote
+        subprocess.run(['git', 'fetch', 'origin', current_branch], check=True)
+        subprocess.run(['git', 'reset', '--hard', f'origin/{current_branch}'], check=True)
+
+        # Restore airports.txt if it existed
+        if os.path.exists('/tmp/airports.txt.tmp'):
+            shutil.copy2('/tmp/airports.txt.tmp', 'airports.txt')
+            os.remove('/tmp/airports.txt.tmp')
+
+        # Smart merge of config.py
+        if os.path.exists('/tmp/config.py.tmp'):
+            with open('/tmp/config.py.tmp', 'r') as f:
+                old_config = f.read()
             with open('config.py', 'r') as f:
                 new_config = f.read()
-            
-            # Update config using the new template while preserving user values
-            update_config(config_content, new_config)
-            
-        if airports_content is not None:
-            with open('airports.txt', 'w') as f:
-                f.write(airports_content)
 
-        # Fix permissions
-        try:
-            subprocess.run(['sudo', 'chown', '-R', 'pi:pi', project_dir], check=True)
-        except subprocess.CalledProcessError:
-            logging.warning("Failed to change file ownership to pi:pi")
+            # Extract user settings from old config
+            old_settings = {}
+            exec(old_config, {}, old_settings)
+
+            # Update new config with old settings
+            new_settings = {}
+            exec(new_config, {}, new_settings)
+
+            # Merge configurations
+            for key in old_settings:
+                if key in new_settings and not key.startswith('__'):
+                    new_settings[key] = old_settings[key]
+
+            # Write merged config
+            with open('config.py', 'w') as f:
+                for key, value in new_settings.items():
+                    if not key.startswith('__'):
+                        if isinstance(value, str):
+                            f.write(f'{key} = "{value}"\n')
+                        else:
+                            f.write(f'{key} = {value}\n')
+
+            os.remove('/tmp/config.py.tmp')
+
+        # Clean up old backups (keep only last 5)
+        backup_root = '/home/pi/BACKUP'
+        if os.path.exists(backup_root):
+            backups = sorted([d for d in os.listdir(backup_root)
+                            if os.path.isdir(os.path.join(backup_root, d))])
+            while len(backups) > 5:
+                oldest = backups.pop(0)
+                shutil.rmtree(os.path.join(backup_root, oldest))
+
+        # Set ownership to pi user
+        subprocess.run(['sudo', 'chown', '-R', 'pi:pi', '/home/pi'], check=True)
 
         return jsonify({
-            "message": "Updates applied successfully! Please restart METAR, Settings and Scheduler services."
-        }), 200
+            'success': True,
+            'message': 'Update applied successfully'
+        })
 
     except Exception as e:
-        # If there was an error, restore user files
-        try:
-            if config_content is not None:
-                with open('config.py', 'w') as f:
-                    f.write(config_content)
-            if airports_content is not None:
-                with open('airports.txt', 'w') as f:
-                    f.write(airports_content)
-        except:
-            pass
-        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
-
-def update_config(old_config, new_config):
-    """
-    Update config.py with new template while preserving user values.
-    
-    Args:
-        old_config (str): Current config.py content
-        new_config (str): New config template content
-    """
-    try:
-        # Execute old config to get current values
-        old_values = {}
-        exec(old_config, {}, old_values)
-        
-        # Parse new config line by line
-        final_lines = []
-        for line in new_config.splitlines():
-            if '=' in line:
-                key = line.split('=')[0].strip()
-                if key.isupper() and key in old_values:
-                    # Preserve user's value
-                    final_lines.append(f"{key} = {repr(old_values[key])}")
-                else:
-                    # Keep new config line (might be a new setting)
-                    final_lines.append(line)
-            else:
-                # Keep comments and other lines
-                final_lines.append(line)
-        
-        # Write updated config
-        with open('config.py', 'w') as f:
-            f.write('\n'.join(final_lines))
-            
-    except Exception as e:
-        logging.error(f"Error updating config: {str(e)}")
-        raise
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 if __name__ == '__main__':
     if ENABLE_HTTPS:
         app.run(
             host='0.0.0.0',
-            port=443,  # Use port 443 for HTTPS
+            port=443,
             ssl_context=(
-                '/etc/ssl/certs/flask-selfsigned.crt',  # Replace with your certificate paths
+                '/etc/ssl/certs/flask-selfsigned.crt',
                 '/etc/ssl/private/flask-selfsigned.key'
             )
         )

@@ -203,12 +203,12 @@ document.addEventListener('DOMContentLoaded', function() {
         function toggleTooltip(icon) {
             // First try to find dropdown content as next sibling of parent
             let tooltipContent = icon.parentElement.nextElementSibling;
-            
+
             // If not found, try to find it within the same container
             if (!tooltipContent || !tooltipContent.classList.contains('dropdown-content')) {
                 tooltipContent = icon.parentElement.querySelector('.dropdown-content');
             }
-            
+
             // If still not found, look for it in the parent's parent
             if (!tooltipContent) {
                 tooltipContent = icon.parentElement.parentElement.querySelector('.dropdown-content');
@@ -216,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (tooltipContent) {
                 const isExpanded = icon.getAttribute('aria-expanded') === 'true';
-                
+
                 // Hide any other visible tooltips first
                 document.querySelectorAll('.dropdown-content').forEach(content => {
                     if (content !== tooltipContent) {
@@ -326,64 +326,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-document.getElementById('check-updates-button').addEventListener('click', function (event) {
-    // Prevent the form from submitting and refreshing the page
-    event.preventDefault();
-
-    let updateStatus = document.getElementById('update-status');
-    let updateButtonContainer = document.getElementById('update-button-container');
-
-    updateStatus.textContent = 'Checking for updates...';
-
-    fetch('/check_for_updates')
-        .then(response => response.json())
-        .then(data => {
-            updateButtonContainer.innerHTML = ''; // Clear any existing button
-            if (data.updates_available) {
-                updateStatus.textContent = data.message;
-
-                // Create the "Update Now" button
-                let updateButton = document.createElement('button');
-                updateButton.textContent = 'Update Now';
-                updateButton.classList.add('btn', 'btn-secondary');
-                updateButton.addEventListener('click', function (event) {
-                    // Prevent page refresh on button click
-                    event.preventDefault();
-
-                    // Update status to "Updating..."
-                    updateStatus.textContent = 'Updating...';
-
-                    // Fetch the update endpoint to pull the latest updates
-                    fetch('/apply_updates', { method: 'POST' })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.message) {
-                                updateStatus.textContent = data.message;
-                            } else if (data.error) {
-                                updateStatus.textContent = 'Update failed: ' + data.error;
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error during update:', error);
-                            updateStatus.textContent = 'An error occurred while updating.';
-                        });
-
-                });
-
-                // Append the button to the container
-                updateButtonContainer.appendChild(updateButton);
-            } else if (data.message) {
-                updateStatus.textContent = data.message;
-            } else if (data.error) {
-                updateStatus.textContent = 'Error: ' + data.error;
-            }
-        })
-        .catch(error => {
-            console.error('Error checking for updates:', error);
-            updateStatus.textContent = 'An error occurred while checking for updates.';
-        });
-});
-
 // Function to control services
 async function controlService(serviceName, action) {
     try {
@@ -391,7 +333,7 @@ async function controlService(serviceName, action) {
             method: 'POST'
         });
         const data = await response.json();
-        
+
         if (response.ok) {
             if (data.special_case === "settings_restart") {
                 showToast("Settings service is restarting... Please wait for the page to reload.", 'success');
@@ -425,15 +367,15 @@ async function updateServiceStatus(serviceName) {
     try {
         const response = await fetch(`/service/status/${serviceName}`);
         const data = await response.json();
-        
+
         const statusElement = document.getElementById(`${serviceName}-service-status`);
         const dotElement = statusElement.querySelector('.status-dot');
         const textElement = statusElement.querySelector('.status-text');
-        
+
         // Update status dot and text
         dotElement.className = `status-dot ${data.status}`;
         textElement.textContent = data.message;
-        
+
     } catch (error) {
         console.error(`Error updating ${serviceName} status:`, error);
     }
@@ -460,22 +402,22 @@ function updateWeatherStatus() {
                 const statusContainer = document.querySelector('.weather-status .service-status');
                 const statusDot = statusContainer.querySelector('.status-dot');
                 const statusText = statusContainer.querySelector('.status-text');
-                
+
                 const lastUpdated = new Date(data.last_updated);
                 const now = new Date();
                 const minutesSinceUpdate = Math.floor((now - lastUpdated) / (1000 * 60));
-                
+
                 // Get the update interval from the input field (in minutes)
                 const updateIntervalInput = document.querySelector('input[name="weather_update_interval"]');
                 const expectedInterval = updateIntervalInput ? parseInt(updateIntervalInput.value) : 5;
-                
+
                 // Update status dot and text - turn red after 2x the expected interval
                 if (minutesSinceUpdate > (expectedInterval * 2)) {
                     statusDot.classList.add('stale');
                 } else {
                     statusDot.classList.remove('stale');
                 }
-                
+
                 statusText.textContent = `WX Last Updated: ${formatDate(data.last_updated)}`;
             }
         })
@@ -509,11 +451,11 @@ function toggleLogs(serviceName) {
         if (logIntervals[serviceName]) {
             clearInterval(logIntervals[serviceName]);
         }
-        
+
         // Initial fetch
         fetchServiceLogs(serviceName);
         logsDiv.style.display = 'block';
-        
+
         // Start new interval
         logIntervals[serviceName] = setInterval(() => {
             fetchServiceLogs(serviceName);
@@ -547,97 +489,11 @@ function fetchServiceLogs(serviceName) {
         .catch(error => console.error('Error fetching logs:', error));
 }
 
-// Function to update backup list
-function updateBackupList() {
-    const backupSelect = document.getElementById('backup-select');
-    const restoreButton = document.getElementById('restore-button');
-    const restoreStatus = document.getElementById('restore-status');
-    
-    fetch('/list_backups')
-        .then(response => response.json())
-        .then(data => {
-            backupSelect.innerHTML = '<option value="">Select a backup...</option>';
-            if (data.backups && data.backups.length > 0) {
-                data.backups.forEach(backup => {
-                    const option = document.createElement('option');
-                    option.value = backup.name;
-                    option.textContent = backup.timestamp;
-                    backupSelect.appendChild(option);
-                });
-                backupSelect.disabled = false;
-            } else {
-                backupSelect.innerHTML = '<option value="">No backups available</option>';
-                backupSelect.disabled = true;
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching backups:', error);
-            backupSelect.innerHTML = '<option value="">Error loading backups</option>';
-            backupSelect.disabled = true;
-        });
-}
-
-// Function to restore selected backup
-function restoreSelectedBackup() {
-    const backupSelect = document.getElementById('backup-select');
-    const backupName = backupSelect.value;
-    
-    if (!backupName) {
-        return;
-    }
-    
-    if (!confirm('Are you sure you want to restore this backup? This will restart all services.')) {
-        return;
-    }
-    
-    const restoreStatus = document.getElementById('restore-status');
-    const restoreButton = document.getElementById('restore-button');
-    
-    restoreStatus.textContent = 'Restoring backup...';
-    restoreButton.disabled = true;
-    backupSelect.disabled = true;
-    
-    fetch(`/restore_backup/${backupName}`, {
-        method: 'POST'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.message) {
-            restoreStatus.textContent = 'Backup restored successfully. Page will reload in 5 seconds...';
-            setTimeout(() => {
-                window.location.reload();
-            }, 5000);
-        } else if (data.error) {
-            restoreStatus.textContent = 'Error: ' + data.error;
-            restoreButton.disabled = false;
-            backupSelect.disabled = false;
-        }
-    })
-    .catch(error => {
-        console.error('Error restoring backup:', error);
-        restoreStatus.textContent = 'Error restoring backup';
-        restoreButton.disabled = false;
-        backupSelect.disabled = false;
-    });
-}
-
-// Add event listener for backup selection change
-document.addEventListener('DOMContentLoaded', () => {
-    const backupSelect = document.getElementById('backup-select');
-    const restoreButton = document.getElementById('restore-button');
-    
-    backupSelect.addEventListener('change', () => {
-        restoreButton.disabled = !backupSelect.value;
-    });
-    
-    updateBackupList();
-});
-
 // Function to populate timezone dropdown
 function populateTimezones() {
     const select = document.getElementById('timezone-select');
     const status = document.getElementById('timezone-status');
-    
+
     fetch('/get_timezones')
         .then(response => response.json())
         .then(data => {
@@ -664,7 +520,7 @@ function populateTimezones() {
 function updateTimezone(timezone) {
     const status = document.getElementById('timezone-status');
     status.textContent = 'Updating timezone...';
-    
+
     fetch('/set_timezone', {
         method: 'POST',
         headers: {
@@ -692,10 +548,10 @@ function updateTimezone(timezone) {
 // Add event listeners when page loads
 document.addEventListener('DOMContentLoaded', () => {
     // Existing event listeners...
-    
+
     // Populate timezone dropdown
     populateTimezones();
-    
+
     // Add change event listener for timezone select
     const timezoneSelect = document.getElementById('timezone-select');
     if (timezoneSelect) {
@@ -715,5 +571,100 @@ document.addEventListener('DOMContentLoaded', () => {
 function confirmSettingsStop() {
     if (confirm("Warning: Stopping the settings service will take this settings website offline.\n\nYou will need to power cycle your METARMap to restore access to the settings website.\n\nAre you sure you want to stop the settings service?")) {
         controlService('settings', 'stop');
+    }
+}
+
+// Function to check for updates
+async function checkForUpdates() {
+    const updateStatus = document.getElementById('update-status');
+    const updateButtonContainer = document.getElementById('update-button-container');
+
+    try {
+        updateStatus.textContent = 'Checking for updates...';
+        updateButtonContainer.innerHTML = '';
+
+        const response = await fetch('/check_for_updates');
+        const data = await response.json();
+
+        if (data.error) {
+            updateStatus.textContent = `Error checking for updates: ${data.error}`;
+            return;
+        }
+
+        if (data.has_updates) {
+            let statusHtml = `
+                <div>Updates available on ${data.branch} branch (${data.commits_behind} commits behind)</div>
+                <div style="margin-top: 10px;">The following files will be updated:</div>
+                <ul style="list-style-type: none; padding-left: 0;">
+            `;
+
+            data.files.forEach(file => {
+                statusHtml += `<li>${file}</li>`;
+            });
+
+            statusHtml += `</ul>
+                <div style="margin-top: 10px; font-style: italic;">
+                    Note: Your local configuration files will be preserved during the update.
+                </div>`;
+
+            updateStatus.innerHTML = statusHtml;
+
+            // Add the Update Now button
+            const updateNowButton = document.createElement('button');
+            updateNowButton.textContent = 'Update Now';
+            updateNowButton.className = 'btn btn-primary';
+            updateNowButton.onclick = function() {
+                if (confirm('Are you sure you want to apply these updates? A backup will be created before updating.')) {
+                    applyUpdate();
+                }
+            };
+            updateButtonContainer.appendChild(updateNowButton);
+        } else {
+            updateStatus.textContent = data.message;
+        }
+    } catch (error) {
+        updateStatus.textContent = 'Error checking for updates: ' + error;
+    }
+}
+
+// Function to apply update
+async function applyUpdate() {
+    const updateStatus = document.getElementById('update-status');
+    const updateButtonContainer = document.getElementById('update-button-container');
+
+    try {
+        updateStatus.textContent = 'Applying update... Please wait.';
+        updateButtonContainer.innerHTML = '';
+
+        const response = await fetch('/apply_update', {
+            method: 'POST'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            updateStatus.innerHTML = `
+                <div style="color: green;">
+                    ${data.message}<br>
+                    The page will refresh in 5 seconds...
+                </div>
+            `;
+            setTimeout(() => {
+                window.location.reload();
+            }, 5000);
+        } else {
+            updateStatus.innerHTML = `
+                <div style="color: red;">
+                    Error applying update: ${data.error}<br>
+                    Your local files have been preserved.
+                </div>
+            `;
+        }
+    } catch (error) {
+        updateStatus.innerHTML = `
+            <div style="color: red;">
+                Error applying update: ${error}<br>
+                Your local files have been preserved.
+            </div>
+        `;
     }
 }
