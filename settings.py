@@ -5,7 +5,6 @@ from config import *
 import datetime
 import config
 import shutil
-import shutil
 import re
 import time
 import threading
@@ -16,7 +15,15 @@ import signal
 import sys
 import schedule
 import weather
+import functools
 
+def after_this_response(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        thread = threading.Thread(target=func, args=args, kwargs=kwargs)
+        thread.start()
+        return
+    return wrapper
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -29,8 +36,6 @@ def reload_config():
     for key in dir(config):
         if key.isupper():  # Only update uppercase variables (configuration constants)
             globals()[key] = getattr(config, key)
-
-
 
     # Update global values from the loaded config
     BRIGHTNESS = globals().get('BRIGHTNESS', None)
@@ -60,7 +65,7 @@ def reload_config():
     ENABLE_LIGHTS_OFF = globals().get('ENABLE_LIGHTS_OFF', None)
     NUM_PIXELS = globals().get('NUM_PIXELS', None)
     LEGEND = globals().get('LEGEND', None)
-    PIXEL_PIN = globals().get('PIXEL_PIN', None),
+    PIXEL_PIN = globals().get('PIXEL_PIN', None)
     WEATHER_UPDATE_INTERVAL = globals().get('WEATHER_UPDATE_INTERVAL', None)
     UPDATE_WEATHER = globals().get('UPDATE_WEATHER', None)
     STALE_INDICATION = globals().get('STALE_INDICATION', None)
@@ -124,7 +129,7 @@ def edit_settings():
 
             # Extract and validate time settings
             try:
-                config_updates["PIXEL_PIN"] = request.form.get('PIXEL_PIN', '').strip()
+                config_updates["PIXEL_PIN"] = int(request.form.get('pixel_pin', ''))
                 config_updates["LEGEND"] = 'legend' in request.form
                 config_updates["ENABLE_LIGHTS_OFF"] = 'enable_lights_off' in request.form
                 config_updates["DAYTIME_DIMMING"] = 'daytime_dimming' in request.form
@@ -162,37 +167,40 @@ def edit_settings():
             except ValueError:
                 raise ValueError("Could not update time settings: Please enter valid numbers for hours and minutes.")
 
-            # Handle color inputs with GRB adjustment
+            # Convert RGB hex color to GRB tuple
+            def hex_to_grb(hex_color):
+                # Remove the '#' if present and convert to RGB
+                hex_color = hex_color.lstrip('#')
+                r = int(hex_color[0:2], 16)
+                g = int(hex_color[2:4], 16)
+                b = int(hex_color[4:6], 16)
+                # Return in GRB order for NeoPixels
+                return (g, r, b)
+
+            # Convert GRB tuple to RGB hex
+            def grb_to_hex(grb_tuple):
+                g, r, b = grb_tuple
+                # Convert to RGB hex format
+                return '#{:02x}{:02x}{:02x}'.format(r, g, b)
+
+            # Handle color fields
             color_fields = {
-                "VFR_COLOR": "vfr_color",
-                "MVFR_COLOR": "mvfr_color",
-                "IFR_COLOR": "ifr_color",
-                "LIFR_COLOR": "lifr_color",
-                "MISSING_COLOR": "missing_color",
-                "LIGHTENING_COLOR": "lightening_color",
-                "SNOWY_COLOR": "snowy_color"
+                'vfr_color': 'VFR_COLOR',
+                'mvfr_color': 'MVFR_COLOR',
+                'ifr_color': 'IFR_COLOR',
+                'lifr_color': 'LIFR_COLOR',
+                'missing_color': 'MISSING_COLOR',
+                'lightening_color': 'LIGHTENING_COLOR',
+                'snowy_color': 'SNOWY_COLOR',
+                'stale_data_color': 'STALE_DATA_COLOR',
+                'wifi_disconnected_color': 'WIFI_DISCONNECTED_COLOR'
             }
 
-            for key, field_name in color_fields.items():
-                hex_value = request.form.get(field_name)
-                if hex_value:
-                    # Convert HEX to RGB tuple
-                    r, g, b = (int(hex_value[i:i+2], 16) for i in (1, 3, 5))
-
-                    # Rearrange to GRB for your LEDs
-                    grb_value = (g, r, b)
-
-                    # Save the GRB value
-                    config_updates[key] = grb_value
-
-            # Process color values
-            stale_data_color = request.form.get('stale_data_color')
-            if stale_data_color.startswith('#'):
-                stale_data_color = stale_data_color[1:]  # Remove the '#' prefix
-            r = int(stale_data_color[:2], 16)
-            g = int(stale_data_color[2:4], 16)
-            b = int(stale_data_color[4:], 16)
-            config_updates["STALE_DATA_COLOR"] = (g, r, b)  # Store in GRB format
+            for form_key, config_key in color_fields.items():
+                if form_key in request.form:
+                    # Convert the RGB hex color to GRB tuple
+                    grb_color = hex_to_grb(request.form[form_key])
+                    config_updates[config_key] = grb_color
 
             # Define individual settings updates and catch specific errors
             try:
@@ -244,7 +252,7 @@ def edit_settings():
             except ValueError:
                 raise ValueError("Could not update Pixel Count: Please enter a valid number.")
             try:
-                config_updates["PIXEL_PIN"] = int(request.form['PIXEL_PIN'])
+                config_updates["PIXEL_PIN"] = int(request.form.get('pixel_pin', ''))
             except ValueError:
                 raise ValueError("Could not update PIXEL_PIN: Please enter a valid integer.")
             try:
@@ -311,15 +319,21 @@ def edit_settings():
     lights_on_time_hour = config.LIGHTS_ON_TIME.hour
     lights_on_time_minute = config.LIGHTS_ON_TIME.minute
 
-    vfr_color = '#{:02x}{:02x}{:02x}'.format(config.VFR_COLOR[1], config.VFR_COLOR[0], config.VFR_COLOR[2])  # GRB -> RGB
-    mvfr_color = '#{:02x}{:02x}{:02x}'.format(config.MVFR_COLOR[1], config.MVFR_COLOR[0], config.MVFR_COLOR[2])  # GRB -> RGB
-    ifr_color = '#{:02x}{:02x}{:02x}'.format(config.IFR_COLOR[1], config.IFR_COLOR[0], config.IFR_COLOR[2])  # GRB -> RGB
-    lifr_color = '#{:02x}{:02x}{:02x}'.format(config.LIFR_COLOR[1], config.LIFR_COLOR[0], config.LIFR_COLOR[2])  # GRB -> RGB
-    missing_color = '#{:02x}{:02x}{:02x}'.format(config.MISSING_COLOR[1], config.MISSING_COLOR[0], config.MISSING_COLOR[2])  # GRB -> RGB
-    lightening_color = '#{:02x}{:02x}{:02x}'.format(config.LIGHTENING_COLOR[1], config.LIGHTENING_COLOR[0], config.LIGHTENING_COLOR[2])  # GRB -> RGB
-    snowy_color = '#{:02x}{:02x}{:02x}'.format(config.SNOWY_COLOR[1], config.SNOWY_COLOR[0], config.SNOWY_COLOR[2])  # GRB -> RGB
-    stale_data_color = '#{:02x}{:02x}{:02x}'.format(config.STALE_DATA_COLOR[1], config.STALE_DATA_COLOR[0], config.STALE_DATA_COLOR[2])  # GRB -> RGB
-    wifi_disconnected_color = '#{:02x}{:02x}{:02x}'.format(config.WIFI_DISCONNECTED_COLOR[1], config.WIFI_DISCONNECTED_COLOR[0], config.WIFI_DISCONNECTED_COLOR[2])
+    # Convert GRB colors to RGB hex for display
+    def grb_to_hex(grb_tuple):
+        g, r, b = grb_tuple
+        return '#{:02x}{:02x}{:02x}'.format(r, g, b)
+
+    # Convert all colors from GRB to RGB hex format
+    vfr_color = grb_to_hex(config.VFR_COLOR)
+    mvfr_color = grb_to_hex(config.MVFR_COLOR)
+    ifr_color = grb_to_hex(config.IFR_COLOR)
+    lifr_color = grb_to_hex(config.LIFR_COLOR)
+    missing_color = grb_to_hex(config.MISSING_COLOR)
+    lightening_color = grb_to_hex(config.LIGHTENING_COLOR)
+    snowy_color = grb_to_hex(config.SNOWY_COLOR)
+    stale_data_color = grb_to_hex(config.STALE_DATA_COLOR)
+    wifi_disconnected_color = grb_to_hex(config.WIFI_DISCONNECTED_COLOR)
 
     # Get the last modified date of weather.json
     weather_file_path = '/home/pi/weather.json'  # Adjust this path if necessary
@@ -783,126 +797,59 @@ def check_for_updates():
 def apply_update():
     try:
         # Get current branch
-        branch_cmd = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-                                  capture_output=True, text=True, check=True)
-        current_branch = branch_cmd.stdout.strip()
+        branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], text=True).strip()
 
-        # Create backup directory with timestamp
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        # Create timestamped backup directory
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         backup_dir = f'/home/pi/BACKUP/{timestamp}'
         os.makedirs(backup_dir, exist_ok=True)
 
-        # Get list of tracked files
-        tracked_files_cmd = subprocess.run(['git', 'ls-files'],
-                                         capture_output=True, text=True, check=True)
-        tracked_files = tracked_files_cmd.stdout.strip().split('\n')
+        # Create temporary copy of user files
+        subprocess.run(['cp', 'config.py', '/tmp/config.py.tmp'], check=True)
+        subprocess.run(['cp', 'airports.txt', '/tmp/airports.txt.tmp'], check=True)
 
-        # Backup tracked files
-        for file in tracked_files:
-            if os.path.exists(file):
-                # Create subdirectories in backup if needed
-                backup_file = os.path.join(backup_dir, file)
-                os.makedirs(os.path.dirname(backup_file), exist_ok=True)
-                shutil.copy2(file, backup_file)
+        # Force pull from repository
+        subprocess.run(['git', 'fetch', 'origin', branch], check=True)
+        subprocess.run(['git', 'reset', '--hard', f'origin/{branch}'], check=True)
 
-        # Save temporary copies of config.py and airports.txt
-        if os.path.exists('config.py'):
-            shutil.copy2('config.py', '/tmp/config.py.tmp')
-        if os.path.exists('airports.txt'):
-            shutil.copy2('airports.txt', '/tmp/airports.txt.tmp')
+        # Restore user files
+        subprocess.run(['mv', '/tmp/config.py.tmp', 'config.py'], check=True)
+        subprocess.run(['mv', '/tmp/airports.txt.tmp', 'airports.txt'], check=True)
 
-        # Force pull from remote
-        subprocess.run(['git', 'fetch', 'origin', current_branch], check=True)
-        subprocess.run(['git', 'reset', '--hard', f'origin/{current_branch}'], check=True)
-
-        # Restore airports.txt if it existed
-        if os.path.exists('/tmp/airports.txt.tmp'):
-            shutil.copy2('/tmp/airports.txt.tmp', 'airports.txt')
-            os.remove('/tmp/airports.txt.tmp')
-
-        # Smart merge of config.py
-        if os.path.exists('/tmp/config.py.tmp'):
-            # Read both config files
-            with open('/tmp/config.py.tmp', 'r') as f:
-                old_config = f.read()
-            with open('config.py', 'r') as f:
-                new_config = f.read()
-
-            # Extract settings from both configs
-            old_settings = {}
-            new_settings = {}
-            exec(old_config, {}, old_settings)
-            exec(new_config, {}, new_settings)
-
-            # Remove Python internals
-            old_settings = {k: v for k, v in old_settings.items() if not k.startswith('__')}
-            new_settings = {k: v for k, v in new_settings.items() if not k.startswith('__')}
-
-            # Merge settings (prefer old values for existing settings)
-            merged_settings = new_settings.copy()
-            for key, value in old_settings.items():
-                if key in merged_settings:
-                    merged_settings[key] = value
-
-            # Read the new config file line by line to preserve structure and comments
-            with open('config.py', 'r') as f:
-                config_lines = f.readlines()
-
-            # Process each line, replacing values while preserving structure
-            new_config_lines = []
-            for line in config_lines:
-                line = line.rstrip()
-                if '=' in line and not line.strip().startswith('#'):
-                    # Extract the variable name
-                    var_name = line.split('=')[0].strip()
-                    if var_name in merged_settings:
-                        # Format the value based on its type
-                        value = merged_settings[var_name]
-                        if isinstance(value, str):
-                            new_line = f"{var_name} = '{value}'"
-                        elif isinstance(value, datetime.time):
-                            new_line = f"{var_name} = datetime.time({value.hour}, {value.minute})"
-                        elif isinstance(value, (tuple, list)):
-                            new_line = f"{var_name} = {value}"
-                        else:
-                            new_line = f"{var_name} = {value}"
-                        new_config_lines.append(new_line)
-                    else:
-                        new_config_lines.append(line)
-                else:
-                    new_config_lines.append(line)
-
-            # Write the merged config
-            with open('config.py', 'w') as f:
-                f.write('\n'.join(new_config_lines))
-
-            os.remove('/tmp/config.py.tmp')
-
-        # Clean up old backups (keep only last 5)
-        backup_root = '/home/pi/BACKUP'
-        if os.path.exists(backup_root):
-            backups = sorted([d for d in os.listdir(backup_root)
-                            if os.path.isdir(os.path.join(backup_root, d))])
+        # Clean up old backups (keep last 5)
+        backup_base = '/home/pi/BACKUP'
+        if os.path.exists(backup_base):
+            backups = sorted([d for d in os.listdir(backup_base) if os.path.isdir(os.path.join(backup_base, d))])
             while len(backups) > 5:
-                oldest = backups.pop(0)
-                shutil.rmtree(os.path.join(backup_root, oldest))
+                oldest = os.path.join(backup_base, backups[0])
+                shutil.rmtree(oldest)
+                backups.pop(0)
 
-        # Set ownership to pi user
-        subprocess.run(['sudo', 'chown', '-R', 'pi:pi', '/home/pi'], check=True)
+        # Set ownership of backup directory
+        subprocess.run(['chown', '-R', 'pi:pi', backup_dir], check=True)
 
-        # First restart scheduler and metar services
-        try:
-            subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
-            subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
-        except subprocess.CalledProcessError as e:
-            app.logger.error(f"Service restart failed: {str(e)}")
-
-        # Return success response with special case flag for settings restart
-        return jsonify({
+        # Prepare success response
+        response = jsonify({
             'success': True,
-            'special_case': 'settings_restart',
-            'message': 'Update applied successfully. Settings service will restart momentarily...'
+            'message': 'Update applied successfully. Services will restart momentarily.'
         })
+
+        # Use Flask's after_this_response to restart services after the response is sent
+        def restart_services():
+            time.sleep(2)  # Brief delay to ensure response is sent
+            try:
+                subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
+                time.sleep(2)
+                subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
+                subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
+            except Exception as e:
+                logger.error(f"Error restarting services: {e}")
+
+        @after_this_response
+        def do_restart():
+            restart_services()
+
+        return response
 
     except Exception as e:
         return jsonify({
