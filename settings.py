@@ -892,12 +892,14 @@ def apply_update():
 
         # Restart all services to apply changes
         try:
-            # First restart scheduler (which handles weather updates)
-            subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
-            # Then restart metar service (which handles LED display)
-            subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
-            # Finally, restart settings service (which will trigger the page refresh)
+            # First restart settings service (which will trigger the page refresh)
             subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
+            # Brief delay to allow settings service to restart
+            time.sleep(2)
+            # Then restart scheduler (which handles weather updates)
+            subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
+            # Finally restart metar service (which handles LED display)
+            subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
             restart_message = "Update applied successfully. All services have been restarted."
         except subprocess.CalledProcessError as e:
             restart_message = f"Update applied but service restart failed: {str(e)}"
