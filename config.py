@@ -28,46 +28,15 @@ LIGHTS_OFF_TIME = datetime.time(22, 0)
 BRIGHT_TIME_START = datetime.time(7, 0)
 DIM_TIME_START = datetime.time(17, 0)
 
-# LED Configuration
-LED_COLOR_ORDER = 'GRB'  # Options: 'RGB' for RGB LEDs, 'GRB' for most NeoPixels
-
-# Define true RGB colors (standard order)
-_VFR = (0, 255, 0)      # Green
-_MVFR = (0, 0, 255)     # Blue
-_IFR = (255, 0, 0)      # Red
-_LIFR = (255, 0, 255)   # Magenta
-_MISSING = (255, 165, 0) # Orange
-_LIGHTNING = (255, 255, 255) # White
-_SNOWY = (255, 165, 255) # Pink-ish
-_STALE = (75, 75, 0)    # Dark yellow
-_WIFI_DISC = (75, 0, 0) # Dark red
-
-# Convert colors to GRB order if needed
-if LED_COLOR_ORDER == 'GRB':
-    def _to_grb(rgb_color):
-        r, g, b = rgb_color
-        return (g, r, b)  # Swap R and G
-
-    VFR_COLOR = _to_grb(_VFR)
-    MVFR_COLOR = _to_grb(_MVFR)
-    IFR_COLOR = _to_grb(_IFR)
-    LIFR_COLOR = _to_grb(_LIFR)
-    MISSING_COLOR = _to_grb(_MISSING)
-    LIGHTENING_COLOR = _to_grb(_LIGHTNING)
-    SNOWY_COLOR = _to_grb(_SNOWY)
-    STALE_DATA_COLOR = _to_grb(_STALE)
-    WIFI_DISCONNECTED_COLOR = _to_grb(_WIFI_DISC)
-else:
-    # Use RGB colors directly
-    VFR_COLOR = _VFR
-    MVFR_COLOR = _MVFR
-    IFR_COLOR = _IFR
-    LIFR_COLOR = _LIFR
-    MISSING_COLOR = _MISSING
-    LIGHTENING_COLOR = _LIGHTNING
-    SNOWY_COLOR = _SNOWY
-    STALE_DATA_COLOR = _STALE
-    WIFI_DISCONNECTED_COLOR = _WIFI_DISC
+VFR_COLOR = (255, 0, 0)
+MVFR_COLOR = (0, 0, 255)
+IFR_COLOR = (0, 255, 0)
+LIFR_COLOR = (0, 255, 255)
+MISSING_COLOR = (165, 255, 0)
+LIGHTENING_COLOR = (255, 255, 255)
+SNOWY_COLOR = (165, 255, 255)
+STALE_DATA_COLOR = (75, 75, 0)
+WIFI_DISCONNECTED_COLOR = (0, 75, 0)
 
 #True/False Configuration
 WIND_ANIMATION = True
