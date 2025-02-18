@@ -72,6 +72,7 @@ def reload_config():
     STALE_DATA_COLOR = globals().get('STALE_DATA_COLOR', None)
     WIFI_DISCONNECTED_COLOR = globals().get('WIFI_DISCONNECTED_COLOR', None)
     WIFI_INDICATION = globals().get('WIFI_INDICATION', True)
+    LED_COLOR_ORDER = globals().get('LED_COLOR_ORDER', None)
 
 
 @app.route('/leds/on', methods=['POST'])
@@ -153,6 +154,7 @@ def edit_settings():
                 config_updates["NUM_STEPS"] = int(request.form.get('num_steps', 0))
                 config_updates["NUM_PIXELS"] = int(request.form.get('num_pixels', 0))
                 config_updates["WEATHER_UPDATE_INTERVAL"] = int(request.form.get('weather_update_interval', 5))
+                config_updates["LED_COLOR_ORDER"] = request.form.get('led_color_order', 'GRB')
 
                 # Time Settings (convert from form input)
                 config_updates["BRIGHT_TIME_START"] = f"datetime.time({request.form.get('bright_time_start_hour', 0)}, {request.form.get('bright_time_start_minute', 0)})"
@@ -167,23 +169,11 @@ def edit_settings():
             except ValueError:
                 raise ValueError("Could not update time settings: Please enter valid numbers for hours and minutes.")
 
-            # Convert RGB hex color to GRB tuple
-            def hex_to_grb(hex_color):
-                # Remove the '#' if present and convert to RGB
-                hex_color = hex_color.lstrip('#')
-                r = int(hex_color[0:2], 16)
-                g = int(hex_color[2:4], 16)
-                b = int(hex_color[4:6], 16)
-                # Return in GRB order for NeoPixels
-                return (g, r, b)
+            # Get the selected color order (no color conversion needed)
+            led_color_order = request.form.get('led_color_order', 'GRB')
+            config_updates['LED_COLOR_ORDER'] = led_color_order
 
-            # Convert GRB tuple to RGB hex
-            def grb_to_hex(grb_tuple):
-                g, r, b = grb_tuple
-                # Convert to RGB hex format
-                return '#{:02x}{:02x}{:02x}'.format(r, g, b)
-
-            # Handle color fields
+            # Color fields mapping
             color_fields = {
                 'vfr_color': 'VFR_COLOR',
                 'mvfr_color': 'MVFR_COLOR',
@@ -198,9 +188,13 @@ def edit_settings():
 
             for form_key, config_key in color_fields.items():
                 if form_key in request.form:
-                    # Convert the RGB hex color to GRB tuple
-                    grb_color = hex_to_grb(request.form[form_key])
-                    config_updates[config_key] = grb_color
+                    # Get the RGB color from the form and store it directly (no conversion needed)
+                    rgb_color = request.form[form_key].lstrip('#')
+                    r = int(rgb_color[0:2], 16)
+                    g = int(rgb_color[2:4], 16)
+                    b = int(rgb_color[4:6], 16)
+                    # Store in RGB format
+                    config_updates[config_key] = (r, g, b)
 
             # Define individual settings updates and catch specific errors
             try:
@@ -285,7 +279,14 @@ def edit_settings():
                         if line.startswith(key):
                             if isinstance(value, float) and value.is_integer():
                                 value = int(value)
-                            f.write(f"{key} = {value}\n")
+                            # Only add quotes for specific string values
+                            if key == 'LED_COLOR_ORDER':
+                                f.write(f"{key} = '{value}'\n")
+                            elif key in ['LIGHTS_ON_TIME', 'LIGHTS_OFF_TIME', 'BRIGHT_TIME_START', 'DIM_TIME_START']:
+                                # Time values should be written without quotes
+                                f.write(f"{key} = {value}\n")
+                            else:
+                                f.write(f"{key} = {value}\n")
                             updated = True
                             break
                     if not updated:
@@ -299,7 +300,13 @@ def edit_settings():
             if updated_airports is not None:
                 with open('/home/pi/airports.txt', 'w') as f:  # Replace with actual path to airports.txt
                     f.write(updated_airports)
-            flash('Configuration updated and METAR service restarted!', 'success')
+
+            # Restart the METAR service to apply changes
+            try:
+                subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
+                flash('Configuration updated and METAR service restarted!', 'success')
+            except subprocess.CalledProcessError as e:
+                flash(f'Configuration updated but failed to restart METAR service: {str(e)}', 'warning')
 
         except ValueError as e:
             flash(str(e), 'danger')  # Show specific error messages
@@ -319,21 +326,29 @@ def edit_settings():
     lights_on_time_hour = config.LIGHTS_ON_TIME.hour
     lights_on_time_minute = config.LIGHTS_ON_TIME.minute
 
-    # Convert GRB colors to RGB hex for display
-    def grb_to_hex(grb_tuple):
-        g, r, b = grb_tuple
-        return '#{:02x}{:02x}{:02x}'.format(r, g, b)
+    # Convert LED colors to RGB hex for display
+    def led_to_hex(color_tuple):
+        """Convert a color tuple to RGB hex format for display.
+        If LED_COLOR_ORDER is 'GRB', colors in config.py are stored with R and G swapped,
+        so we need to swap them back for the web interface.
+        If LED_COLOR_ORDER is 'RGB', colors are already in RGB order."""
+        if config.LED_COLOR_ORDER == 'GRB':
+            g, r, b = color_tuple  # Unpack as GRB
+            return '#{:02x}{:02x}{:02x}'.format(r, g, b)  # Format as RGB
+        else:  # RGB order
+            r, g, b = color_tuple  # Already in RGB order
+            return '#{:02x}{:02x}{:02x}'.format(r, g, b)
 
-    # Convert all colors from GRB to RGB hex format
-    vfr_color = grb_to_hex(config.VFR_COLOR)
-    mvfr_color = grb_to_hex(config.MVFR_COLOR)
-    ifr_color = grb_to_hex(config.IFR_COLOR)
-    lifr_color = grb_to_hex(config.LIFR_COLOR)
-    missing_color = grb_to_hex(config.MISSING_COLOR)
-    lightening_color = grb_to_hex(config.LIGHTENING_COLOR)
-    snowy_color = grb_to_hex(config.SNOWY_COLOR)
-    stale_data_color = grb_to_hex(config.STALE_DATA_COLOR)
-    wifi_disconnected_color = grb_to_hex(config.WIFI_DISCONNECTED_COLOR)
+    # Convert all colors to RGB hex format for display
+    vfr_color = led_to_hex(config.VFR_COLOR)
+    mvfr_color = led_to_hex(config.MVFR_COLOR)
+    ifr_color = led_to_hex(config.IFR_COLOR)
+    lifr_color = led_to_hex(config.LIFR_COLOR)
+    missing_color = led_to_hex(config.MISSING_COLOR)
+    lightening_color = led_to_hex(config.LIGHTENING_COLOR)
+    snowy_color = led_to_hex(config.SNOWY_COLOR)
+    stale_data_color = led_to_hex(config.STALE_DATA_COLOR)
+    wifi_disconnected_color = led_to_hex(config.WIFI_DISCONNECTED_COLOR)
 
     # Get the last modified date of weather.json
     weather_file_path = '/home/pi/weather.json'  # Adjust this path if necessary
@@ -761,10 +776,10 @@ def check_for_updates():
         commits_behind = int(diff_cmd.stdout.strip())
 
         if commits_behind > 0:
-            # Get the list of files that would be updated
-            files_cmd = subprocess.run(['git', 'diff', '--name-only', 'HEAD...origin/' + current_branch],
-                                     capture_output=True, text=True, check=True,
-                                     cwd='/home/pi')
+            # Get changed files
+            files_cmd = subprocess.run(['git', 'diff', '--name-only', 'HEAD..origin/' + current_branch],
+                                   capture_output=True, text=True, check=True,
+                                   cwd='/home/pi')
             changed_files = files_cmd.stdout.strip().split('\n')
 
             return jsonify({

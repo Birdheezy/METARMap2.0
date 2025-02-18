@@ -390,7 +390,22 @@
                 </div>
                 <input type="text" class="form-control input-small" name="pixel_pin" value="{{ config.PIXEL_PIN }}" placeholder="i.e. 18">
             </div>
-
+            <div class="mb-3">
+                <div class="dropdown-container">
+                    <label for="led_color_order">LED Color Order
+                        <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                    </label>
+                    <div class="dropdown-content" style="display: none;">
+                        Select the color order for your LED strip. Supported orders are:<br>
+                        GRB: Standard for WS2811 Bullet style lights <br>
+                        RGB: Common for NeoPixels
+                    </div>
+                </div>
+                <select name="led_color_order" class="form-control input-small">
+                    <option value="RGB" {% if config.LED_COLOR_ORDER == 'RGB' %}selected{% endif %}>GRB</option>  <!-- opposite GRB input for easy of coding -->
+                    <option value="GRB" {% if config.LED_COLOR_ORDER == 'GRB' %}selected{% endif %}>RGB</option>
+                </select>
+            </div>
             <!-- Boolean Animations (Toggles) -->
             <div class="toggle-container">
                 <div class="toggle-wrapper">
@@ -451,7 +466,7 @@
                 </div>
             </div>
 
-            <br>
+        <br>
 
     <!-- Airports Section with Line Numbers -->
     <section id="airports" class="airports">

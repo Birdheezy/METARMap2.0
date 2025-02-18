@@ -1,4 +1,3 @@
-#metar.py test
 import json
 import time
 import signal
@@ -10,7 +9,7 @@ import weather
 import datetime
 import subprocess
 import logging
-import os  # Add this at the top with other imports
+import os
 
 # Configure logging with more detailed format for CLI mode
 logging.basicConfig(
@@ -54,10 +53,21 @@ def update_led_brightness(pixels):
         pixels.show()  # Update LEDs to reflect the brightness change
         logger.info(f"Brightness updated to {new_brightness:.2f}")
 
+def set_pixel_color(index, rgb_color):
+    """Set the pixel color at the given index.
+    rgb_color is in RGB order, the NeoPixel library handles the conversion to LED order."""
+    pixels[index] = rgb_color
+
 try:
     pixel_pin = f"D{PIXEL_PIN}"  # Create "D18"
-    pixels = neopixel.NeoPixel(getattr(board, pixel_pin), NUM_PIXELS, brightness=BRIGHTNESS, auto_write=False)
-    logger.info(f"LED strip initialized on pin D{PIXEL_PIN}")
+    pixels = neopixel.NeoPixel(
+        getattr(board, pixel_pin),
+        NUM_PIXELS,
+        brightness=BRIGHTNESS,
+        auto_write=False,
+        pixel_order=LED_COLOR_ORDER
+    )
+    logger.info(f"LED strip initialized on pin D{PIXEL_PIN} with {LED_COLOR_ORDER} order")
 except Exception as e:
     logger.error(f"Failed to initialize LED strip: {e}")
     sys.exit(1)
@@ -85,13 +95,15 @@ def check_lights_off():
         # Case 1: LIGHTS_OFF_TIME is later than LIGHTS_ON_TIME
         if LIGHTS_OFF_TIME > LIGHTS_ON_TIME:
             if current_time >= LIGHTS_OFF_TIME or current_time < LIGHTS_ON_TIME:
-                pixels.fill((0, 0, 0))
+                for i in range(NUM_PIXELS):
+                    set_pixel_color(i, (0, 0, 0))
                 pixels.show()
                 return True
 
         # Case 2: LIGHTS_OFF_TIME is earlier or equal to LIGHTS_ON_TIME
         elif LIGHTS_OFF_TIME <= current_time < LIGHTS_ON_TIME:
-            pixels.fill((0, 0, 0))
+            for i in range(NUM_PIXELS):
+                set_pixel_color(i, (0, 0, 0))
             pixels.show()
             return True
 
@@ -125,8 +137,7 @@ def update_legend(pixels):
 
     for i, color in enumerate(legend_colors):
         if start_index + i < NUM_PIXELS:  # Ensure we don't go out of bounds
-            # Adjust for GRB color order if needed
-            pixels[start_index + i] = (color[0], color[1], color[2])  # GRB
+            set_pixel_color(start_index + i, color)
 
     pixels.show()
 
@@ -142,7 +153,7 @@ def animate_lightning_airports(lightning_airports, weather_data):
         for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
             if airport_code in lightning_airports:
                 # Set LED to scaled white color for flash
-                pixels[index] = scaled_lightning_color
+                set_pixel_color(index, scaled_lightning_color)
         pixels.show()
         time.sleep(0.1)  # Short delay for rapid flash
 
@@ -151,15 +162,15 @@ def animate_lightning_airports(lightning_airports, weather_data):
                 # Revert back to flt_cat color
                 flt_cat, _, _, _ = weather.get_airport_weather(airport_code, weather_data)
                 if flt_cat == 'VFR':
-                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in VFR_COLOR)
+                    set_pixel_color(index, tuple(int(c * BRIGHTNESS) for c in VFR_COLOR))
                 elif flt_cat == 'MVFR':
-                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in MVFR_COLOR)
+                    set_pixel_color(index, tuple(int(c * BRIGHTNESS) for c in MVFR_COLOR))
                 elif flt_cat == 'IFR':
-                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in IFR_COLOR)
+                    set_pixel_color(index, tuple(int(c * BRIGHTNESS) for c in IFR_COLOR))
                 elif flt_cat == 'LIFR':
-                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in LIFR_COLOR)
+                    set_pixel_color(index, tuple(int(c * BRIGHTNESS) for c in LIFR_COLOR))
                 else:
-                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in MISSING_COLOR)
+                    set_pixel_color(index, tuple(int(c * BRIGHTNESS) for c in MISSING_COLOR))
         pixels.show()
         time.sleep(0.2)  # Short delay before the next flash
 
@@ -176,7 +187,7 @@ def animate_windy_airports(windy_airports, weather_data):
                 flt_cat, _, _, _ = weather.get_airport_weather(airport_code, weather_data)
                 color = weather.get_flt_cat_color(flt_cat)
                 pixel_color = tuple(int(c * brightness) for c in color)
-                pixels[index] = pixel_color
+                set_pixel_color(index, pixel_color)
         pixels.show()
         time.sleep(step_delay)
 
@@ -191,7 +202,7 @@ def animate_windy_airports(windy_airports, weather_data):
                 flt_cat, _, _, _ = weather.get_airport_weather(airport_code, weather_data)
                 color = weather.get_flt_cat_color(flt_cat)
                 pixel_color = tuple(int(c * brightness) for c in color)
-                pixels[index] = pixel_color
+                set_pixel_color(index, pixel_color)
         pixels.show()
         time.sleep(step_delay)
 
@@ -204,14 +215,14 @@ def animate_snowy_airports(snowy_airports, weather_data):
         for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
             if airport_code in snowy_airports:
                 # Set LED to snowy color
-                pixels[index] = snowy_color
+                set_pixel_color(index, snowy_color)
         pixels.show()
         time.sleep(SNOW_BLINK_PAUSE)  # Use SNOW_BLINK_PAUSE for twinkle on duration
 
         for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
             if airport_code in snowy_airports:
                 # Turn off LED to create a twinkling effect
-                pixels[index] = (0, 0, 0)
+                set_pixel_color(index, (0, 0, 0))
         pixels.show()
         time.sleep(SNOW_BLINK_PAUSE)  # Use SNOW_BLINK_PAUSE for twinkle off duration
 
@@ -219,7 +230,7 @@ def animate_snowy_airports(snowy_airports, weather_data):
     for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
         if airport_code in snowy_airports:
             flt_cat, _, _, _ = weather.get_airport_weather(airport_code, weather_data)
-            pixels[index] = tuple(int(c * BRIGHTNESS) for c in weather.get_flt_cat_color(flt_cat))
+            set_pixel_color(index, tuple(int(c * BRIGHTNESS) for c in weather.get_flt_cat_color(flt_cat)))
     pixels.show()
 
 
@@ -306,9 +317,9 @@ def update_leds(weather_data):
     if WIFI_INDICATION and not check_wifi_status():
         for index, airport_code in enumerate(airport_list):
             if airport_code == "SKIP":
-                pixels[index] = (0, 0, 0)  # Keep SKIP LEDs off
+                set_pixel_color(index, (0, 0, 0))  # Keep SKIP LEDs off
             else:
-                pixels[index] = tuple(int(c * BRIGHTNESS) for c in WIFI_DISCONNECTED_COLOR)
+                set_pixel_color(index, tuple(int(c * BRIGHTNESS) for c in WIFI_DISCONNECTED_COLOR))
         pixels.show()
         logger.warning("WiFi disconnected - displaying warning color")
         return
@@ -317,9 +328,9 @@ def update_leds(weather_data):
     if STALE_INDICATION and is_weather_stale():
         for index, airport_code in enumerate(airport_list):
             if airport_code == "SKIP":
-                pixels[index] = (0, 0, 0)  # Keep SKIP LEDs off
+                set_pixel_color(index, (0, 0, 0))  # Keep SKIP LEDs off
             else:
-                pixels[index] = tuple(int(c * BRIGHTNESS) for c in STALE_DATA_COLOR)
+                set_pixel_color(index, tuple(int(c * BRIGHTNESS) for c in STALE_DATA_COLOR))
         pixels.show()
         logger.warning("Weather data is stale - displaying warning color")
         return
@@ -354,19 +365,19 @@ def update_leds(weather_data):
     try:
         for index, airport_code in enumerate(airport_list):
             if airport_code == "SKIP":
-                pixels[index] = (0, 0, 0)
+                set_pixel_color(index, (0, 0, 0))
             else:
                 flt_cat, wind_speed, wind_gust, lightning = weather.get_airport_weather(airport_code, weather_data)
                 if flt_cat == 'VFR':
-                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in VFR_COLOR)
+                    set_pixel_color(index, tuple(int(c * BRIGHTNESS) for c in VFR_COLOR))
                 elif flt_cat == 'MVFR':
-                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in MVFR_COLOR)
+                    set_pixel_color(index, tuple(int(c * BRIGHTNESS) for c in MVFR_COLOR))
                 elif flt_cat == 'IFR':
-                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in IFR_COLOR)
+                    set_pixel_color(index, tuple(int(c * BRIGHTNESS) for c in IFR_COLOR))
                 elif flt_cat == 'LIFR':
-                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in LIFR_COLOR)
+                    set_pixel_color(index, tuple(int(c * BRIGHTNESS) for c in LIFR_COLOR))
                 else:
-                    pixels[index] = tuple(int(c * BRIGHTNESS) for c in MISSING_COLOR)
+                    set_pixel_color(index, tuple(int(c * BRIGHTNESS) for c in MISSING_COLOR))
                     logger.warning(f"Missing flight category data for {airport_code}")
 
         pixels.show()
@@ -421,7 +432,7 @@ while True:
             # If lights should be off, ensure LEDs are off and sleep
             pixels.fill((0, 0, 0))
             pixels.show()
-            time.sleep(5)  # Sleep longer when lights are off to reduce CPU usage
+            time.sleep(10)  # Sleep longer when lights are off to reduce CPU usage
     except Exception as e:
         logger.error(f"Error in main loop: {str(e)}")
         time.sleep(5)  # Wait before retrying
