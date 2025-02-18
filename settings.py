@@ -759,25 +759,25 @@ def set_timezone():
 def check_for_updates():
     try:
         # Get current branch
-        branch_cmd = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+        branch_cmd = subprocess.run(['/usr/bin/git', 'rev-parse', '--abbrev-ref', 'HEAD'],
                                   capture_output=True, text=True, check=True,
                                   cwd='/home/pi')
         current_branch = branch_cmd.stdout.strip()
 
         # Fetch updates from remote
-        fetch_cmd = subprocess.run(['git', 'fetch', 'origin', current_branch],
+        fetch_cmd = subprocess.run(['/usr/bin/git', 'fetch', 'origin', current_branch],
                                  capture_output=True, text=True, check=True,
                                  cwd='/home/pi')
 
         # Compare local HEAD with remote HEAD
-        diff_cmd = subprocess.run(['git', 'rev-list', 'HEAD...origin/' + current_branch, '--count'],
+        diff_cmd = subprocess.run(['/usr/bin/git', 'rev-list', 'HEAD...origin/' + current_branch, '--count'],
                                 capture_output=True, text=True, check=True,
                                 cwd='/home/pi')
         commits_behind = int(diff_cmd.stdout.strip())
 
         if commits_behind > 0:
             # Get changed files
-            files_cmd = subprocess.run(['git', 'diff', '--name-only', 'HEAD..origin/' + current_branch],
+            files_cmd = subprocess.run(['/usr/bin/git', 'diff', '--name-only', 'HEAD..origin/' + current_branch],
                                    capture_output=True, text=True, check=True,
                                    cwd='/home/pi')
             changed_files = files_cmd.stdout.strip().split('\n')
@@ -812,7 +812,7 @@ def check_for_updates():
 def apply_update():
     try:
         # Get current branch
-        branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], text=True).strip()
+        branch = subprocess.check_output(['/usr/bin/git', 'rev-parse', '--abbrev-ref', 'HEAD'], text=True).strip()
 
         # Create timestamped backup directory
         timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -824,8 +824,8 @@ def apply_update():
         subprocess.run(['cp', 'airports.txt', '/tmp/airports.txt.tmp'], check=True)
 
         # Force pull from repository
-        subprocess.run(['git', 'fetch', 'origin', branch], check=True)
-        subprocess.run(['git', 'reset', '--hard', f'origin/{branch}'], check=True)
+        subprocess.run(['/usr/bin/git', 'fetch', 'origin', branch], check=True)
+        subprocess.run(['/usr/bin/git', 'reset', '--hard', f'origin/{branch}'], check=True)
 
         # Restore user files
         subprocess.run(['mv', '/tmp/config.py.tmp', 'config.py'], check=True)
