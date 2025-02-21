@@ -16,6 +16,7 @@ import sys
 import schedule
 import weather
 import functools
+import socket
 
 def after_this_response(func):
     @functools.wraps(func)
@@ -362,6 +363,9 @@ def edit_settings():
     with open('/home/pi/airports.txt', 'r') as f:
         airports = f.read()
 
+    # Get the local IP address
+    local_ip = get_local_ip()
+
     # Render the template with the updated values, including weather_last_modified
     return render_template(
         'settings.html',
@@ -376,6 +380,7 @@ def edit_settings():
         airports=airports,
         weather_last_modified=weather_last_modified,
         config=globals(),
+        local_ip=local_ip,
         vfr_color=vfr_color,
         mvfr_color=mvfr_color,
         ifr_color=ifr_color,
@@ -840,8 +845,8 @@ def apply_update():
                 shutil.rmtree(oldest)
                 backups.pop(0)
 
-        # Set ownership of backup directory
-        subprocess.run(['chown', '-R', 'pi:pi', backup_dir], check=True)
+        # Set ownership of all files to pi:pi recursively
+        subprocess.run(['chown', '-R', 'pi:pi', '.'], check=True)
 
         # Prepare success response
         response = jsonify({
@@ -871,6 +876,87 @@ def apply_update():
             'success': False,
             'error': str(e)
         }), 500
+
+def get_local_ip():
+    """Get the local IP address of the Raspberry Pi."""
+    try:
+        # Get IP address using hostname
+        ip_address = subprocess.check_output(['hostname', '-I']).decode().split()[0]
+        return ip_address
+    except Exception as e:
+        return "IP not available"
+
+@app.route('/airport-conditions')
+def get_airport_conditions():
+    try:
+        # Read weather data from the correct path
+        with open('/home/pi/weather.json', 'r') as f:
+            weather_data = json.load(f)
+
+        airports = []
+        for icao, data in weather_data.items():
+            airport_info = {
+                'icao': icao,
+                'site': data.get('site', icao),
+                'lat': data.get('latitude'),
+                'lon': data.get('longitude'),
+                'fltCat': data.get('flt_cat', 'MISSING'),
+                'raw_observation': data.get('raw_observation', 'No data available')
+            }
+            airports.append(airport_info)
+
+        return jsonify({'airports': airports})
+
+    except FileNotFoundError:
+        return jsonify({'error': 'Weather data file not found'}), 404
+    except json.JSONDecodeError:
+        return jsonify({'error': 'Invalid JSON in weather data file'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/map-settings', methods=['GET', 'POST'])
+def map_settings():
+    try:
+        if request.method == 'POST':
+            data = request.json
+            if not data or 'center' not in data or 'zoom' not in data:
+                return jsonify({'error': 'Invalid request data'}), 400
+
+            # Create a dictionary for updates
+            config_updates = {}
+            config_updates["MAP_CENTER_LAT"] = data['center'][0]
+            config_updates["MAP_CENTER_LON"] = data['center'][1]
+            config_updates["MAP_ZOOM"] = data['zoom']
+
+            # Update the config.py file
+            with open('config.py', 'r') as f:
+                config_lines = f.readlines()
+
+            with open('config.py', 'w') as f:
+                for line in config_lines:
+                    # Skip lines we're updating
+                    if any(key in line for key in config_updates.keys()):
+                        continue
+                    f.write(line)
+
+                # Add the updated values
+                for key, value in config_updates.items():
+                    f.write(f"{key} = {value}\n")
+
+            # Reload the config module to get the new values
+            reload_config()
+
+            return jsonify({'success': True})
+
+        # GET request - return current settings
+        return jsonify({
+            'center': [config.MAP_CENTER_LAT, config.MAP_CENTER_LON],
+            'zoom': config.MAP_ZOOM
+        })
+
+    except Exception as e:
+        logger.error(f"Error in map_settings: {e}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     if ENABLE_HTTPS:

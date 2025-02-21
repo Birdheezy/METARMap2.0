@@ -668,3 +668,125 @@ async function applyUpdate() {
         `;
     }
 }
+
+// Airport Map Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize map if the element exists
+    const mapElement = document.getElementById('airport-map');
+    if (mapElement) {
+        let map = null;
+
+        // Load saved map settings
+        fetch('/map-settings')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to load map settings');
+                }
+                return response.json();
+            })
+            .then(settings => {
+                map = L.map('airport-map').setView(settings.center, settings.zoom);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+
+                // Add save button event listener
+                document.getElementById('save-map-view').addEventListener('click', function() {
+                    const center = map.getCenter();
+                    const zoom = map.getZoom();
+
+                    fetch('/map-settings', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            center: [center.lat, center.lng],
+                            zoom: zoom
+                        })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to save map settings');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            showToast('Map view saved successfully!', 'success');
+                        } else {
+                            showToast(data.error || 'Failed to save map view', 'danger');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showToast('Error saving map view: ' + error.message, 'danger');
+                    });
+                });
+
+                // Function to convert RGB tuple to hex color
+                function rgbToHex(r, g, b) {
+                    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+                }
+
+                // Function to get color based on flight category
+                function getMarkerColor(fltCat) {
+                    const colors = {
+                        'VFR': VFR_COLOR,
+                        'MVFR': MVFR_COLOR,
+                        'IFR': IFR_COLOR,
+                        'LIFR': LIFR_COLOR,
+                        'default': MISSING_COLOR
+                    };
+                    return colors[fltCat] || colors['default'];
+                }
+
+                // Store markers in a layer group for easy removal
+                let markersLayer = L.layerGroup().addTo(map);
+
+                function updateAirportMarkers() {
+                    fetch('/airport-conditions')
+                        .then(response => response.json())
+                        .then(data => {
+                            // Clear existing markers
+                            markersLayer.clearLayers();
+
+                            data.airports.forEach(airport => {
+                                const marker = L.circleMarker([airport.lat, airport.lon], {
+                                    radius: 8,
+                                    fillColor: getMarkerColor(airport.fltCat),
+                                    color: '#000',
+                                    weight: 1,
+                                    opacity: 1,
+                                    fillOpacity: 0.8
+                                });
+
+                                // Add popup with airport info
+                                marker.bindPopup(`
+                                    <b>${airport.icao}</b><br>
+                                    <b>${airport.site}</b><br>
+                                    Flight Category: ${airport.fltCat}<br>
+                                    <hr>
+                                    <small>${airport.raw_observation}</small>
+                                `);
+
+                                markersLayer.addLayer(marker);
+                            });
+                        })
+                        .catch(error => console.error('Error updating airport markers:', error));
+                }
+
+                // Add airport markers
+                updateAirportMarkers();
+            })
+            .catch(error => {
+                console.error('Error loading map settings:', error);
+                // Fallback to default settings if loading fails
+                map = L.map('airport-map').setView([37.0902, -99.7558], 4);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+                updateAirportMarkers();
+            });
+    }
+});

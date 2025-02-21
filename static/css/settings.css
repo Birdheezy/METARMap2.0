@@ -718,3 +718,42 @@ input[type="color"]::-webkit-color-swatch {
 .weather-status .red-status {
     color: #dc3545;
 }
+
+/* Service Control Panel Styling */
+.service-info {
+    text-align: center;
+    color: #969696;
+    padding: 5px;
+    border-radius: 8px;
+}
+
+.ip-address {
+    font-family: monospace;
+    font-weight: bold;
+    color: #007bff;
+    font-size: large;
+}
+
+/* Airport Map Styles */
+#airport-map {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: box-shadow 0.3s ease;
+}
+
+#airport-map:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.map-legend {
+    background: rgba(44, 44, 44, 0.9);
+    padding: 10px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.map-legend span {
+    display: inline-flex;
+    align-items: center;
+    margin: 0 10px;
+    font-size: 0.9em;
+}
