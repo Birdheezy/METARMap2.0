@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>METAR Kiosk</title>
+    <link href="{{ url_for('static', filename='css/settings.css') }}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="kiosk-container">
+        <h1 class="kiosk-title">METAR Map</h1>
+
+        <!-- Timer -->
+        <div class="kiosk-timer">
+            Reset in: <span id="countdown">10:00</span>
+        </div>
+
+        <!-- Status Messages -->
+        <div id="status-message" class="status-message"></div>
+        <div id="airport-count" class="airport-count"></div>
+
+        <!-- Presets Checkboxes -->
+        <div class="checkbox-grid">
+            <div class="checkbox-item">
+                <input type="checkbox" id="windy" data-type="windy">
+                <label for="windy">
+                    Windy Airports
+                    <small>(Wind > {{ wind_threshold }}kt)</small>
+                </label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="lightning" data-type="lightning">
+                <label for="lightning">Lightning Activity</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="snow" data-type="snow">
+                <label for="snow">Snow Conditions</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="major" data-type="major">
+                <label for="major">Major Hubs</label>
+            </div>
+        </div>
+
+        <!-- Airport Input Instructions -->
+        <div class="input-instructions">
+            <strong>How to enter airport codes:</strong>
+            <ul>
+                <li>Enter airport codes in the format "KXXX" (e.g., KDEN, KLAX)</li>
+                <li>Separate multiple airports with commas or spaces</li>
+                <li>Only airports from the original configuration can be used</li>
+            </ul>
+        </div>
+
+        <!-- Manual Input with Clear Button -->
+        <div class="input-group">
+            <input type="text" class="kiosk-input" placeholder="Example: KDEN, KLAX, KORD" id="airport-input">
+            <button id="clear-input">Clear</button>
+        </div>
+
+        <button id="apply-filters">Apply Filters</button>
+
+        <!-- Color Legend -->
+        <div class="kiosk-legend">
+            <div class="kiosk-legend-item">
+                <span class="kiosk-legend-dot" style="background-color: {{ vfr_color }}"></span>
+                VFR
+            </div>
+            <div class="kiosk-legend-item">
+                <span class="kiosk-legend-dot" style="background-color: {{ mvfr_color }}"></span>
+                MVFR
+            </div>
+            <div class="kiosk-legend-item">
+                <span class="kiosk-legend-dot" style="background-color: {{ ifr_color }}"></span>
+                IFR
+            </div>
+            <div class="kiosk-legend-item">
+                <span class="kiosk-legend-dot" style="background-color: {{ lifr_color }}"></span>
+                LIFR
+            </div>
+        </div>
+
+        <!-- Return to Normal Button -->
+        <button class="kiosk-button" id="reset-button">Return to Normal</button>
+    </div>
+
+    <script>
+        // Add color variables
+        const VFR_COLOR = '{{ vfr_color }}';
+        const MVFR_COLOR = '{{ mvfr_color }}';
+        const IFR_COLOR = '{{ ifr_color }}';
+        const LIFR_COLOR = '{{ lifr_color }}';
+        const MISSING_COLOR = '{{ missing_color }}';
+    </script>
+    <script src="{{ url_for('static', filename='js/kiosk.js') }}"></script>
+</body>
+</html>

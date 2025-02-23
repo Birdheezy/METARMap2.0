@@ -251,5 +251,76 @@ def main():
         # If we can't check parent process, assume it's not from scheduler
         pass
 
+def backup_airports_file():
+    """Create a backup of the airports file."""
+    try:
+        with open(AIRPORTS_FILE, 'r') as source:
+            with open(f"{AIRPORTS_FILE}.backup", 'w') as backup:
+                backup.write(source.read())
+        return True
+    except Exception as e:
+        logging.error(f"Failed to create backup of airports file: {e}")
+        return False
+
+def restore_airports_file():
+    """Restore the airports file from backup."""
+    try:
+        backup_file = f"{AIRPORTS_FILE}.backup"
+        if not os.path.exists(backup_file):
+            logging.error("No backup file found to restore from")
+            return False
+
+        with open(backup_file, 'r') as backup:
+            with open(AIRPORTS_FILE, 'w') as target:
+                target.write(backup.read())
+        return True
+    except Exception as e:
+        logging.error(f"Failed to restore airports file from backup: {e}")
+        return False
+
+def update_airports_file(airport_codes):
+    """Update the airports file with new airport codes, maintaining original positions."""
+    try:
+        # First create a backup if it doesn't exist
+        backup_file = f"{AIRPORTS_FILE}.backup"
+        if not os.path.exists(backup_file):
+            if not backup_airports_file():
+                return False
+
+        # Read the original structure with all lines to preserve exact format
+        with open(backup_file, 'r') as backup:
+            original_content = backup.read()
+            original_lines = original_content.splitlines()
+
+        # Convert airport codes to uppercase for consistency
+        airport_codes = [code.upper() for code in airport_codes]
+
+        # Create new list with all SKIPs, maintaining exact length
+        updated_lines = ["SKIP"] * len(original_lines)
+
+        # For each requested airport, if it existed in the original file,
+        # put it in its original position
+        for airport in airport_codes:
+            try:
+                original_pos = original_lines.index(airport)
+                updated_lines[original_pos] = airport
+            except ValueError:
+                # Airport wasn't in original file, log warning
+                logging.warning(f"Airport {airport} not found in original configuration")
+                continue
+
+        # Write the updated content, preserving original line endings
+        with open(AIRPORTS_FILE, 'w', newline='') as file:
+            for i, line in enumerate(updated_lines):
+                file.write(line)
+                # Add newline if not the last line
+                if i < len(updated_lines) - 1:
+                    file.write('\n')
+
+        return True
+    except Exception as e:
+        logging.error(f"Failed to update airports file: {e}")
+        return False
+
 if __name__ == "__main__":
     main()
