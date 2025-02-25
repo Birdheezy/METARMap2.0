@@ -16,6 +16,14 @@ document.addEventListener('DOMContentLoaded', function() {
         'KJFK', 'KSFO', 'KLAS', 'KMIA', 'KPHX'
     ];
 
+    // Cache preview elements
+    const windyPreview = document.getElementById('windy-preview');
+    const lightningPreview = document.getElementById('lightning-preview');
+    const snowPreview = document.getElementById('snow-preview');
+    const majorPreview = document.getElementById('major-preview');
+    const manualPreview = document.getElementById('manual-preview');
+    const totalPreview = document.getElementById('total-preview');
+
     function showMessage(message, type) {
         statusMessage.textContent = message;
         statusMessage.className = `status-message ${type}`;
@@ -46,14 +54,30 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('/kiosk/reset', { method: 'POST' })
             .then(response => {
                 if (!response.ok) throw new Error('Failed to reset');
+                return response.json();
+            })
+            .then(data => {
+                // After successful reset, update weather
+                return fetch('/update-weather', { 
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to update weather');
                 clearActiveStates();
                 resetTimer();
                 showMessage('Reset to normal operation', 'success');
                 airportCount.textContent = '';
+                // Update the condition lists after reset
+                updateConditionLists();
             })
             .catch(error => {
                 console.error('Error:', error);
-                showMessage('Failed to reset', 'error');
+                showMessage('Failed to reset: ' + error.message, 'error');
+                resetTimer();
             });
     }
 
@@ -135,4 +159,98 @@ document.addEventListener('DOMContentLoaded', function() {
             applyCurrentSelection();
         }
     });
+
+    // Function to update condition airport lists
+    function updateConditionLists() {
+        // We don't need to show the active airports in the checkboxes anymore
+        // since we have the selection preview section
+        document.querySelector('.windy-airports').textContent = '';
+        document.querySelector('.lightning-airports').textContent = '';
+        document.querySelector('.snow-airports').textContent = '';
+    }
+
+    // Update lists initially and every minute
+    updateConditionLists();
+    setInterval(updateConditionLists, 60000);
+
+    // Add CSS for the condition airport lists
+    const style = document.createElement('style');
+    style.textContent = `
+        .condition-airports {
+            font-size: 0.8em;
+            color: #aaa;
+            margin-top: 4px;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Update preview when checkboxes change
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updatePreview);
+    });
+
+    // Update preview when manual input changes
+    airportInput.addEventListener('input', updatePreview);
+
+    function updatePreview() {
+        // Clear all previews
+        windyPreview.textContent = '';
+        lightningPreview.textContent = '';
+        snowPreview.textContent = '';
+        majorPreview.textContent = '';
+        manualPreview.textContent = '';
+        
+        let totalAirports = new Set();
+        
+        // Fetch all condition data at once
+        fetch('/kiosk/condition-airports')
+            .then(response => response.json())
+            .then(data => {
+                // Update windy preview if checked
+                if (document.getElementById('windy').checked) {
+                    const windyAirports = Object.keys(data.windy || {});
+                    windyPreview.textContent = windyAirports.join(', ') || 'None';
+                    windyAirports.forEach(airport => totalAirports.add(airport));
+                }
+                
+                // Update lightning preview if checked
+                if (document.getElementById('lightning').checked) {
+                    const lightningAirports = Object.keys(data.lightning || {});
+                    lightningPreview.textContent = lightningAirports.join(', ') || 'None';
+                    lightningAirports.forEach(airport => totalAirports.add(airport));
+                }
+                
+                // Update snow preview if checked
+                if (document.getElementById('snow').checked) {
+                    const snowyAirports = Object.keys(data.snowy || {});
+                    snowPreview.textContent = snowyAirports.join(', ') || 'None';
+                    snowyAirports.forEach(airport => totalAirports.add(airport));
+                }
+                
+                updateTotalCount();
+            });
+        
+        // Update major hubs preview if checked
+        if (document.getElementById('major').checked) {
+            majorPreview.textContent = MAJOR_AIRPORTS.join(', ');
+            MAJOR_AIRPORTS.forEach(airport => totalAirports.add(airport));
+        }
+        
+        // Update manual entry preview
+        const manualAirports = airportInput.value
+            .toUpperCase()
+            .split(/[\s,]+/)
+            .filter(code => code.length === 4 && code.match(/^K[A-Z]{3}$/));
+        
+        if (manualAirports.length > 0) {
+            manualPreview.textContent = manualAirports.join(', ');
+            manualAirports.forEach(airport => totalAirports.add(airport));
+        }
+        
+        updateTotalCount();
+        
+        function updateTotalCount() {
+            totalPreview.textContent = totalAirports.size;
+        }
+    }
 });

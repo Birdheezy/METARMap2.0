@@ -909,10 +909,6 @@ def get_airport_conditions():
 
     except FileNotFoundError:
         return jsonify({'error': 'Weather data file not found'}), 404
-    except json.JSONDecodeError:
-        return jsonify({'error': 'Invalid JSON in weather data file'}), 400
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 @app.route('/map-settings', methods=['GET', 'POST'])
 def map_settings():
@@ -960,25 +956,39 @@ def map_settings():
 
 @app.route('/kiosk')
 def kiosk():
+    # Get the last modified date of weather.json
+    weather_file_path = '/home/pi/weather.json'  # Adjust this path if necessary
+    try:
+        last_modified_timestamp = os.path.getmtime(weather_file_path)
+        weather_last_modified = datetime.datetime.fromtimestamp(last_modified_timestamp).strftime('%m-%d-%Y %H:%M:%S')
+    except FileNotFoundError:
+        weather_last_modified = "Weather data not available"
+
     return render_template('kiosk.html',
         vfr_color='rgb({}, {}, {})'.format(*VFR_COLOR),
         mvfr_color='rgb({}, {}, {})'.format(*MVFR_COLOR),
         ifr_color='rgb({}, {}, {})'.format(*IFR_COLOR),
         lifr_color='rgb({}, {}, {})'.format(*LIFR_COLOR),
         missing_color='rgb({}, {}, {})'.format(*MISSING_COLOR),
-        wind_threshold=WIND_THRESHOLD
+        wind_threshold=WIND_THRESHOLD,
+        weather_last_modified=weather_last_modified
     )
 
 @app.route('/kiosk/apply-filters', methods=['POST'])
 def apply_kiosk_filters():
     try:
+        # First, create a backup of the original airports file if it doesn't exist
+        if not os.path.exists(AIRPORTS_FILE + '.backup'):
+            shutil.copy(AIRPORTS_FILE, AIRPORTS_FILE + '.backup')
+            logger.info(f"Created backup of {AIRPORTS_FILE}")
+
         data = request.get_json()
         filters = data.get('filters', [])
         major_airports = data.get('majorAirports', [])
         manual_airports = data.get('manualAirports', [])
 
         # Read the original airport configuration to validate against
-        with open(f"{AIRPORTS_FILE}.backup", 'r') as f:
+        with open(AIRPORTS_FILE + '.backup', 'r') as f:
             original_airports = [line.strip() for line in f.readlines()]
 
         # Validate manual airports against original configuration
@@ -997,7 +1007,7 @@ def apply_kiosk_filters():
             valid_major = [code for code in major_airports if code in original_airports]
             selected_airports.update(valid_major)
 
-        # Add condition-based airports
+        # Add condition-based airports from existing weather data
         weather_data = weather.read_weather_data()
         if weather_data:
             if 'windy' in filters:
@@ -1013,24 +1023,25 @@ def apply_kiosk_filters():
         # Add manual airports (already validated)
         selected_airports.update(manual_airports)
 
-        # Update the airports file with selected airports
-        if weather.update_airports_file(list(selected_airports)):
-            # Restart the METAR service to apply changes immediately
-            try:
-                subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
-                return jsonify({
-                    'success': True,
-                    'count': len(selected_airports)
-                })
-            except subprocess.CalledProcessError as e:
-                return jsonify({
-                    'success': False,
-                    'error': f'Failed to restart METAR service: {str(e)}'
-                }), 500
-        else:
+        # Write directly to airports.txt while preserving structure
+        with open(AIRPORTS_FILE, 'w') as f:
+            for original_airport in original_airports:
+                if original_airport in selected_airports:
+                    f.write(f"{original_airport}\n")
+                else:
+                    f.write("SKIP\n")
+
+        # Restart only the LED display service
+        try:
+            subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
+            return jsonify({
+                'success': True,
+                'count': len(selected_airports)
+            })
+        except subprocess.CalledProcessError as e:
             return jsonify({
                 'success': False,
-                'error': 'Failed to update airports configuration'
+                'error': f'Failed to restart METAR service: {str(e)}'
             }), 500
 
     except Exception as e:
@@ -1040,11 +1051,9 @@ def apply_kiosk_filters():
 @app.route('/kiosk/reset', methods=['POST'])
 def reset_kiosk():
     try:
-        # Reset to the default airports file
+        # Copy original airports.txt back from backup
         if os.path.exists('airports.txt.backup'):
-            with open('airports.txt.backup', 'r') as backup_file:
-                with open('airports.txt', 'w') as current_file:
-                    current_file.write(backup_file.read())
+            shutil.copy('airports.txt.backup', AIRPORTS_FILE)
 
             # Restart the METAR service to apply changes immediately
             try:
@@ -1058,6 +1067,28 @@ def reset_kiosk():
         return jsonify({'success': True})
     except Exception as e:
         logger.error(f"Error resetting kiosk: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/kiosk/condition-airports')
+def get_condition_airports():
+    try:
+        # Read weather data
+        weather_data = weather.read_weather_data()
+        if not weather_data:
+            return jsonify({'error': 'No weather data available'}), 404
+            
+        # Use existing weather.py functions
+        windy_airports = weather.get_windy_airports(weather_data)
+        lightning_airports = weather.get_lightning_airports(weather_data)
+        snowy_airports = weather.get_snowy_airports(weather_data)
+        
+        return jsonify({
+            'windy': windy_airports,
+            'lightning': lightning_airports,
+            'snowy': snowy_airports
+        })
+    except Exception as e:
+        logger.error(f"Error getting condition airports: {e}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':

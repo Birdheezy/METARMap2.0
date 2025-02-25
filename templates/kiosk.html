@@ -19,6 +19,11 @@
         <!-- Status Messages -->
         <div id="status-message" class="status-message"></div>
         <div id="airport-count" class="airport-count"></div>
+        <div class="weather-status">
+            <div class="service-status">
+                <span class="status-text">WX Last Updated: {{ weather_last_modified }}</span>
+            </div>
+        </div>
 
         <!-- Presets Checkboxes -->
         <div class="checkbox-grid">
@@ -26,26 +31,63 @@
                 <input type="checkbox" id="windy" data-type="windy">
                 <label for="windy">
                     Windy Airports
-                    <small>(Wind > {{ wind_threshold }}kt)</small>
+                    <div class="condition-airports windy-airports"></div>
                 </label>
             </div>
             <div class="checkbox-item">
                 <input type="checkbox" id="lightning" data-type="lightning">
-                <label for="lightning">Lightning Activity</label>
+                <label for="lightning">
+                    Lightning Activity
+                    <div class="condition-airports lightning-airports"></div>
+                </label>
             </div>
             <div class="checkbox-item">
                 <input type="checkbox" id="snow" data-type="snow">
-                <label for="snow">Snow Conditions</label>
+                <label for="snow">
+                    Snow Conditions
+                    <div class="condition-airports snow-airports"></div>
+                </label>
             </div>
             <div class="checkbox-item">
                 <input type="checkbox" id="major" data-type="major">
-                <label for="major">Major Hubs</label>
+                <label for="major">
+                    Major Hubs
+                </label>
+            </div>
+        </div>
+
+        <!-- Add this after the checkbox grid -->
+        <div class="selection-preview">
+            <h3>Selection Preview</h3>
+            <div class="preview-item">
+                <span class="preview-label">Windy:</span>
+                <span class="preview-airports" id="windy-preview"></span>
+            </div>
+            <div class="preview-item">
+                <span class="preview-label">Lightning:</span>
+                <span class="preview-airports" id="lightning-preview"></span>
+            </div>
+            <div class="preview-item">
+                <span class="preview-label">Snow:</span>
+                <span class="preview-airports" id="snow-preview"></span>
+            </div>
+            <div class="preview-item">
+                <span class="preview-label">Major Hubs:</span>
+                <span class="preview-airports" id="major-preview"></span>
+            </div>
+            <div class="preview-item">
+                <span class="preview-label">Manual Entry:</span>
+                <span class="preview-airports" id="manual-preview"></span>
+            </div>
+            <div class="preview-total">
+                <span class="preview-label">Total Airports:</span>
+                <span id="total-preview">0</span>
             </div>
         </div>
 
         <!-- Airport Input Instructions -->
         <div class="input-instructions">
-            <strong>How to enter airport codes:</strong>
+            <h3 class="centered">How to enter airport codes:</h3>
             <ul>
                 <li>Enter airport codes in the format "KXXX" (e.g., KDEN, KLAX)</li>
                 <li>Separate multiple airports with commas or spaces</li>
@@ -59,30 +101,30 @@
             <button id="clear-input">Clear</button>
         </div>
 
-        <button id="apply-filters">Apply Filters</button>
+        <button id="apply-filters" class="kiosk-action-button">Apply Filters</button>
 
         <!-- Color Legend -->
         <div class="kiosk-legend">
             <div class="kiosk-legend-item">
-                <span class="kiosk-legend-dot" style="background-color: {{ vfr_color }}"></span>
+                <span class="legend-dot vfr"></span>
                 VFR
             </div>
             <div class="kiosk-legend-item">
-                <span class="kiosk-legend-dot" style="background-color: {{ mvfr_color }}"></span>
+                <span class="legend-dot mvfr"></span>
                 MVFR
             </div>
             <div class="kiosk-legend-item">
-                <span class="kiosk-legend-dot" style="background-color: {{ ifr_color }}"></span>
+                <span class="legend-dot ifr"></span>
                 IFR
             </div>
             <div class="kiosk-legend-item">
-                <span class="kiosk-legend-dot" style="background-color: {{ lifr_color }}"></span>
+                <span class="legend-dot lifr"></span>
                 LIFR
             </div>
         </div>
 
         <!-- Return to Normal Button -->
-        <button class="kiosk-button" id="reset-button">Return to Normal</button>
+        <button id="reset-button" class="kiosk-action-button">Return Map to Normal</button>
     </div>
 
     <script>
@@ -92,6 +134,7 @@
         const IFR_COLOR = '{{ ifr_color }}';
         const LIFR_COLOR = '{{ lifr_color }}';
         const MISSING_COLOR = '{{ missing_color }}';
+        const WIND_THRESHOLD = {{ wind_threshold }};
     </script>
     <script src="{{ url_for('static', filename='js/kiosk.js') }}"></script>
 </body>
