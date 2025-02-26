@@ -46,7 +46,10 @@
                 <span class="info-toggle">▼</span>
             </div>
             <div class="info-content" id="info-content">
-                <p>Select which airports to display on the METAR Map:</p>
+                <h4>Select which airports to display on the METAR Map:</h4>
+                <p>NOTE: Keep an eye on the timer in the top right. This page resets when it reaches zero.<br>
+                    If you need more time before you start, tap "Return Map to Normal" below to reset the timer.<br>
+                    When finished, please tap "Return Map to Normal" to light up all airports.</p>
                 <ul>
                     <li><strong>Windy Airports</strong>: Airports with wind speeds over {{ wind_threshold }} knots</li>
                     <li><strong>Lightning Activity</strong>: Airports reporting thunderstorms</li>
@@ -131,7 +134,8 @@
         </div>
 
         <!-- Manual Input with Clear Button -->
-        <div class="input-group">
+        <h4>Enter custom airprots here. Where are you going today?</h4>
+        <div class="input-group">    
             <input type="text" class="kiosk-input" placeholder="Enter airport codes (e.g., KDEN, KLAX)" id="airport-input">
             <button id="clear-input">Clear</button>
         </div>
