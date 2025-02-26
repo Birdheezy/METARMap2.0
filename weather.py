@@ -35,7 +35,7 @@ def fetch_metar():
     airport_ids = get_valid_airports(AIRPORTS_FILE)
     if not airport_ids:
         return None
-    
+
     base_url = "https://aviationweather.gov/api/data/metar"
     params = {
         'ids': ','.join(airport_ids),
@@ -71,7 +71,7 @@ def get_windy_airports(weather_data):
         if wind_speed > WIND_THRESHOLD or wind_gust > WIND_THRESHOLD:
             # Get the color based on flight category
             flt_cat_color = get_flt_cat_color(flt_cat)
-            
+
             # Add airport and color to windy_airports dictionary
             windy_airports[airport_code] = flt_cat_color
 
@@ -91,7 +91,7 @@ def get_lightning_airports(weather_data):
         if any(re.search(rf'\b{keyword}\b', raw_observation) for keyword in LIGHTNING_KEYWORDS):
             # Get the color based on flight category
             flt_cat_color = get_flt_cat_color(flt_cat)
-            
+
             # Add airport and color to lightning_airports dictionary
             lightning_airports[airport_code] = flt_cat_color
 
@@ -111,7 +111,7 @@ def get_snowy_airports(weather_data):
         if any(re.search(rf'\b{keyword}\b', raw_observation) for keyword in SNOW_KEYWORDS):
             # Get the color based on flight category
             flt_cat_color = get_flt_cat_color(flt_cat)
-            
+
             # Add airport and color to snowy_airports dictionary
             snowy_airports[airport_code] = flt_cat_color
 
@@ -137,7 +137,7 @@ def get_airport_weather(airport_code, weather_data):
     flt_cat = airport_weather.get('flt_cat', 'MISSING')
     wind_speed = airport_weather.get('wind_speed', 0)  # Default to 0 if missing
     wind_gust = airport_weather.get('wind_gust', 0)    # Default to 0 if missing
-    
+
     # Use raw_observation as the standard key name
     raw_observation = airport_weather.get('raw_observation', '')
     # Check for lightning using the defined keywords
@@ -154,6 +154,11 @@ def parse_weather(metar_data):
     for feature in metar_data['features']:
         airport_id = feature['properties'].get('id', 'UNKNOWN')
         raw_observation = feature['properties'].get('rawOb', 'N/A')
+
+        # Get coordinates from geometry
+        coords = feature.get('geometry', {}).get('coordinates', [])
+        lat = coords[1] if len(coords) >= 2 else None
+        lon = coords[0] if len(coords) >= 2 else None
 
         # Check for lightning indicators in raw observation
         lightning = any(keyword in raw_observation for keyword in LIGHTNING_KEYWORDS)
@@ -172,7 +177,10 @@ def parse_weather(metar_data):
             "ceiling": feature['properties'].get('ceil', 0),
             "precip": feature['properties'].get('wx', 'MISSING'),
             "raw_observation": raw_observation,
-            "lightning": lightning  # Add the lightning indicator
+            "lightning": lightning,  # Add the lightning indicator
+            "latitude": lat,  # Add latitude
+            "longitude": lon,  # Add longitude
+            "site": feature['properties'].get('site', airport_id)  # Add site name
         }
         # Append parsed data for the airport
         parsed_data[airport_id] = airport_weather
@@ -192,11 +200,11 @@ def main():
     metar_data = fetch_metar()
     if not metar_data:
         return
-        
+
     parsed_data = parse_weather(metar_data)
     if not parsed_data:
         return
-        
+
     # Check if data has changed
     try:
         with open('weather.json', 'r') as json_file:
@@ -205,11 +213,11 @@ def main():
                 return  # No change in weather data
     except:
         pass  # Continue if weather.json doesn't exist
-        
+
     # Save new data
     with open('weather.json', 'w') as json_file:
         json.dump(parsed_data, json_file, indent=4)
-    
+
     # Only log status table if called by scheduler (check parent process)
     ppid = os.getppid()
     try:
@@ -219,20 +227,20 @@ def main():
                 # Log weather update with essential information
                 current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 logging.info(f"\nWeather Update at {current_time}")
-                
+
                 # Get all condition states
                 airport_list = get_airports_with_skip(AIRPORTS_FILE)
-                
+
                 # Print status table
                 logging.info("\nAirport Status:")
                 logging.info(f"{'Airport':<10} {'Flight Cat':<12} {'Wind Speed':<12} {'Wind Gust':<12} {'Windy':<6} {'Lightning':<10} {'Snowy':<6}")
                 logging.info("-" * 80)
-                
+
                 # Log status for each airport
                 windy_airports = get_windy_airports(parsed_data)
                 lightning_airports = get_lightning_airports(parsed_data)
                 snowy_airports = get_snowy_airports(parsed_data)
-                
+
                 for airport_code in airport_list:
                     if airport_code != "SKIP":
                         flt_cat, wind_speed, wind_gust, lightning = get_airport_weather(airport_code, parsed_data)
@@ -242,6 +250,77 @@ def main():
     except:
         # If we can't check parent process, assume it's not from scheduler
         pass
+
+def backup_airports_file():
+    """Create a backup of the airports file."""
+    try:
+        with open(AIRPORTS_FILE, 'r') as source:
+            with open(f"{AIRPORTS_FILE}.backup", 'w') as backup:
+                backup.write(source.read())
+        return True
+    except Exception as e:
+        logging.error(f"Failed to create backup of airports file: {e}")
+        return False
+
+def restore_airports_file():
+    """Restore the airports file from backup."""
+    try:
+        backup_file = f"{AIRPORTS_FILE}.backup"
+        if not os.path.exists(backup_file):
+            logging.error("No backup file found to restore from")
+            return False
+
+        with open(backup_file, 'r') as backup:
+            with open(AIRPORTS_FILE, 'w') as target:
+                target.write(backup.read())
+        return True
+    except Exception as e:
+        logging.error(f"Failed to restore airports file from backup: {e}")
+        return False
+
+def update_airports_file(airport_codes):
+    """Update the airports file with new airport codes, maintaining original positions."""
+    try:
+        # First create a backup if it doesn't exist
+        backup_file = f"{AIRPORTS_FILE}.backup"
+        if not os.path.exists(backup_file):
+            if not backup_airports_file():
+                return False
+
+        # Read the original structure with all lines to preserve exact format
+        with open(backup_file, 'r') as backup:
+            original_content = backup.read()
+            original_lines = original_content.splitlines()
+
+        # Convert airport codes to uppercase for consistency
+        airport_codes = [code.upper() for code in airport_codes]
+
+        # Create new list with all SKIPs, maintaining exact length
+        updated_lines = ["SKIP"] * len(original_lines)
+
+        # For each requested airport, if it existed in the original file,
+        # put it in its original position
+        for airport in airport_codes:
+            try:
+                original_pos = original_lines.index(airport)
+                updated_lines[original_pos] = airport
+            except ValueError:
+                # Airport wasn't in original file, log warning
+                logging.warning(f"Airport {airport} not found in original configuration")
+                continue
+
+        # Write the updated content, preserving original line endings
+        with open(AIRPORTS_FILE, 'w', newline='') as file:
+            for i, line in enumerate(updated_lines):
+                file.write(line)
+                # Add newline if not the last line
+                if i < len(updated_lines) - 1:
+                    file.write('\n')
+
+        return True
+    except Exception as e:
+        logging.error(f"Failed to update airports file: {e}")
+        return False
 
 if __name__ == "__main__":
     main()

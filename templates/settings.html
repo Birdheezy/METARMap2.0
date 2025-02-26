@@ -7,6 +7,9 @@
     <link href="{{ url_for('static', filename='css/settings.css') }}" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='settings.ico') }}">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Add Leaflet CSS and JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 </head>
 <body>
 
@@ -25,23 +28,39 @@
         <h1 style="font-family: 'Orbitron', sans-serif; font-size: 3em; color: #007bff; margin-bottom: 5px; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0, 123, 255, 0.3);">METARMap</h1>
         <div style="font-size: 1.1em; color: #cccccc; font-family: 'Orbitron', sans-serif; letter-spacing: 1px;">Settings & Configuration</div>
     </div>
-
-    <form method="POST" action="/" onsubmit="saveScrollPosition()">
     <section>
-        <div class="mb-3">
-            <div class="dropdown-container">
-                <label style="font-size: 18px;">
-                    General Notes
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                </label>
-                <div class="dropdown-content" style="display: none;">
-                    Thank you for checking out the settings page! </br>
-                    This page contains all of the settings you need to make your map your own</br>
-                    If you don't understand a certain setting, it's best to leave it to the default value
+        <h2>Airport Map</h2>
+        <div id="airport-map" style="height: 450px; margin-bottom: 10px; border-radius: 8px;"></div>
+        <div class="map-legend">
+            <span class="legend-item">
+                <span class="legend-dot vfr"></span>VFR
+            </span>
+            <span class="legend-item">
+                <span class="legend-dot mvfr"></span>MVFR
+            </span>
+            <span class="legend-item">
+                <span class="legend-dot ifr"></span>IFR
+            </span>
+            <span class="legend-item">
+                <span class="legend-dot lifr"></span>LIFR
+            </span>
+        </div>
+        <br>
+        <div style="margin-top: 5px;" class="weather-status">
+            <div class="service-status">
+                <span class="status-dot" id="weather-status-dot"></span>
+                <span class="status-text">WX Last Updated: <span id="weather-last-updated">{{ weather_last_modified }}</span></span>
+                <div class="status-tooltip">
+                    <span class="green-status">Green: Weather data is current (within expected update interval)</span><br>
+                    <span class="red-status">Red: Weather data is stale (no updates for over 2x the update interval)</span>
                 </div>
             </div>
         </div>
+        <br>
+        <button type="button" id="save-map-view" class="btn btn-primary" style="margin-bottom: 20px;">Save Current View</button>
     </section>
+
+    <form method="POST" action="/" onsubmit="saveScrollPosition()">
     <section id="brightness">
 
         <h2>Brightness Settings</h2>
@@ -513,7 +532,7 @@
     	<div class="mt-4">
     		<div class="dropdown-container">
     			<div>
-    				<a href="{{ url_for('update_weather') }}" class="btn btn-primary">Update Weather</a>
+    				<a href="{{ url_for('update_weather_page') }}" class="btn btn-primary">Update Weather</a>
     				<span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
     			</div>
     			<div class="dropdown-content" style="display: none;">
@@ -522,8 +541,8 @@
     		</div>
     		<div style="margin-top: 5px;" class="weather-status">
     			<div class="service-status">
-                    <span class="status-dot"></span>
-                    <span class="status-text">WX Last Updated: {{ weather_last_modified }}</span>
+                    <span class="status-dot" id="weather-status-dot"></span>
+                    <span class="status-text">WX Last Updated: <span id="weather-last-updated">{{ weather_last_modified }}</span></span>
                     <div class="status-tooltip">
                         <span class="green-status">Green: Weather data is current (within expected update interval)</span><br>
                         <span class="red-status">Red: Weather data is stale (no updates for over 2x the update interval)</span>
@@ -559,6 +578,9 @@
     <!-- Service Controls Section -->
     <section>
         <h2>Service Controls</h2>
+        <div class="service-info">
+            <p>Local IP Address: <span class="ip-address">{{ local_ip }}</span></p>
+        </div>
 
         <!-- METAR Service Controls -->
         <div class="service-control-panel">
@@ -614,6 +636,13 @@
 </div>
 
 <script type="text/javascript">
+    // Add color variables for the map
+    const VFR_COLOR = '{{ vfr_color }}';
+    const MVFR_COLOR = '{{ mvfr_color }}';
+    const IFR_COLOR = '{{ ifr_color }}';
+    const LIFR_COLOR = '{{ lifr_color }}';
+    const MISSING_COLOR = '{{ missing_color }}';
+
     const messages = [];
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -624,6 +653,56 @@
     {% endwith %}
 </script>
 <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+
+<script>
+    // Weather status update function
+    function updateWeatherStatus() {
+        const lastUpdatedElement = document.getElementById('weather-last-updated');
+        const statusDot = document.getElementById('weather-status-dot');
+        
+        if (lastUpdatedElement && lastUpdatedElement.textContent !== "Weather data not available") {
+            try {
+                // Parse the date in MM-DD-YYYY HH:MM:SS format
+                const lastUpdated = lastUpdatedElement.textContent;
+                const parts = lastUpdated.split(' ');
+                const dateParts = parts[0].split('-');
+                const timeParts = parts[1].split(':');
+                
+                // Create date object (months are 0-indexed in JS)
+                const updateTime = new Date(
+                    parseInt(dateParts[2]), // year
+                    parseInt(dateParts[0]) - 1, // month (0-indexed)
+                    parseInt(dateParts[1]), // day
+                    parseInt(timeParts[0]), // hour
+                    parseInt(timeParts[1]), // minute
+                    parseInt(timeParts[2])  // second
+                );
+                
+                const now = new Date();
+                const diffMinutes = (now - updateTime) / (1000 * 60);
+                
+                // Weather is considered stale if it's older than 2x the update interval
+                const staleThreshold = {{ weather_update_interval / 60 * 2 }};
+                
+                if (diffMinutes < staleThreshold) {
+                    statusDot.style.backgroundColor = 'green';
+                } else {
+                    statusDot.style.backgroundColor = 'red';
+                }
+            } catch (e) {
+                console.error("Error parsing date:", e);
+                statusDot.style.backgroundColor = 'red';
+            }
+        } else {
+            statusDot.style.backgroundColor = 'red';
+        }
+    }
+    
+    // Call initially and set interval
+    updateWeatherStatus();
+    setInterval(updateWeatherStatus, 30000); // Update every 30 seconds
+</script>
 
 </body>
 </html>

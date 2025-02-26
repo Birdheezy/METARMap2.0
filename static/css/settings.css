@@ -62,7 +62,7 @@ body {
         padding: 10px 5px;
         gap: 10px;
     }
-    
+
     .navbar a {
         font-size: 16px;
         padding: 4px 8px;
@@ -522,28 +522,23 @@ input[type="color"]::-webkit-color-swatch {
 
 /* Service Control Panel Styling */
 .service-control-panel {
-    background-color: #1d1d1d;
     border-radius: 8px;
     padding: 15px;
     margin: 15px auto;
     max-width: 400px;
     text-align: center;
-    margin-bottom: 0px;
 }
 
 .service-control-panel h3 {
     margin: 0 0 15px 0;
     color: #007bff;
-    color: #e0e0e0;
-    margin-top: 0;
-    margin-bottom: 0px;
 }
 
 .service-buttons {
     display: flex;
     justify-content: center;
     gap: 10px;
-    margin-bottom: 0px;
+    margin-bottom: 10px;
 }
 
 .service-btn {
@@ -722,4 +717,345 @@ input[type="color"]::-webkit-color-swatch {
 
 .weather-status .red-status {
     color: #dc3545;
+}
+
+/* Service Control Panel Styling */
+.service-info {
+    text-align: center;
+    color: #969696;
+    padding: 5px;
+    border-radius: 8px;
+}
+
+.ip-address {
+    font-family: monospace;
+    font-weight: bold;
+    color: #007bff;
+    font-size: large;
+}
+
+/* Airport Map Styles */
+#airport-map {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: box-shadow 0.3s ease;
+}
+
+#airport-map:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.map-legend {
+    background: rgba(44, 44, 44, 0.9);
+    padding: 10px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.map-legend span {
+    display: inline-flex;
+    align-items: center;
+    margin: 0 10px;
+    font-size: 0.9em;
+}
+
+/* Kiosk Mode Styles */
+.kiosk-container {
+    position: relative;
+    padding-top: 10px;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.kiosk-title {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.5em;
+    color: #007bff;
+    text-align: center;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+}
+
+.kiosk-timer {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    text-align: center;
+    font-size: 1.2em;
+    color: #fff;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 8px;
+    border-radius: 5px;
+    z-index: 100;
+}
+
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.checkbox-item {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+}
+
+.checkbox-item label {
+    display: block;
+    font-size: 1.1em;
+    cursor: pointer;
+    margin-left: 30px;
+}
+
+.checkbox-item input[type="checkbox"] {
+    position: absolute;
+    left: 15px;
+    top: 15px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.input-group {
+    display: flex;
+    margin: 20px 0;
+}
+
+.kiosk-input {
+    flex: 1;
+    padding: 12px;
+    font-size: 1.1em;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(0, 0, 0, 0.2);
+    color: #fff;
+    border-radius: 8px 0 0 8px;
+}
+
+#clear-input {
+    padding: 12px 20px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 0 8px 8px 0;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+#clear-input:hover {
+    background: #5a6268;
+}
+
+.info-panel {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 15px;
+    margin: 10px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+}
+
+.info-toggle {
+    position: absolute;
+    right: 10px;
+    font-size: 1.2em;
+}
+
+.info-content {
+    margin-top: 10px;
+    display: none;
+}
+
+.info-content.show {
+    display: block;
+}
+
+.kiosk-legend {
+    display: flex;
+    justify-content: center;
+    margin: 10px 0;
+    flex-wrap: wrap;
+}
+
+.kiosk-legend-item {
+    margin: 0 10px;
+    display: flex;
+    align-items: center;
+}
+
+/* Legend dot styles */
+.legend-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+/* These colors are now set dynamically in kiosk.html via template variables */
+.legend-dot.vfr { background-color: {{ vfr_color }}; }
+.legend-dot.mvfr { background-color: {{ mvfr_color }}; }
+.legend-dot.ifr { background-color: {{ ifr_color }}; }
+.legend-dot.lifr { background-color: {{ lifr_color }}; }
+
+.legend-item {
+    margin-right: 15px;
+}
+
+.map-legend {
+    text-align: center;
+    margin-top: 10px;
+}
+
+/* Add these styles for the selection preview */
+.selection-preview {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px auto;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 100%;
+    box-sizing: border-box;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.selection-preview h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.3em;
+    color: #fff;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 10px;
+}
+
+.preview-item {
+    margin-bottom: 12px;
+    display: flex;
+    align-items: flex-start;
+}
+
+.preview-label {
+    font-weight: bold;
+    min-width: 120px;
+    color: #aaa;
+    padding-right: 10px;
+}
+
+.preview-airports {
+    color: #fff;
+    word-break: break-word;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 5px 10px;
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+.preview-total {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+}
+
+#total-preview {
+    color: #fff;
+    font-size: 1.2em;
+    margin-left: 10px;
+    background-color: rgba(0, 123, 255, 0.3);
+    padding: 3px 10px;
+    border-radius: 12px;
+}
+
+/* Add this style for consistent button sizing */
+.kiosk-action-button {
+    width: 200px;
+    margin: 15px auto;
+    padding: 12px 0;
+    font-size: 1.1em;
+    display: block;
+    text-align: center;
+    border-radius: 8px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.kiosk-action-button:hover {
+    background-color: #0056b3;
+}
+
+/* Add these styles for the kiosk map */
+.map-section {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #1a1a1a;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.kiosk-map {
+    height: 400px;
+    width: 100%;
+    border-radius: 8px;
+    margin-top: 10px;
+}
+
+/* Add this to make popups more touch-friendly */
+.leaflet-popup-content {
+    min-width: 200px;
+    font-size: 14px;
+}
+
+/* Make sure popup close button is easy to tap */
+.leaflet-popup-close-button {
+    font-size: 20px;
+    width: 30px !important;
+    height: 30px !important;
+    line-height: 30px !important;
+}
+
+/* Status message styling */
+.status-message {
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    text-align: center;
+    display: none;
+}
+
+.status-message.error {
+    background-color: rgba(220, 53, 69, 0.8);
+    color: white;
+}
+
+.status-message.success {
+    background-color: rgba(40, 167, 69, 0.8);
+    color: white;
+}
+
+.airport-count {
+    text-align: center;
+    margin: 10px 0;
+    font-weight: bold;
+    color: #fff;
 }

@@ -16,6 +16,8 @@ import sys
 import schedule
 import weather
 import functools
+import socket
+from scheduler import weather_update_lock, update_weather as scheduler_update_weather
 
 def after_this_response(func):
     @functools.wraps(func)
@@ -86,25 +88,24 @@ def turn_off_leds():
     subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/blank.py'])
     return jsonify({"status": "LEDs turned off"}), 200
 
+@app.route('/update-weather')
+def update_weather_page():
+    try:
+        # Use the scheduler's update_weather function
+        scheduler_update_weather()
+        flash('Weather Has Been Updated!', 'success')
+    except Exception as e:
+        flash(f'Weather Update Has Failed... {str(e)}', 'danger')
+    return redirect(url_for('edit_settings'))
+
 @app.route('/update-weather', methods=['POST'])
 def refresh_weather():
     try:
-        # Call weather module functions directly
-        metar_data = weather.fetch_metar()
-        if metar_data:
-            parsed_data = weather.parse_weather(metar_data)
-            if parsed_data:
-                # Save the weather data
-                weather_file = os.path.join(os.getcwd(), 'weather.json')
-                with open(weather_file, 'w') as json_file:
-                    json.dump(parsed_data, json_file, indent=4)
-                return jsonify({"status": "Weather updated successfully"}), 200
-            else:
-                return jsonify({"status": "Failed to parse weather data"}), 500
-        else:
-            return jsonify({"status": "Failed to fetch weather data"}), 500
+        # Use the scheduler's update_weather function
+        scheduler_update_weather()
+        return jsonify({"status": "Weather update requested"}), 200
     except Exception as e:
-        return jsonify({"status": f"Error updating weather: {str(e)}"}), 500
+        return jsonify({"status": f"Error requesting weather update: {str(e)}"}), 500
 
 @app.route('/leds/status', methods=['GET'])
 def get_led_status():
@@ -362,6 +363,9 @@ def edit_settings():
     with open('/home/pi/airports.txt', 'r') as f:
         airports = f.read()
 
+    # Get the local IP address
+    local_ip = get_local_ip()
+
     # Render the template with the updated values, including weather_last_modified
     return render_template(
         'settings.html',
@@ -376,6 +380,7 @@ def edit_settings():
         airports=airports,
         weather_last_modified=weather_last_modified,
         config=globals(),
+        local_ip=local_ip,
         vfr_color=vfr_color,
         mvfr_color=mvfr_color,
         ifr_color=ifr_color,
@@ -485,26 +490,6 @@ def stop_and_blank():
     except subprocess.CalledProcessError as e:
         flash(f'Error stopping METAR service or blanking LEDs: {str(e)}', 'danger')
 
-    return redirect(url_for('edit_settings'))
-
-@app.route('/update-weather')
-def update_weather():
-    try:
-        # Call weather module functions directly
-        metar_data = weather.fetch_metar()
-        if metar_data:
-            parsed_data = weather.parse_weather(metar_data)
-            if parsed_data:
-                # Save the weather data
-                with open('/home/pi/weather.json', 'w') as json_file:
-                    json.dump(parsed_data, json_file, indent=4)
-                flash('Weather Has Been Updated!', 'success')
-            else:
-                flash('Failed to parse weather data', 'danger')
-        else:
-            flash('Failed to fetch weather data', 'danger')
-    except Exception as e:
-        flash(f'Weather Update Has Failed... {str(e)}', 'danger')
     return redirect(url_for('edit_settings'))
 
 @app.route('/scan-networks', methods=['GET'])
@@ -671,25 +656,57 @@ def get_service_logs(service_name):
         }), 500
 
 
+@app.route('/weather-status')
+def weather_status():
+    weather_file_path = '/home/pi/weather.json'
+    try:
+        last_modified_timestamp = os.path.getmtime(weather_file_path)
+        # Ensure consistent date format: MM-DD-YYYY HH:MM:SS
+        last_updated = datetime.datetime.fromtimestamp(last_modified_timestamp).strftime('%m-%d-%Y %H:%M:%S')
+        return jsonify({
+            'success': True,
+            'last_updated': last_updated
+        })
+    except FileNotFoundError:
+        return jsonify({
+            'success': True,
+            'last_updated': "Weather data not available"
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
+# Add back the original endpoint for Home Assistant compatibility
 @app.route('/weather-status', methods=['GET'])
 def get_weather_status():
     weather_file_path = '/home/pi/weather.json'
     try:
         last_modified_timestamp = os.path.getmtime(weather_file_path)
-        last_updated = datetime.datetime.fromtimestamp(last_modified_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        
+        # For Home Assistant: YYYY-MM-DD HH:MM:SS
+        ha_format = datetime.datetime.fromtimestamp(last_modified_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        
+        # For web UI: MM-DD-YYYY HH:MM:SS
+        ui_format = datetime.datetime.fromtimestamp(last_modified_timestamp).strftime('%m-%d-%Y %H:%M:%S')
+        
         return jsonify({
-            "last_updated": last_updated,
+            "last_updated": ha_format,  # Keep original key for HA compatibility
+            "formatted_date": ui_format,  # Add new key for UI
             "success": True
         }), 200
     except FileNotFoundError:
         return jsonify({
             "last_updated": "Weather data not available",
+            "formatted_date": "Weather data not available",
             "success": False,
             "error": "Weather file not found"
         }), 404
     except Exception as e:
         return jsonify({
             "last_updated": "Weather data not available",
+            "formatted_date": "Weather data not available",
             "success": False,
             "error": str(e)
         }), 500
@@ -840,8 +857,8 @@ def apply_update():
                 shutil.rmtree(oldest)
                 backups.pop(0)
 
-        # Set ownership of backup directory
-        subprocess.run(['chown', '-R', 'pi:pi', backup_dir], check=True)
+        # Set ownership of all files to pi:pi recursively
+        subprocess.run(['chown', '-R', 'pi:pi', '.'], check=True)
 
         # Prepare success response
         response = jsonify({
@@ -871,6 +888,241 @@ def apply_update():
             'success': False,
             'error': str(e)
         }), 500
+
+def get_local_ip():
+    """Get the local IP address of the Raspberry Pi."""
+    try:
+        # Get IP address using hostname
+        ip_address = subprocess.check_output(['hostname', '-I']).decode().split()[0]
+        return ip_address
+    except Exception as e:
+        return "IP not available"
+
+@app.route('/airport-conditions')
+def get_airport_conditions():
+    try:
+        # Read weather data from the correct path
+        with open('/home/pi/weather.json', 'r') as f:
+            weather_data = json.load(f)
+
+        airports = []
+        for icao, data in weather_data.items():
+            airport_info = {
+                'icao': icao,
+                'site': data.get('site', icao),
+                'lat': data.get('latitude'),
+                'lon': data.get('longitude'),
+                'fltCat': data.get('flt_cat', 'MISSING'),
+                'raw_observation': data.get('raw_observation', 'No data available')
+            }
+            airports.append(airport_info)
+
+        return jsonify({'airports': airports})
+
+    except FileNotFoundError:
+        return jsonify({'error': 'Weather data file not found'}), 404
+
+@app.route('/map-settings', methods=['GET', 'POST'])
+def map_settings():
+    try:
+        if request.method == 'POST':
+            data = request.json
+            if not data or 'center' not in data or 'zoom' not in data:
+                return jsonify({'error': 'Invalid request data'}), 400
+
+            # Create a dictionary for updates
+            config_updates = {}
+            config_updates["MAP_CENTER_LAT"] = data['center'][0]
+            config_updates["MAP_CENTER_LON"] = data['center'][1]
+            config_updates["MAP_ZOOM"] = data['zoom']
+
+            # Update the config.py file
+            with open('config.py', 'r') as f:
+                config_lines = f.readlines()
+
+            with open('config.py', 'w') as f:
+                for line in config_lines:
+                    # Skip lines we're updating
+                    if any(key in line for key in config_updates.keys()):
+                        continue
+                    f.write(line)
+
+                # Add the updated values
+                for key, value in config_updates.items():
+                    f.write(f"{key} = {value}\n")
+
+            # Reload the config module to get the new values
+            reload_config()
+
+            return jsonify({'success': True})
+
+        # GET request - return current settings
+        return jsonify({
+            'center': [config.MAP_CENTER_LAT, config.MAP_CENTER_LON],
+            'zoom': config.MAP_ZOOM
+        })
+
+    except Exception as e:
+        logger.error(f"Error in map_settings: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/kiosk')
+def kiosk():
+    # Get the last modified date of weather.json
+    weather_file_path = '/home/pi/weather.json'  # Adjust this path if necessary
+    try:
+        last_modified_timestamp = os.path.getmtime(weather_file_path)
+        # Ensure consistent date format: MM-DD-YYYY HH:MM:SS
+        weather_last_modified = datetime.datetime.fromtimestamp(last_modified_timestamp).strftime('%m-%d-%Y %H:%M:%S')
+    except FileNotFoundError:
+        weather_last_modified = "Weather data not available"
+
+    # Calculate the weather update threshold in minutes
+    weather_update_threshold = (WEATHER_UPDATE_INTERVAL / 60) * 2
+
+    return render_template('kiosk.html',
+        vfr_color='rgb({}, {}, {})'.format(*VFR_COLOR),
+        mvfr_color='rgb({}, {}, {})'.format(*MVFR_COLOR),
+        ifr_color='rgb({}, {}, {})'.format(*IFR_COLOR),
+        lifr_color='rgb({}, {}, {})'.format(*LIFR_COLOR),
+        missing_color='rgb({}, {}, {})'.format(*MISSING_COLOR),
+        lightening_color='rgb({}, {}, {})'.format(*LIGHTENING_COLOR),
+        snowy_color='rgb({}, {}, {})'.format(*SNOWY_COLOR),
+        wind_threshold=WIND_THRESHOLD,
+        weather_last_modified=weather_last_modified,
+        weather_update_interval=WEATHER_UPDATE_INTERVAL,
+        weather_update_threshold=weather_update_threshold,  # Pass the calculated value
+        animation_pause=ANIMATION_PAUSE
+    )
+
+@app.route('/kiosk/apply-filters', methods=['POST'])
+def apply_kiosk_filters():
+    try:
+        # First, create a backup of the original airports file if it doesn't exist
+        if not os.path.exists(AIRPORTS_FILE + '.backup'):
+            shutil.copy(AIRPORTS_FILE, AIRPORTS_FILE + '.backup')
+            logger.info(f"Created backup of {AIRPORTS_FILE}")
+
+        data = request.get_json()
+        filters = data.get('filters', [])
+        major_airports = data.get('majorAirports', [])
+        manual_airports = data.get('manualAirports', [])
+
+        # Read the original airport configuration to validate against
+        with open(AIRPORTS_FILE + '.backup', 'r') as f:
+            original_airports = [line.strip() for line in f.readlines()]
+
+        # Validate manual airports against original configuration
+        invalid_airports = [code for code in manual_airports if code not in original_airports]
+        if invalid_airports:
+            return jsonify({
+                'success': False,
+                'error': f"The following airports are not in the original configuration: {', '.join(invalid_airports)}"
+            }), 400
+
+        # Collect airports based on filters
+        selected_airports = set()
+
+        # Add major airports if selected
+        if 'major' in filters:
+            valid_major = [code for code in major_airports if code in original_airports]
+            selected_airports.update(valid_major)
+
+        # Add condition-based airports from existing weather data
+        weather_data = weather.read_weather_data()
+        if weather_data:
+            if 'windy' in filters:
+                windy = weather.get_windy_airports(weather_data)
+                selected_airports.update(windy.keys())
+            if 'lightning' in filters:
+                lightning = weather.get_lightning_airports(weather_data)
+                selected_airports.update(lightning.keys())
+            if 'snow' in filters:
+                snowy = weather.get_snowy_airports(weather_data)
+                selected_airports.update(snowy.keys())
+
+        # Add manual airports (already validated)
+        selected_airports.update(manual_airports)
+
+        # Write directly to airports.txt while preserving structure
+        with open(AIRPORTS_FILE, 'w') as f:
+            for original_airport in original_airports:
+                if original_airport in selected_airports:
+                    f.write(f"{original_airport}\n")
+                else:
+                    f.write("SKIP\n")
+
+        # Restart only the LED display service
+        try:
+            subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
+            return jsonify({
+                'success': True,
+                'count': len(selected_airports)
+            })
+        except subprocess.CalledProcessError as e:
+            return jsonify({
+                'success': False,
+                'error': f'Failed to restart METAR service: {str(e)}'
+            }), 500
+
+    except Exception as e:
+        logger.error(f"Error applying kiosk filters: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/kiosk/reset', methods=['POST'])
+def reset_kiosk():
+    try:
+        # Copy original airports.txt back from backup
+        if os.path.exists('airports.txt.backup'):
+            shutil.copy('airports.txt.backup', AIRPORTS_FILE)
+
+            # Restart the METAR service to apply changes immediately
+            try:
+                subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
+                return jsonify({'success': True})
+            except subprocess.CalledProcessError as e:
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to restart METAR service: {str(e)}'
+                }), 500
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error resetting kiosk: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/kiosk/condition-airports')
+def get_condition_airports():
+    try:
+        # Read weather data
+        weather_data = weather.read_weather_data()
+        if not weather_data:
+            return jsonify({'error': 'No weather data available'}), 404
+            
+        # Use existing weather.py functions
+        windy_airports = weather.get_windy_airports(weather_data)
+        lightning_airports = weather.get_lightning_airports(weather_data)
+        snowy_airports = weather.get_snowy_airports(weather_data)
+        
+        return jsonify({
+            'windy': windy_airports,
+            'lightning': lightning_airports,
+            'snowy': snowy_airports
+        })
+    except Exception as e:
+        logger.error(f"Error getting condition airports: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get-weather-data')
+def get_weather_data():
+    try:
+        weather_file_path = '/home/pi/weather.json'
+        with open(weather_file_path, 'r') as f:
+            weather_data = json.load(f)
+        return jsonify(weather_data)
+    except FileNotFoundError:
+        return jsonify({"error": "Weather data not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     if ENABLE_HTTPS:

@@ -384,6 +384,37 @@ def update_leds(weather_data):
     except Exception as e:
         logger.error(f"Error updating LEDs: {e}")
 
+def handle_kiosk_timeout():
+    """Handle kiosk mode timeout by restoring normal operation."""
+    logger.info("Kiosk mode timeout - restoring normal operation")
+    if weather.restore_airports_file():
+        logger.info("Successfully restored airports file from backup")
+        # Force a weather update
+        weather_data = weather.fetch_metar()
+        if weather_data:
+            parsed_data = weather.parse_weather(weather_data)
+            with open('weather.json', 'w') as json_file:
+                json.dump(parsed_data, json_file, indent=4)
+            return True
+    else:
+        logger.error("Failed to restore normal operation")
+        return False
+
+def update_kiosk_airports(airport_codes):
+    """Update airports for kiosk mode."""
+    logger.info(f"Updating kiosk airports: {airport_codes}")
+    if weather.update_airports_file(airport_codes):
+        logger.info("Successfully updated airports file")
+        # Force a weather update
+        weather_data = weather.fetch_metar()
+        if weather_data:
+            parsed_data = weather.parse_weather(weather_data)
+            with open('weather.json', 'w') as json_file:
+                json.dump(parsed_data, json_file, indent=4)
+            return True
+    else:
+        logger.error("Failed to update kiosk airports")
+        return False
 
 # Main loop
 previous_lights_off = False  # Track previous state
