@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Configuration
-    const TIMER_DURATION = 60; // Timer duration in seconds
+    const TIMER_DURATION = 600; // Timer duration in seconds
 
     let timeLeft = TIMER_DURATION;
     let timerInterval = null; // Store the interval ID
