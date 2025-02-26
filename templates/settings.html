@@ -48,8 +48,8 @@
         <br>
         <div style="margin-top: 5px;" class="weather-status">
             <div class="service-status">
-                <span class="status-dot"></span>
-                <span class="status-text">WX Last Updated: {{ weather_last_modified }}</span>
+                <span class="status-dot" id="weather-status-dot"></span>
+                <span class="status-text">WX Last Updated: <span id="weather-last-updated">{{ weather_last_modified }}</span></span>
                 <div class="status-tooltip">
                     <span class="green-status">Green: Weather data is current (within expected update interval)</span><br>
                     <span class="red-status">Red: Weather data is stale (no updates for over 2x the update interval)</span>
@@ -532,7 +532,7 @@
     	<div class="mt-4">
     		<div class="dropdown-container">
     			<div>
-    				<a href="{{ url_for('update_weather') }}" class="btn btn-primary">Update Weather</a>
+    				<a href="{{ url_for('update_weather_page') }}" class="btn btn-primary">Update Weather</a>
     				<span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
     			</div>
     			<div class="dropdown-content" style="display: none;">
@@ -541,8 +541,8 @@
     		</div>
     		<div style="margin-top: 5px;" class="weather-status">
     			<div class="service-status">
-                    <span class="status-dot"></span>
-                    <span class="status-text">WX Last Updated: {{ weather_last_modified }}</span>
+                    <span class="status-dot" id="weather-status-dot"></span>
+                    <span class="status-text">WX Last Updated: <span id="weather-last-updated">{{ weather_last_modified }}</span></span>
                     <div class="status-tooltip">
                         <span class="green-status">Green: Weather data is current (within expected update interval)</span><br>
                         <span class="red-status">Red: Weather data is stale (no updates for over 2x the update interval)</span>
@@ -653,6 +653,56 @@
     {% endwith %}
 </script>
 <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+
+<script>
+    // Weather status update function
+    function updateWeatherStatus() {
+        const lastUpdatedElement = document.getElementById('weather-last-updated');
+        const statusDot = document.getElementById('weather-status-dot');
+        
+        if (lastUpdatedElement && lastUpdatedElement.textContent !== "Weather data not available") {
+            try {
+                // Parse the date in MM-DD-YYYY HH:MM:SS format
+                const lastUpdated = lastUpdatedElement.textContent;
+                const parts = lastUpdated.split(' ');
+                const dateParts = parts[0].split('-');
+                const timeParts = parts[1].split(':');
+                
+                // Create date object (months are 0-indexed in JS)
+                const updateTime = new Date(
+                    parseInt(dateParts[2]), // year
+                    parseInt(dateParts[0]) - 1, // month (0-indexed)
+                    parseInt(dateParts[1]), // day
+                    parseInt(timeParts[0]), // hour
+                    parseInt(timeParts[1]), // minute
+                    parseInt(timeParts[2])  // second
+                );
+                
+                const now = new Date();
+                const diffMinutes = (now - updateTime) / (1000 * 60);
+                
+                // Weather is considered stale if it's older than 2x the update interval
+                const staleThreshold = {{ weather_update_interval / 60 * 2 }};
+                
+                if (diffMinutes < staleThreshold) {
+                    statusDot.style.backgroundColor = 'green';
+                } else {
+                    statusDot.style.backgroundColor = 'red';
+                }
+            } catch (e) {
+                console.error("Error parsing date:", e);
+                statusDot.style.backgroundColor = 'red';
+            }
+        } else {
+            statusDot.style.backgroundColor = 'red';
+        }
+    }
+    
+    // Call initially and set interval
+    updateWeatherStatus();
+    setInterval(updateWeatherStatus, 30000); // Update every 30 seconds
+</script>
 
 </body>
 </html>

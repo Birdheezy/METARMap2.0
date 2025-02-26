@@ -6,24 +6,98 @@
     <title>METAR Kiosk</title>
     <link href="{{ url_for('static', filename='css/settings.css') }}" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Specific color styles that need template variables */
+        .legend-dot.vfr { background-color: {{ vfr_color }}; }
+        .legend-dot.mvfr { background-color: {{ mvfr_color }}; }
+        .legend-dot.ifr { background-color: {{ ifr_color }}; }
+        .legend-dot.lifr { background-color: {{ lifr_color }}; }
+        .legend-dot.windy { background-color: white; }
+        .legend-dot.lightning { background-color: {{ lightening_color }}; }
+        .legend-dot.snow { background-color: {{ snowy_color }}; }
+        .legend-dot.missing { background-color: {{ missing_color }}; }
+    </style>
 </head>
 <body>
     <div class="kiosk-container">
         <h1 class="kiosk-title">METAR Map</h1>
+
+        <!-- Weather Status with Tooltip -->
+        <div class="weather-status">
+            <div class="service-status">
+                <span class="status-dot" id="weather-status-dot"></span>
+                <span class="status-text">WX Last Updated: <span id="weather-last-updated">{{ weather_last_modified }}</span></span>
+                <div class="status-tooltip">
+                    <span class="green-status">Green: Weather data is current (within expected update interval)</span><br>
+                    <span class="red-status">Red: Weather data is stale (no updates for over 2x the update interval)</span>
+                </div>
+            </div>
+        </div>
 
         <!-- Timer -->
         <div class="kiosk-timer">
             Reset in: <span id="countdown">10:00</span>
         </div>
 
+        <!-- Info Panel -->
+        <div class="info-panel">
+            <div class="info-header" id="info-toggle">
+                <h3 style="margin: 0;">How to Use Kiosk Mode</h3>
+                <span class="info-toggle">▼</span>
+            </div>
+            <div class="info-content" id="info-content">
+                <p>Select which airports to display on the METAR Map:</p>
+                <ul>
+                    <li><strong>Windy Airports</strong>: Airports with wind speeds over {{ wind_threshold }} knots</li>
+                    <li><strong>Lightning Activity</strong>: Airports reporting thunderstorms</li>
+                    <li><strong>Snow Conditions</strong>: Airports reporting snow</li>
+                    <li><strong>Major Hubs</strong>: Major US airports</li>
+                    <li><strong>Manual Entry</strong>: Enter specific airport codes (format: KXXX)</li>
+                </ul>
+                <h4>Flight Categories:</h4>
+                <div class="kiosk-legend">
+                    <div class="kiosk-legend-item">
+                        <span class="legend-dot vfr"></span>
+                        VFR
+                    </div>
+                    <div class="kiosk-legend-item">
+                        <span class="legend-dot mvfr"></span>
+                        MVFR
+                    </div>
+                    <div class="kiosk-legend-item">
+                        <span class="legend-dot ifr"></span>
+                        IFR
+                    </div>
+                    <div class="kiosk-legend-item">
+                        <span class="legend-dot lifr"></span>
+                        LIFR
+                    </div>
+                    <div class="kiosk-legend-item">
+                        <span class="legend-dot missing"></span>
+                        Missing WX Data
+                    </div>
+                </div>
+
+                <h4>Special Conditions: Airports with these conditions will animate every {{ animation_pause }} seconds.</h4>
+                <div class="kiosk-legend">
+                    <div class="kiosk-legend-item">
+                        Windy (Pulsing)
+                    </div>
+                    <div class="kiosk-legend-item">
+                        <span class="legend-dot lightning"></span>
+                        Lightning (Flashing)
+                    </div>
+                    <div class="kiosk-legend-item">
+                        <span class="legend-dot snow"></span>
+                        Snow (Blinking)
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Status Messages -->
         <div id="status-message" class="status-message"></div>
         <div id="airport-count" class="airport-count"></div>
-        <div class="weather-status">
-            <div class="service-status">
-                <span class="status-text">WX Last Updated: {{ weather_last_modified }}</span>
-            </div>
-        </div>
 
         <!-- Presets Checkboxes -->
         <div class="checkbox-grid">
@@ -56,7 +130,13 @@
             </div>
         </div>
 
-        <!-- Add this after the checkbox grid -->
+        <!-- Manual Input with Clear Button -->
+        <div class="input-group">
+            <input type="text" class="kiosk-input" placeholder="Enter airport codes (e.g., KDEN, KLAX)" id="airport-input">
+            <button id="clear-input">Clear</button>
+        </div>
+
+        <!-- Selection Preview -->
         <div class="selection-preview">
             <h3>Selection Preview</h3>
             <div class="preview-item">
@@ -85,57 +165,34 @@
             </div>
         </div>
 
-        <!-- Airport Input Instructions -->
-        <div class="input-instructions">
-            <h3 class="centered">How to enter airport codes:</h3>
-            <ul>
-                <li>Enter airport codes in the format "KXXX" (e.g., KDEN, KLAX)</li>
-                <li>Separate multiple airports with commas or spaces</li>
-                <li>Only airports from the original configuration can be used</li>
-            </ul>
-        </div>
-
-        <!-- Manual Input with Clear Button -->
-        <div class="input-group">
-            <input type="text" class="kiosk-input" placeholder="Example: KDEN, KLAX, KORD" id="airport-input">
-            <button id="clear-input">Clear</button>
-        </div>
-
+        <!-- Action Buttons -->
         <button id="apply-filters" class="kiosk-action-button">Apply Filters</button>
-
-        <!-- Color Legend -->
-        <div class="kiosk-legend">
-            <div class="kiosk-legend-item">
-                <span class="legend-dot vfr"></span>
-                VFR
-            </div>
-            <div class="kiosk-legend-item">
-                <span class="legend-dot mvfr"></span>
-                MVFR
-            </div>
-            <div class="kiosk-legend-item">
-                <span class="legend-dot ifr"></span>
-                IFR
-            </div>
-            <div class="kiosk-legend-item">
-                <span class="legend-dot lifr"></span>
-                LIFR
-            </div>
-        </div>
-
-        <!-- Return to Normal Button -->
         <button id="reset-button" class="kiosk-action-button">Return Map to Normal</button>
+
+        <!-- Add this after the action buttons section -->
+        <div class="map-section">
+            <h2>Airport Map <span style="font-size: 0.7em; font-weight: normal; color: #777;">(Tap on an airport to display the METAR)</span></h2>
+            <div id="airport-map" class="kiosk-map"></div>
+        </div>
     </div>
 
     <script>
-        // Add color variables
+        // Add color variables (keep these in HTML for template access)
         const VFR_COLOR = '{{ vfr_color }}';
         const MVFR_COLOR = '{{ mvfr_color }}';
         const IFR_COLOR = '{{ ifr_color }}';
         const LIFR_COLOR = '{{ lifr_color }}';
         const MISSING_COLOR = '{{ missing_color }}';
         const WIND_THRESHOLD = {{ wind_threshold }};
+        const WEATHER_UPDATE_THRESHOLD = {{ weather_update_threshold }};
+        const WEATHER_LAST_MODIFIED = '{{ weather_last_modified }}';
+        const ANIMATION_PAUSE = {{ animation_pause }};
     </script>
     <script src="{{ url_for('static', filename='js/kiosk.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/map.js') }}"></script>
+
+    <!-- Add these before the closing </body> tag -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 </body>
 </html>

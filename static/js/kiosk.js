@@ -1,6 +1,9 @@
 document.addEventListener('DOMContentLoaded', function() {
-    let timeLeft = 600; // 10 minutes
-    let activeTimeout = null;
+    // Configuration
+    const TIMER_DURATION = 60; // Timer duration in seconds
+
+    let timeLeft = TIMER_DURATION;
+    let timerInterval = null; // Store the interval ID
     const timerDisplay = document.getElementById('countdown');
     const airportInput = document.getElementById('airport-input');
     const resetButton = document.getElementById('reset-button');
@@ -10,10 +13,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusMessage = document.getElementById('status-message');
     const airportCount = document.getElementById('airport-count');
 
+    // Toggle info panel
+    document.getElementById('info-toggle').addEventListener('click', function() {
+        const content = document.getElementById('info-content');
+        const toggle = document.querySelector('.info-toggle');
+
+        if (content.classList.contains('show')) {
+            content.classList.remove('show');
+            toggle.textContent = '▼';
+        } else {
+            content.classList.add('show');
+            toggle.textContent = '▲';
+        }
+    });
+
     // Major airports preset
     const MAJOR_AIRPORTS = [
         'KATL', 'KLAX', 'KDFW', 'KORD', 'KDEN',
-        'KJFK', 'KSFO', 'KLAS', 'KMIA', 'KPHX'
+        'KJFK', 'KSFO', 'KLAS', 'KMIA', 'KPHX',
+        'KLGA', 'KSEA',
     ];
 
     // Cache preview elements
@@ -24,6 +42,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const manualPreview = document.getElementById('manual-preview');
     const totalPreview = document.getElementById('total-preview');
 
+    // Map variables
+    let airportMap;
+    let allAirports = [];
+
     function showMessage(message, type) {
         statusMessage.textContent = message;
         statusMessage.className = `status-message ${type}`;
@@ -33,12 +55,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 5000);
     }
 
+    function startTimer() {
+        // Clear any existing timer first
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+
+        // Reset the time
+        timeLeft = TIMER_DURATION;
+
+        // Update display immediately
+        updateTimer();
+
+        // Start a new timer with a slight delay to ensure clean start
+        setTimeout(() => {
+            timerInterval = setInterval(updateTimer, 1000);
+            console.log("Timer started with interval ID:", timerInterval);
+        }, 100);
+    }
+
     function updateTimer() {
+        console.log("Timer update, timeLeft:", timeLeft);
         const minutes = Math.floor(timeLeft / 60);
         const seconds = timeLeft % 60;
         timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
         if (timeLeft <= 0) {
+            console.log("Timer reached zero, resetting...");
+            clearInterval(timerInterval); // Stop the timer
             resetToNormal();
         } else {
             timeLeft--;
@@ -46,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function resetTimer() {
-        timeLeft = 600; // Reset to 10 minutes
+        timeLeft = TIMER_DURATION; // Reset to 10 minutes
         updateTimer();
     }
 
@@ -58,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(data => {
                 // After successful reset, update weather
-                return fetch('/update-weather', { 
+                return fetch('/update-weather', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -67,18 +112,41 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => {
                 if (!response.ok) throw new Error('Failed to update weather');
+
+                // Clear all checkboxes and input field
                 clearActiveStates();
-                resetTimer();
+
+                // Reset the preview displays
+                resetPreviewDisplays();
+
+                // Reset the map to show all airports
+                resetMap();
+
+                // Restart the timer instead of just resetting the time
+                startTimer();
+
                 showMessage('Reset to normal operation', 'success');
                 airportCount.textContent = '';
+
                 // Update the condition lists after reset
                 updateConditionLists();
             })
             .catch(error => {
                 console.error('Error:', error);
                 showMessage('Failed to reset: ' + error.message, 'error');
-                resetTimer();
+                // Still restart the timer even if there was an error
+                startTimer();
             });
+    }
+
+    // Add a new function to reset all preview displays
+    function resetPreviewDisplays() {
+        windyPreview.textContent = '';
+        lightningPreview.textContent = '';
+        snowPreview.textContent = '';
+        majorPreview.textContent = '';
+        manualPreview.textContent = '';
+        totalPreview.textContent = '0';
     }
 
     function clearActiveStates() {
@@ -124,9 +192,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!status) {
                 throw new Error(data.error || 'Failed to apply filters');
             }
-            resetTimer();
+            startTimer();
             showMessage('Filters applied successfully', 'success');
             airportCount.textContent = `Showing ${data.count} airports`;
+
+            // Update the map with selected airports
+            const selectedAirports = [...allAirports]; // Convert Set to Array
+            updateMapWithSelection(selectedAirports);
 
             // Close the touch keyboard if open
             airportInput.blur();
@@ -137,8 +209,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Initialize timer
-    setInterval(updateTimer, 1000);
+    // Start the timer when the page loads
+    console.log("Starting timer...");
+    startTimer();
+    console.log("Timer started, interval ID:", timerInterval);
 
     // Handle apply filters button click
     applyButton.addEventListener('click', applyCurrentSelection);
@@ -199,9 +273,9 @@ document.addEventListener('DOMContentLoaded', function() {
         snowPreview.textContent = '';
         majorPreview.textContent = '';
         manualPreview.textContent = '';
-        
+
         let totalAirports = new Set();
-        
+
         // Fetch all condition data at once
         fetch('/kiosk/condition-airports')
             .then(response => response.json())
@@ -212,45 +286,160 @@ document.addEventListener('DOMContentLoaded', function() {
                     windyPreview.textContent = windyAirports.join(', ') || 'None';
                     windyAirports.forEach(airport => totalAirports.add(airport));
                 }
-                
+
                 // Update lightning preview if checked
                 if (document.getElementById('lightning').checked) {
                     const lightningAirports = Object.keys(data.lightning || {});
                     lightningPreview.textContent = lightningAirports.join(', ') || 'None';
                     lightningAirports.forEach(airport => totalAirports.add(airport));
                 }
-                
+
                 // Update snow preview if checked
                 if (document.getElementById('snow').checked) {
                     const snowyAirports = Object.keys(data.snowy || {});
                     snowPreview.textContent = snowyAirports.join(', ') || 'None';
                     snowyAirports.forEach(airport => totalAirports.add(airport));
                 }
-                
+
                 updateTotalCount();
             });
-        
+
         // Update major hubs preview if checked
         if (document.getElementById('major').checked) {
             majorPreview.textContent = MAJOR_AIRPORTS.join(', ');
             MAJOR_AIRPORTS.forEach(airport => totalAirports.add(airport));
         }
-        
+
         // Update manual entry preview
         const manualAirports = airportInput.value
             .toUpperCase()
             .split(/[\s,]+/)
             .filter(code => code.length === 4 && code.match(/^K[A-Z]{3}$/));
-        
+
         if (manualAirports.length > 0) {
             manualPreview.textContent = manualAirports.join(', ');
             manualAirports.forEach(airport => totalAirports.add(airport));
         }
-        
+
         updateTotalCount();
-        
+
         function updateTotalCount() {
             totalPreview.textContent = totalAirports.size;
         }
     }
+
+    // Function to update the weather status
+    function updateWeatherStatus() {
+        const lastUpdatedElement = document.getElementById('weather-last-updated');
+        const statusDot = document.getElementById('weather-status-dot');
+        
+        if (lastUpdatedElement && lastUpdatedElement.textContent !== "Weather data not available") {
+            try {
+                // Parse the date in MM-DD-YYYY HH:MM:SS format
+                const lastUpdated = lastUpdatedElement.textContent;
+                const parts = lastUpdated.split(' ');
+                const dateParts = parts[0].split('-');
+                const timeParts = parts[1].split(':');
+                
+                // Create date object (months are 0-indexed in JS)
+                const updateTime = new Date(
+                    parseInt(dateParts[2]), // year
+                    parseInt(dateParts[0]) - 1, // month (0-indexed)
+                    parseInt(dateParts[1]), // day
+                    parseInt(timeParts[0]), // hour
+                    parseInt(timeParts[1]), // minute
+                    parseInt(timeParts[2])  // second
+                );
+                
+                const now = new Date();
+                const diffMinutes = (now - updateTime) / (1000 * 60);
+                
+                // Debug information
+                console.log("Weather update time:", updateTime);
+                console.log("Current time:", now);
+                console.log("Difference in minutes:", diffMinutes);
+                console.log("WEATHER_UPDATE_THRESHOLD:", WEATHER_UPDATE_THRESHOLD);
+                
+                if (diffMinutes < WEATHER_UPDATE_THRESHOLD) {
+                    console.log("Setting dot to green");
+                    statusDot.style.backgroundColor = 'green';
+                } else {
+                    console.log("Setting dot to red");
+                    statusDot.style.backgroundColor = 'red';
+                }
+            } catch (e) {
+                console.error("Error parsing date:", e);
+                statusDot.style.backgroundColor = 'red';
+            }
+        } else {
+            statusDot.style.backgroundColor = 'red';
+        }
+    }
+
+    // Call initially and set interval
+    updateWeatherStatus();
+    setInterval(updateWeatherStatus, 30000); // Update every 30 seconds
+
+    // Initialize map after Leaflet is loaded
+    function initMap() {
+        if (typeof L !== 'undefined' && typeof initializeAirportMap !== 'undefined') {
+            // Access the variables directly
+            const colorConfig = {
+                vfr: VFR_COLOR,
+                mvfr: MVFR_COLOR,
+                ifr: IFR_COLOR,
+                lifr: LIFR_COLOR,
+                missing: MISSING_COLOR
+            };
+            
+            // Initialize the map
+            airportMap = initializeAirportMap('airport-map', colorConfig);
+            
+            // Load airports
+            loadAirportMap();
+        } else {
+            // If dependencies aren't loaded yet, wait for them
+            setTimeout(initMap, 100);
+        }
+    }
+
+    // Function to load all airports
+    function loadAirportMap() {
+        fetch('/weather-status')
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    console.error("Failed to get weather status");
+                    return;
+                }
+                
+                // Fetch weather data
+                return fetch('/get-weather-data');
+            })
+            .then(response => response.json())
+            .then(weatherData => {
+                // Load airports using the shared function
+                allAirports = airportMap.loadAirports(weatherData);
+            })
+            .catch(error => {
+                console.error("Error loading airport map:", error);
+            });
+    }
+
+    // Function to update map based on selected airports
+    function updateMapWithSelection(selectedAirports) {
+        if (airportMap) {
+            airportMap.updateSelection(selectedAirports);
+        }
+    }
+
+    // Function to reset map to show all airports
+    function resetMap() {
+        if (airportMap) {
+            airportMap.resetMap();
+        }
+    }
+
+    // Initialize map when document is ready
+    initMap();
 });
