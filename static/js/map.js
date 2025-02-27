@@ -1,9 +1,14 @@
 // Shared map functionality for both kiosk and settings pages
 
 // Map initialization function
-function initializeAirportMap(containerId, colorConfig) {
-    // Initialize map with standard styling
-    const map = L.map(containerId).setView([39.8283, -98.5795], 4); // Center on US
+function initializeAirportMap(containerId, colorConfig, mapCenter, mapZoom) {
+    // Initialize map with configuration from settings
+    // Default to US center if not provided
+    const centerLat = mapCenter ? mapCenter[0] : 39.8283;
+    const centerLon = mapCenter ? mapCenter[1] : -98.5795;
+    const zoom = mapZoom || 4;
+    
+    const map = L.map(containerId).setView([centerLat, centerLon], zoom);
     
     // Use the color configuration
     const vfrColor = colorConfig.vfr;
@@ -58,39 +63,14 @@ function initializeAirportMap(containerId, colorConfig) {
                     <h3 style="margin: 0 0 5px 0; color: ${color}; border-bottom: 1px solid #ccc; padding-bottom: 5px;">${code}</h3>
                     <div style="margin-bottom: 5px;">${data.site || 'Unknown location'}</div>
                     
-                    <div style="display: flex; margin-bottom: 5px;">
-                        <div style="flex: 1; font-weight: bold;">Flight Category:</div>
-                        <div style="flex: 1; color: ${color};">${data.flt_cat || 'Unknown'}</div>
+                    <div style="display: flex; margin-bottom: 10px; align-items: center;">
+                        <div style="font-weight: bold; margin-right: 8px;">Flight Category:</div>
+                        <div style="color: ${color};">${data.flt_cat || 'Unknown'}</div>
                     </div>
                     
-                    <div style="display: flex; margin-bottom: 5px;">
-                        <div style="flex: 1; font-weight: bold;">Temperature:</div>
-                        <div style="flex: 1;">${data.temperature !== undefined ? data.temperature + '°C' : 'Unknown'}</div>
-                    </div>
-                    
-                    <div style="display: flex; margin-bottom: 5px;">
-                        <div style="flex: 1; font-weight: bold;">Dew Point:</div>
-                        <div style="flex: 1;">${data.dew_point !== undefined ? data.dew_point + '°C' : 'Unknown'}</div>
-                    </div>
-                    
-                    <div style="display: flex; margin-bottom: 5px;">
-                        <div style="flex: 1; font-weight: bold;">Wind:</div>
-                        <div style="flex: 1;">${data.wind_direction || '?'} at ${data.wind_speed !== undefined ? data.wind_speed + ' knots' : '?'}</div>
-                    </div>
-                    
-                    <div style="display: flex; margin-bottom: 5px;">
-                        <div style="flex: 1; font-weight: bold;">Visibility:</div>
-                        <div style="flex: 1;">${data.visibility || 'Unknown'}</div>
-                    </div>
-                    
-                    <div style="display: flex; margin-bottom: 5px;">
-                        <div style="flex: 1; font-weight: bold;">Ceiling:</div>
-                        <div style="flex: 1;">${data.ceiling ? data.ceiling + ' ft' : 'Unlimited'}</div>
-                    </div>
-                    
-                    <div style="margin-top: 10px; font-size: 0.8em; border-top: 1px solid #ccc; padding-top: 5px;">
-                        <strong>Raw METAR:</strong><br>
-                        <div style="word-break: break-all;">${data.raw_observation || 'Not available'}</div>
+                    <div style="margin-top: 10px; border-top: 1px solid #ccc; padding-top: 8px;">
+                        <div style="font-weight: bold; margin-bottom: 5px;">Raw METAR:</div>
+                        <div style="font-family: monospace; word-break: break-all; line-height: 1.4; background-color: #f8f8f8; padding: 8px; border-radius: 4px; border: 1px solid #eee;">${data.raw_observation || 'Not available'}</div>
                     </div>
                 </div>
             `;
@@ -103,22 +83,22 @@ function initializeAirportMap(containerId, colorConfig) {
             legend.onAdd = (map) => {
                 const div = L.DomUtil.create('div', 'map-legend');
                 div.innerHTML = `
-                    <div style="background: rgba(255, 255, 255, 0.8); padding: 10px; border-radius: 5px; color: #333;">
+                    <div style="background: rgba(255, 255, 255, 0.8); padding: 5px; border-radius: 5px; color: #333;">
                         <div style="margin-bottom: 5px; font-weight: bold;">Flight Categories</div>
                         <div style="display: flex; flex-wrap: wrap;">
-                            <span style="display: flex; align-items: center; margin-right: 10px;">
+                            <span style="display: flex; align-items: center; margin-right: 5px;">
                                 <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: ${vfrColor}; margin-right: 5px;"></span>
                                 VFR
                             </span>
-                            <span style="display: flex; align-items: center; margin-right: 10px;">
+                            <span style="display: flex; align-items: center; margin-right: 5px;">
                                 <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: ${mvfrColor}; margin-right: 5px;"></span>
                                 MVFR
                             </span>
-                            <span style="display: flex; align-items: center; margin-right: 10px;">
+                            <span style="display: flex; align-items: center; margin-right: 5px;">
                                 <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: ${ifrColor}; margin-right: 5px;"></span>
                                 IFR
                             </span>
-                            <span style="display: flex; align-items: center; margin-right: 10px;">
+                            <span style="display: flex; align-items: center; margin-right: 5px;">
                                 <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: ${lifrColor}; margin-right: 5px;"></span>
                                 LIFR
                             </span>
