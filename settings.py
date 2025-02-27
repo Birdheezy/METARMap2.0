@@ -992,7 +992,8 @@ def kiosk():
         weather_last_modified=weather_last_modified,
         weather_update_interval=WEATHER_UPDATE_INTERVAL,
         weather_update_threshold=weather_update_threshold,  # Pass the calculated value
-        animation_pause=ANIMATION_PAUSE
+        animation_pause=ANIMATION_PAUSE,
+        config=config
     )
 
 @app.route('/kiosk/apply-filters', methods=['POST'])

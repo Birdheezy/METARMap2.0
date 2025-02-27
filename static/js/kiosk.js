@@ -380,10 +380,10 @@ document.addEventListener('DOMContentLoaded', function() {
     updateWeatherStatus();
     setInterval(updateWeatherStatus, 30000); // Update every 30 seconds
 
-    // Initialize map after Leaflet is loaded
+    // Function to initialize map after Leaflet is loaded
     function initMap() {
         if (typeof L !== 'undefined' && typeof initializeAirportMap !== 'undefined') {
-            // Access the variables directly
+            // Access the color variables directly 
             const colorConfig = {
                 vfr: VFR_COLOR,
                 mvfr: MVFR_COLOR,
@@ -392,11 +392,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 missing: MISSING_COLOR
             };
             
-            // Initialize the map
-            airportMap = initializeAirportMap('airport-map', colorConfig);
-            
-            // Load airports
-            loadAirportMap();
+            // Fetch map settings from the server
+            fetch('/map-settings')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load map settings');
+                    }
+                    return response.json();
+                })
+                .then(settings => {
+                    // Initialize the map with fetched settings
+                    airportMap = initializeAirportMap('airport-map', colorConfig, settings.center, settings.zoom);
+                    
+                    // Load airports
+                    loadAirportMap();
+                })
+                .catch(error => {
+                    console.error('Error loading map settings:', error);
+                    // Fallback to default settings if loading fails
+                    airportMap = initializeAirportMap('airport-map', colorConfig);
+                    
+                    // Load airports even if map settings failed
+                    loadAirportMap();
+                });
         } else {
             // If dependencies aren't loaded yet, wait for them
             setTimeout(initMap, 100);
