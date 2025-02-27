@@ -47,15 +47,15 @@
         </div>
         <br>
         <div style="margin-top: 5px;" class="weather-status">
-            <div class="service-status">
-                <span class="status-dot" id="weather-status-dot"></span>
-                <span class="status-text">WX Last Updated: <span id="weather-last-updated">{{ weather_last_modified }}</span></span>
-                <div class="status-tooltip">
-                    <span class="green-status">Green: Weather data is current (within expected update interval)</span><br>
-                    <span class="red-status">Red: Weather data is stale (no updates for over 2x the update interval)</span>
+                <div class="service-status">
+                    <span class="status-dot" id="weather-status-dot"></span>
+                    <span class="status-text">WX Last Updated: <span id="weather-last-updated">{{ weather_last_modified }}</span></span>
+                    <div class="status-tooltip">
+                        <span class="green-status">Green: Weather data is current (within expected update interval)</span><br>
+                        <span class="red-status">Red: Weather data is stale (no updates for over 2x the update interval)</span>
+                    </div>
                 </div>
             </div>
-        </div>
         <br>
         <button type="button" id="save-map-view" class="btn btn-primary" style="margin-bottom: 20px;">Save Current View</button>
     </section>
@@ -656,47 +656,74 @@
 <script src="{{ url_for('static', filename='js/map.js') }}"></script>
 
 <script>
+    // Add constants
+    const WEATHER_UPDATE_THRESHOLD = {{ weather_update_threshold }};
+    
     // Weather status update function
     function updateWeatherStatus() {
-        const lastUpdatedElement = document.getElementById('weather-last-updated');
-        const statusDot = document.getElementById('weather-status-dot');
-        
-        if (lastUpdatedElement && lastUpdatedElement.textContent !== "Weather data not available") {
-            try {
-                // Parse the date in MM-DD-YYYY HH:MM:SS format
-                const lastUpdated = lastUpdatedElement.textContent;
-                const parts = lastUpdated.split(' ');
-                const dateParts = parts[0].split('-');
-                const timeParts = parts[1].split(':');
-                
-                // Create date object (months are 0-indexed in JS)
-                const updateTime = new Date(
-                    parseInt(dateParts[2]), // year
-                    parseInt(dateParts[0]) - 1, // month (0-indexed)
-                    parseInt(dateParts[1]), // day
-                    parseInt(timeParts[0]), // hour
-                    parseInt(timeParts[1]), // minute
-                    parseInt(timeParts[2])  // second
-                );
-                
-                const now = new Date();
-                const diffMinutes = (now - updateTime) / (1000 * 60);
-                
-                // Weather is considered stale if it's older than 2x the update interval
-                const staleThreshold = {{ weather_update_interval / 60 * 2 }};
-                
-                if (diffMinutes < staleThreshold) {
-                    statusDot.style.backgroundColor = 'green';
-                } else {
-                    statusDot.style.backgroundColor = 'red';
+        fetch('/weather-status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update all instances of the timestamp text
+                    const lastUpdatedElements = document.querySelectorAll('#weather-last-updated');
+                    lastUpdatedElements.forEach(el => {
+                        el.textContent = data.last_updated;
+                    });
+                    
+                    // Calculate if the data is stale based on the timestamp
+                    const statusDots = document.querySelectorAll('#weather-status-dot');
+                    
+                    try {
+                        // Parse the date in MM-DD-YYYY HH:MM:SS format
+                        const lastUpdated = data.last_updated;
+                        if (lastUpdated !== "Weather data not available") {
+                            const parts = lastUpdated.split(' ');
+                            const dateParts = parts[0].split('-');
+                            const timeParts = parts[1].split(':');
+                            
+                            // Create date object (months are 0-indexed in JS)
+                            const updateTime = new Date(
+                                parseInt(dateParts[2]), // year
+                                parseInt(dateParts[0]) - 1, // month (0-indexed)
+                                parseInt(dateParts[1]), // day
+                                parseInt(timeParts[0]), // hour
+                                parseInt(timeParts[1]), // minute
+                                parseInt(timeParts[2])  // second
+                            );
+                            
+                            const now = new Date();
+                            const diffMinutes = (now - updateTime) / (1000 * 60);
+                            
+                            // Weather is considered stale if it's older than the threshold
+                            const staleThreshold = WEATHER_UPDATE_THRESHOLD;
+                            
+                            // Update all status dots
+                            statusDots.forEach(dot => {
+                                dot.style.backgroundColor = (diffMinutes < staleThreshold) ? 'green' : 'red';
+                            });
+                        } else {
+                            // If weather data is not available, set dots to red
+                            statusDots.forEach(dot => {
+                                dot.style.backgroundColor = 'red';
+                            });
+                        }
+                    } catch (e) {
+                        console.error("Error parsing date:", e);
+                        statusDots.forEach(dot => {
+                            dot.style.backgroundColor = 'red';
+                        });
+                    }
                 }
-            } catch (e) {
-                console.error("Error parsing date:", e);
-                statusDot.style.backgroundColor = 'red';
-            }
-        } else {
-            statusDot.style.backgroundColor = 'red';
-        }
+            })
+            .catch(error => {
+                console.error('Error fetching weather status:', error);
+                // Set dots to red on error
+                const statusDots = document.querySelectorAll('#weather-status-dot');
+                statusDots.forEach(dot => {
+                    dot.style.backgroundColor = 'red';
+                });
+            });
     }
     
     // Call initially and set interval

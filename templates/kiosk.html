@@ -191,6 +191,77 @@
         const WEATHER_UPDATE_THRESHOLD = {{ weather_update_threshold }};
         const WEATHER_LAST_MODIFIED = '{{ weather_last_modified }}';
         const ANIMATION_PAUSE = {{ animation_pause }};
+
+        // Function to update the weather status from server
+        function updateWeatherStatus() {
+            fetch('/weather-status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update all instances of the timestamp text
+                        const lastUpdatedElements = document.querySelectorAll('#weather-last-updated');
+                        lastUpdatedElements.forEach(el => {
+                            el.textContent = data.last_updated;
+                        });
+                        
+                        // Calculate if the data is stale based on the timestamp
+                        const statusDots = document.querySelectorAll('#weather-status-dot');
+                        
+                        try {
+                            // Parse the date in MM-DD-YYYY HH:MM:SS format
+                            const lastUpdated = data.last_updated;
+                            if (lastUpdated !== "Weather data not available") {
+                                const parts = lastUpdated.split(' ');
+                                const dateParts = parts[0].split('-');
+                                const timeParts = parts[1].split(':');
+                                
+                                // Create date object (months are 0-indexed in JS)
+                                const updateTime = new Date(
+                                    parseInt(dateParts[2]), // year
+                                    parseInt(dateParts[0]) - 1, // month (0-indexed)
+                                    parseInt(dateParts[1]), // day
+                                    parseInt(timeParts[0]), // hour
+                                    parseInt(timeParts[1]), // minute
+                                    parseInt(timeParts[2])  // second
+                                );
+                                
+                                const now = new Date();
+                                const diffMinutes = (now - updateTime) / (1000 * 60);
+                                
+                                // Weather is considered stale if it's older than 2x the update interval
+                                const staleThreshold = WEATHER_UPDATE_THRESHOLD;
+                                
+                                // Update all status dots
+                                statusDots.forEach(dot => {
+                                    dot.style.backgroundColor = (diffMinutes < staleThreshold) ? 'green' : 'red';
+                                });
+                            } else {
+                                // If weather data is not available, set dots to red
+                                statusDots.forEach(dot => {
+                                    dot.style.backgroundColor = 'red';
+                                });
+                            }
+                        } catch (e) {
+                            console.error("Error parsing date:", e);
+                            statusDots.forEach(dot => {
+                                dot.style.backgroundColor = 'red';
+                            });
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching weather status:', error);
+                    // Set dots to red on error
+                    const statusDots = document.querySelectorAll('#weather-status-dot');
+                    statusDots.forEach(dot => {
+                        dot.style.backgroundColor = 'red';
+                    });
+                });
+        }
+        
+        // Call initially and set interval
+        updateWeatherStatus();
+        setInterval(updateWeatherStatus, 30000); // Update every 30 seconds
     </script>
     <script src="{{ url_for('static', filename='js/kiosk.js') }}"></script>
     <script src="{{ url_for('static', filename='js/map.js') }}"></script>

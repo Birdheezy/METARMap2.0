@@ -34,6 +34,7 @@ def fetch_metar():
     """Fetch METAR data from aviation weather API."""
     airport_ids = get_valid_airports(AIRPORTS_FILE)
     if not airport_ids:
+        logging.error("No valid airport IDs found in airport file")
         return None
 
     base_url = "https://aviationweather.gov/api/data/metar"
@@ -43,20 +44,53 @@ def fetch_metar():
     }
 
     try:
+        logging.info(f"Making API request to {base_url} with {len(airport_ids)} airports")
+        logging.info(f"Request parameters: {params}")
+        
+        start_time = datetime.datetime.now()
         response = requests.get(base_url, params=params)
+        elapsed_time = (datetime.datetime.now() - start_time).total_seconds()
+        
+        logging.info(f"API response received in {elapsed_time:.2f} seconds. Status code: {response.status_code}")
+        
+        # Log response headers to check for rate limiting
+        important_headers = ['content-type', 'content-length', 'date', 'x-rate-limit', 'retry-after']
+        header_info = {k: v for k, v in response.headers.items() if k.lower() in important_headers}
+        logging.info(f"Response headers: {header_info}")
+        
         response.raise_for_status()
-        return response.json()
+        
+        # Check if we got valid JSON
+        data = response.json()
+        if 'features' in data:
+            airport_count = len(data['features'])
+            logging.info(f"Successfully retrieved data for {airport_count} airports")
+            if airport_count == 0:
+                logging.warning("API returned 0 airports - response may be empty despite 200 status")
+        else:
+            logging.warning(f"Response is missing 'features' key. Raw response preview: {str(response.text)[:200]}...")
+            
+        return data
+        
     except requests.exceptions.RequestException as e:
         logging.error(f"Failed to fetch METAR data: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            logging.error(f"Error response status: {e.response.status_code}")
+            logging.error(f"Error response body: {e.response.text[:500]}")
+        return None
+    except ValueError as e:
+        logging.error(f"Failed to parse JSON response: {e}")
+        logging.error(f"Raw response preview: {response.text[:500]}")
         return None
 
 def read_weather_data():
     """Read and return the weather data from weather.json."""
     try:
-        with open('weather.json', 'r') as json_file:
+        # Use absolute path to ensure consistency
+        with open('/home/pi/weather.json', 'r') as json_file:
             return json.load(json_file)
     except Exception as e:
-        print(f"Failed to read weather.json: {e}")
+        logging.error(f"Failed to read weather.json: {e}")
         return {}
 
 def get_windy_airports(weather_data):
@@ -199,24 +233,21 @@ def main():
     """Main function to fetch and process weather data."""
     metar_data = fetch_metar()
     if not metar_data:
+        logging.error("Failed to fetch METAR data")
         return
 
     parsed_data = parse_weather(metar_data)
     if not parsed_data:
+        logging.error("Failed to parse METAR data")
         return
 
-    # Check if data has changed
+    # Always save the data to update the file timestamp
     try:
-        with open('weather.json', 'r') as json_file:
-            old_data = json.load(json_file)
-            if old_data == parsed_data:
-                return  # No change in weather data
-    except:
-        pass  # Continue if weather.json doesn't exist
-
-    # Save new data
-    with open('weather.json', 'w') as json_file:
-        json.dump(parsed_data, json_file, indent=4)
+        with open('/home/pi/weather.json', 'w') as json_file:
+            json.dump(parsed_data, json_file, indent=4)
+            logging.info("Weather data saved to /home/pi/weather.json with updated timestamp")
+    except Exception as e:
+        logging.error(f"Failed to write weather data to file: {e}")
 
     # Only log status table if called by scheduler (check parent process)
     ppid = os.getppid()
