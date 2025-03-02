@@ -731,14 +731,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Function to get color based on flight category
                 function getMarkerColor(fltCat) {
-                    const colors = {
-                        'VFR': VFR_COLOR,
-                        'MVFR': MVFR_COLOR,
-                        'IFR': IFR_COLOR,
-                        'LIFR': LIFR_COLOR,
-                        'default': MISSING_COLOR
-                    };
-                    return colors[fltCat] || colors['default'];
+                    // Return colors directly for map display without LED conversion
+                    switch (fltCat.toLowerCase()) {
+                        case 'vfr':
+                            return VFR_COLOR;
+                        case 'mvfr':
+                            return MVFR_COLOR;
+                        case 'ifr':
+                            return IFR_COLOR;
+                        case 'lifr':
+                            return LIFR_COLOR;
+                        default:
+                            return MISSING_COLOR;
+                    }
                 }
 
                 // Store markers in a layer group for easy removal
