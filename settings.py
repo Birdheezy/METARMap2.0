@@ -961,6 +961,17 @@ def apply_update():
                 subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
                 time.sleep(2)
                 subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
+                
+                # Trigger a weather update before restarting the metar service
+                print("Triggering weather update...")
+                try:
+                    # Use the scheduler's update_weather function directly
+                    scheduler_update_weather()
+                    print("Weather update completed successfully")
+                except Exception as weather_error:
+                    print(f"Error updating weather: {weather_error}")
+                
+                # Finally restart the metar service
                 subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
                 print("All services restarted")
             except Exception as e:
