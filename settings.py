@@ -836,6 +836,33 @@ def apply_update():
         backup_dir = f'/home/pi/BACKUP/{timestamp}'
         os.makedirs(backup_dir, exist_ok=True)
 
+        # Get list of tracked files in the repository
+        tracked_files = subprocess.check_output(
+            ['/usr/bin/git', 'ls-files'], 
+            text=True, 
+            cwd='/home/pi'
+        ).strip().split('\n')
+        
+        # Also backup config.py and airports.txt even if they're not tracked
+        important_files = ['config.py', 'airports.txt']
+        for file in important_files:
+            if file not in tracked_files and os.path.exists(f'/home/pi/{file}'):
+                tracked_files.append(file)
+        
+        # Copy each tracked file to the backup directory, preserving directory structure
+        for file in tracked_files:
+            if file and not file.startswith('BACKUP/'):
+                source_path = f'/home/pi/{file}'
+                dest_path = f'{backup_dir}/{file}'
+                
+                # Create destination directory if it doesn't exist
+                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                
+                # Copy the file
+                if os.path.exists(source_path):
+                    shutil.copy2(source_path, dest_path)
+                    print(f"Backed up {file} to {dest_path}")
+
         # Create temporary copy of user files
         subprocess.run(['cp', 'config.py', '/tmp/config.py.tmp'], check=True)
         subprocess.run(['cp', 'airports.txt', '/tmp/airports.txt.tmp'], check=True)
@@ -884,6 +911,7 @@ def apply_update():
         return response
 
     except Exception as e:
+        print(f"Error applying update: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
