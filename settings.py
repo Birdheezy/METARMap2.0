@@ -780,6 +780,21 @@ def check_for_updates():
                                   capture_output=True, text=True, check=True,
                                   cwd='/home/pi')
         current_branch = branch_cmd.stdout.strip()
+        print(f"Current branch: {current_branch}")
+
+        # Log the repository root directory
+        repo_root = subprocess.run(['/usr/bin/git', 'rev-parse', '--show-toplevel'],
+                                 capture_output=True, text=True, check=True,
+                                 cwd='/home/pi')
+        print(f"Repository root: {repo_root.stdout.strip()}")
+
+        # List tracked files for debugging
+        files_list = subprocess.run(['/usr/bin/git', 'ls-files'],
+                                  capture_output=True, text=True, check=True,
+                                  cwd='/home/pi')
+        tracked_files = files_list.stdout.strip().split('\n')
+        print(f"Found {len(tracked_files)} tracked files in repository")
+        print(f"First 10 tracked files: {tracked_files[:10]}")
 
         # Fetch updates from remote
         fetch_cmd = subprocess.run(['/usr/bin/git', 'fetch', 'origin', current_branch],
@@ -828,81 +843,128 @@ def check_for_updates():
 @app.route('/apply_update', methods=['POST'])
 def apply_update():
     try:
+        print("Starting update process...")
+        
         # Get current branch
-        branch = subprocess.check_output(['/usr/bin/git', 'rev-parse', '--abbrev-ref', 'HEAD'], text=True).strip()
+        branch = subprocess.check_output(['/usr/bin/git', 'rev-parse', '--abbrev-ref', 'HEAD'], 
+                                        text=True, 
+                                        cwd='/home/pi').strip()
+        print(f"Current branch: {branch}")
 
         # Create timestamped backup directory
         timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         backup_dir = f'/home/pi/BACKUP/{timestamp}'
         os.makedirs(backup_dir, exist_ok=True)
+        print(f"Created backup directory: {backup_dir}")
 
         # Get list of tracked files in the repository
-        tracked_files = subprocess.check_output(
+        print("Getting list of tracked files...")
+        tracked_files_output = subprocess.check_output(
             ['/usr/bin/git', 'ls-files'], 
             text=True, 
             cwd='/home/pi'
-        ).strip().split('\n')
+        ).strip()
+        
+        tracked_files = tracked_files_output.split('\n') if tracked_files_output else []
+        print(f"Found {len(tracked_files)} tracked files")
+        
+        # Log some of the tracked files for debugging
+        if tracked_files:
+            print(f"Sample of tracked files: {tracked_files[:5]}")
+        else:
+            print("WARNING: No tracked files found!")
         
         # Also backup config.py and airports.txt even if they're not tracked
         important_files = ['config.py', 'airports.txt']
         for file in important_files:
-            if file not in tracked_files and os.path.exists(f'/home/pi/{file}'):
+            file_path = f'/home/pi/{file}'
+            if file not in tracked_files and os.path.exists(file_path):
                 tracked_files.append(file)
+                print(f"Added important file to backup list: {file}")
         
         # Copy each tracked file to the backup directory, preserving directory structure
+        files_backed_up = 0
         for file in tracked_files:
-            if file and not file.startswith('BACKUP/'):
-                source_path = f'/home/pi/{file}'
-                dest_path = f'{backup_dir}/{file}'
+            if not file:  # Skip empty entries
+                continue
                 
-                # Create destination directory if it doesn't exist
-                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+            if file.startswith('BACKUP/'):
+                print(f"Skipping backup folder file: {file}")
+                continue
                 
-                # Copy the file
-                if os.path.exists(source_path):
-                    shutil.copy2(source_path, dest_path)
-                    print(f"Backed up {file} to {dest_path}")
+            source_path = f'/home/pi/{file}'
+            dest_path = f'{backup_dir}/{file}'
+            
+            if not os.path.exists(source_path):
+                print(f"Source file does not exist, skipping: {source_path}")
+                continue
+                
+            # Create destination directory if it doesn't exist
+            dest_dir = os.path.dirname(dest_path)
+            if not os.path.exists(dest_dir):
+                os.makedirs(dest_dir, exist_ok=True)
+                print(f"Created directory: {dest_dir}")
+            
+            # Copy the file
+            try:
+                shutil.copy2(source_path, dest_path)
+                files_backed_up += 1
+                if files_backed_up <= 10 or files_backed_up % 50 == 0:  # Log first 10 files and then every 50th
+                    print(f"Backed up file {files_backed_up}: {file}")
+            except Exception as copy_error:
+                print(f"Error copying file {file}: {copy_error}")
+        
+        print(f"Total files backed up: {files_backed_up}")
 
         # Create temporary copy of user files
-        subprocess.run(['cp', 'config.py', '/tmp/config.py.tmp'], check=True)
-        subprocess.run(['cp', 'airports.txt', '/tmp/airports.txt.tmp'], check=True)
+        print("Creating temporary copies of user files...")
+        subprocess.run(['cp', '/home/pi/config.py', '/tmp/config.py.tmp'], check=True)
+        subprocess.run(['cp', '/home/pi/airports.txt', '/tmp/airports.txt.tmp'], check=True)
 
         # Force pull from repository
-        subprocess.run(['/usr/bin/git', 'fetch', 'origin', branch], check=True)
-        subprocess.run(['/usr/bin/git', 'reset', '--hard', f'origin/{branch}'], check=True)
+        print(f"Pulling updates from origin/{branch}...")
+        subprocess.run(['/usr/bin/git', 'fetch', 'origin', branch], check=True, cwd='/home/pi')
+        subprocess.run(['/usr/bin/git', 'reset', '--hard', f'origin/{branch}'], check=True, cwd='/home/pi')
 
         # Restore user files
-        subprocess.run(['mv', '/tmp/config.py.tmp', 'config.py'], check=True)
-        subprocess.run(['mv', '/tmp/airports.txt.tmp', 'airports.txt'], check=True)
+        print("Restoring user files...")
+        subprocess.run(['mv', '/tmp/config.py.tmp', '/home/pi/config.py'], check=True)
+        subprocess.run(['mv', '/tmp/airports.txt.tmp', '/home/pi/airports.txt'], check=True)
 
         # Clean up old backups (keep last 5)
         backup_base = '/home/pi/BACKUP'
         if os.path.exists(backup_base):
             backups = sorted([d for d in os.listdir(backup_base) if os.path.isdir(os.path.join(backup_base, d))])
+            print(f"Found {len(backups)} backup directories")
             while len(backups) > 5:
                 oldest = os.path.join(backup_base, backups[0])
+                print(f"Removing old backup: {oldest}")
                 shutil.rmtree(oldest)
                 backups.pop(0)
 
         # Set ownership of all files to pi:pi recursively
-        subprocess.run(['chown', '-R', 'pi:pi', '.'], check=True)
+        print("Setting file ownership...")
+        subprocess.run(['chown', '-R', 'pi:pi', '.'], check=True, cwd='/home/pi')
 
         # Prepare success response
+        print("Update completed successfully")
         response = jsonify({
             'success': True,
-            'message': 'Update applied successfully. Services will restart momentarily.'
+            'message': f'Update applied successfully. {files_backed_up} files backed up to {backup_dir}. Services will restart momentarily.'
         })
 
         # Use Flask's after_this_response to restart services after the response is sent
         def restart_services():
             time.sleep(2)  # Brief delay to ensure response is sent
             try:
+                print("Restarting services...")
                 subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
                 time.sleep(2)
                 subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
                 subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
+                print("All services restarted")
             except Exception as e:
-                logger.error(f"Error restarting services: {e}")
+                print(f"Error restarting services: {e}")
 
         @after_this_response
         def do_restart():
@@ -911,10 +973,13 @@ def apply_update():
         return response
 
     except Exception as e:
-        print(f"Error applying update: {e}")
+        error_msg = f"Error applying update: {e}"
+        print(error_msg)
+        import traceback
+        print(traceback.format_exc())
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': error_msg
         }), 500
 
 def get_local_ip():
