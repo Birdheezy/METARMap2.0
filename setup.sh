@@ -210,7 +210,38 @@ setup_wifi_broadcast() {
     echo -e "${YELLOW}This will configure your Raspberry Pi to create its own WiFi network${NC}"
     echo -e "${YELLOW}when no other WiFi networks are available.${NC}"
     echo ""
-    echo -e "${CYAN}You will need to:${NC}"
+    
+    # Present options for WiFi broadcasting
+    echo -e "${CYAN}Choose a WiFi broadcasting solution:${NC}"
+    echo -e "  ${MAGENTA}1)${NC} ${GREEN}AccessPopup${NC} (RaspberryConnect solution)"
+    echo -e "  ${MAGENTA}2)${NC} ${GREEN}WiPi${NC} (METARMap's custom solution)"
+    echo -e "  ${MAGENTA}3)${NC} ${YELLOW}Skip${NC} WiFi broadcasting setup"
+    echo ""
+    
+    read -p "$(echo -e "${CYAN}Enter choice (1, 2, or 3): ${NC}")" WIFI_SOLUTION
+    
+    case $WIFI_SOLUTION in
+        1)
+            setup_accesspopup
+            ;;
+        2)
+            setup_wipi
+            ;;
+        3)
+            echo -e "${YELLOW}⚠ Skipping WiFi broadcast setup${NC}"
+            return 0
+            ;;
+        *)
+            echo -e "${RED}✗ Invalid choice${NC}"
+            return 1
+            ;;
+    esac
+}
+
+# Function to setup AccessPopup (original solution)
+setup_accesspopup() {
+    echo -e "${CYAN}Setting up AccessPopup WiFi broadcasting...${NC}"
+    echo -e "${YELLOW}You will need to:${NC}"
     echo -e "  ${MAGENTA}1.${NC} Select option ${GREEN}1${NC} to install"
     echo -e "  ${MAGENTA}2.${NC} Set SSID to: ${GREEN}METAR Pi${NC}"
     echo -e "  ${MAGENTA}3.${NC} Set Password to: ${GREEN}METAR-Pi-Password${NC}"
@@ -246,15 +277,379 @@ setup_wifi_broadcast() {
             rm -rf AccessPopup.tar.gz > /dev/null 2>&1
             echo -e "${GREEN}✓${NC}"
 
-            echo -e "\n${GREEN}✓ WiFi broadcast setup completed${NC}"
+            echo -e "\n${GREEN}✓ AccessPopup WiFi broadcast setup completed${NC}"
             return 0
         else
             echo -e "${RED}✗ Failed to download WiFi broadcast package${NC}"
             return 1
         fi
     else
-        echo -e "${YELLOW}⚠ Skipping WiFi broadcast setup${NC}"
+        echo -e "${YELLOW}⚠ Skipping AccessPopup setup${NC}"
         return 0
+    fi
+}
+
+# Function to setup WiPi (METARMap's custom solution)
+setup_wipi() {
+    echo -e "${CYAN}Setting up WiPi Auto WiFi Broadcasting...${NC}"
+    echo -e "${YELLOW}This is METARMap's custom WiFi broadcasting solution that:${NC}"
+    echo -e "  ${CYAN}• Automatically creates an access point when no WiFi is available${NC}"
+    echo -e "  ${CYAN}• Seamlessly switches between client and AP modes${NC}"
+    echo -e "  ${CYAN}• Provides easy configuration and management${NC}"
+    echo ""
+
+    # Check if metar venv exists
+    if [ ! -d "/home/pi/metar" ]; then
+        echo -e "${RED}Error: The 'metar' virtual environment does not exist.${NC}"
+        echo -e "${YELLOW}Please ensure you've set up the virtual environment earlier in the script.${NC}"
+        return 1
+    fi
+
+    # Install required packages in metar venv directly
+    echo -e "${CYAN}Installing required Python packages in metar virtual environment...${NC}"
+    source /home/pi/metar/bin/activate
+    pip install setuptools wheel
+    deactivate
+    
+    # Create temporary directory
+    local TEMP_DIR=$(mktemp -d)
+    cd "$TEMP_DIR"
+
+    # Clone WiPi repository
+    echo -ne "${CYAN}Downloading WiPi... ${NC}"
+    if git clone https://github.com/Birdheezy/WiPi-Auto-Wifi-Broadcasting.git > /dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC}"
+        
+        cd WiPi-Auto-Wifi-Broadcasting
+        
+        # Create a completely new installer script that skips the problematic parts
+        echo -ne "${CYAN}Creating custom installer for WiPi... ${NC}"
+        
+        cat > custom_install.sh << 'EOF'
+#!/bin/bash
+
+# ANSI color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+BOLD='\033[1m'
+
+# Function to print section headers
+print_section_header() {
+    local title="$1"
+    echo ""
+    echo -e "${BLUE}${BOLD}=== ${YELLOW}${title} ${BLUE}===${NC}"
+    echo ""
+}
+
+# Function to print status messages
+print_status() {
+    echo -e "${CYAN}$1${NC}"
+}
+
+# Function to print success messages
+print_success() {
+    echo -e "${GREEN}✓ $1${NC}"
+}
+
+# Function to print error messages
+print_error() {
+    echo -e "${RED}✗ $1${NC}"
+}
+
+# Function to print warning messages
+print_warning() {
+    echo -e "${YELLOW}! $1${NC}"
+}
+
+# Function to check if running as root
+check_root() {
+    if [ "$EUID" -ne 0 ]; then
+        print_error "This script must be run as root"
+        echo -e "Please run with: ${BOLD}sudo bash $0${NC}"
+        exit 1
+    fi
+}
+
+# Function to check if NetworkManager is installed
+check_network_manager() {
+    if ! command -v nmcli &> /dev/null; then
+        print_error "NetworkManager is not installed"
+        print_status "WiPi requires NetworkManager to function properly"
+        
+        read -p "Would you like to install NetworkManager now? [Y/n] " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
+            print_status "Installing NetworkManager..."
+            apt-get update
+            apt-get install -y network-manager
+            
+            if [ $? -eq 0 ]; then
+                print_success "NetworkManager installed successfully"
+            else
+                print_error "Failed to install NetworkManager"
+                exit 1
+            fi
+        else
+            print_warning "NetworkManager is required for WiPi to function"
+            print_warning "Installation aborted"
+            exit 1
+        fi
+    else
+        print_success "NetworkManager is installed"
+    fi
+}
+
+# Function to install WiPi files
+install_wipi_files() {
+    print_status "Installing WiPi files..."
+    
+    # Create directory structure
+    mkdir -p /home/pi/wipi
+    
+    # Get the directory of the install script
+    SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+    
+    # Copy files
+    cp "$SCRIPT_DIR/wipi.py" /home/pi/wipi/wipi.py
+    cp "$SCRIPT_DIR/wipi_service.py" /home/pi/wipi/wipi_service.py
+    
+    # Make executable
+    chmod +x /home/pi/wipi/wipi.py
+    chmod +x /home/pi/wipi/wipi_service.py
+    
+    # Copy config file if it doesn't exist
+    if [ ! -f /home/pi/wipi/config.json ]; then
+        cp "$SCRIPT_DIR/config.json" /home/pi/wipi/config.json
+    else
+        print_warning "Config file already exists at /home/pi/wipi/config.json"
+        print_warning "Your existing configuration will not be modified"
+    fi
+    
+    # Set ownership
+    chown -R pi:pi /home/pi/wipi
+    
+    print_success "WiPi files installed successfully"
+}
+
+# Function to configure WiPi
+configure_wipi() {
+    print_section_header "WiPi Configuration"
+    
+    # Ask for AP SSID
+    read -p "Enter the Access Point SSID [METAR-Pi]: " ap_ssid
+    ap_ssid=${ap_ssid:-METAR-Pi}
+    
+    # Ask for AP password
+    read -p "Enter the Access Point password [METAR-Pi]: " ap_password
+    ap_password=${ap_password:-METAR-Pi}
+    
+    # Ask for AP IP address
+    read -p "Enter the Access Point IP address [192.168.8.1]: " ap_ip
+    ap_ip=${ap_ip:-192.168.8.1}
+    
+    # Ask for check interval (shorter for faster response)
+    read -p "Enter the check interval in seconds [30]: " check_interval
+    check_interval=${check_interval:-30}
+    
+    # Update config file
+    cat > /home/pi/wipi/config.json << EOL
+{
+    "ap_ssid": "$ap_ssid",
+    "ap_password": "$ap_password",
+    "ap_ip_address": "$ap_ip",
+    "check_interval": $check_interval,
+    "force_ap_mode": false,
+    "debug_mode": true,
+    "ap_channel": 1,
+    "ap_band": "bg",
+    "ap_hidden": false,
+    "reconnect_attempts": 3,
+    "reconnect_delay": 5,
+    "preferred_networks": [],
+    "ap_open": false
+}
+EOL
+    
+    print_success "WiPi configured successfully"
+}
+
+# Function to install systemd service
+install_service() {
+    print_status "Installing WiPi service..."
+    
+    # Create a systemd service file that uses the metar venv python
+    cat > /etc/systemd/system/wipi.service << EOL
+[Unit]
+Description=WiPi Auto WiFi Broadcasting
+After=network.target NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/wipi
+ExecStart=/home/pi/metar/bin/python3 /home/pi/wipi/wipi_service.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+    # Reload systemd and enable the service
+    systemctl daemon-reload
+    systemctl enable wipi.service
+    systemctl start wipi.service
+    
+    if [ $? -eq 0 ]; then
+        print_success "WiPi service installed successfully"
+    else
+        print_error "Failed to install WiPi service"
+        exit 1
+    fi
+}
+
+# Function to create aliases
+create_aliases() {
+    local ALIASES="alias blank='sudo /home/pi/metar/bin/python3 blank.py'
+alias metar='sudo /home/pi/metar/bin/python3 '
+alias startmetar='sudo systemctl start metar.service'
+alias startscheduler='sudo systemctl start scheduler.service'
+alias startsettings='sudo systemctl start settings.service'
+alias stopmetar='sudo systemctl stop metar.service'
+alias stopsettings='sudo systemctl stop settings.service'
+alias stopscheduler='sudo systemctl stop scheduler.service'
+alias restartmetar='sudo systemctl restart metar.service'
+alias restartsettings='sudo systemctl restart settings.service'
+alias restartscheduler='sudo systemctl restart scheduler.service'
+alias metarstatus='sudo systemctl status metar.service'
+alias settingsstatus='sudo systemctl status settings.service'
+alias schedulerstatus='sudo systemctl status scheduler.service'
+
+# WiPi commands
+alias wipi-status='sudo systemctl status wipi.service'
+alias wipi-start='sudo systemctl start wipi.service'
+alias wipi-stop='sudo systemctl stop wipi.service'
+alias wipi-restart='sudo systemctl restart wipi.service'
+alias wipi-log='sudo journalctl -u wipi.service'
+alias wipi-config='sudo nano /home/pi/wipi/config.json'
+alias wipi='sudo /home/pi/metar/bin/python3 /home/pi/wipi/wipi.py'
+alias wipi-edit='cd /home/pi/wipi && sudo ls -la'
+alias wipi-uninstall='sudo systemctl stop wipi.service && sudo systemctl disable wipi.service && sudo rm -rf /home/pi/wipi /etc/systemd/system/wipi.service /etc/profile.d/wipi-aliases.sh && echo -e "\033[0;32m✓ WiPi has been uninstalled\033[0m'"
+
+    echo -ne "${CYAN}Installing command aliases... ${NC}"
+    # Write aliases to the pi user's .bash_aliases file
+    echo "$ALIASES" | sudo -u pi tee /home/pi/.bash_aliases > /dev/null
+
+    echo -e "${GREEN}✓${NC}"
+    echo -e "${YELLOW}To use the aliases in your current session, run:${NC}"
+    echo -e "    ${CYAN}source /home/pi/.bash_aliases${NC}"
+    echo -e "${YELLOW}Or log out and log back in for aliases to take effect automatically.${NC}"
+    return 0
+}
+
+# Function to display completion message
+display_completion() {
+    print_section_header "Installation Complete"
+    
+    echo -e "${GREEN}WiPi has been successfully installed!${NC}"
+    echo ""
+    echo -e "Access Point SSID: ${BOLD}${YELLOW}$ap_ssid${NC}"
+    echo -e "Access Point Password: ${BOLD}${YELLOW}$ap_password${NC}"
+    echo -e "Access Point IP: ${BOLD}${YELLOW}$ap_ip${NC}"
+    echo -e "Check Interval: ${BOLD}${YELLOW}$check_interval seconds${NC}"
+    echo ""
+    echo -e "${CYAN}Available commands:${NC}"
+    echo -e "  ${BOLD}wipi-status${NC} - Check service status"
+    echo -e "  ${BOLD}wipi-start${NC} - Start the service"
+    echo -e "  ${BOLD}wipi-stop${NC} - Stop the service"
+    echo -e "  ${BOLD}wipi-restart${NC} - Restart the service"
+    echo -e "  ${BOLD}wipi-log${NC} - View service logs"
+    echo -e "  ${BOLD}wipi-config${NC} - Edit configuration"
+    echo -e "  ${BOLD}wipi-uninstall${NC} - Completely remove WiPi"
+    echo ""
+    echo -e "${YELLOW}Note:${NC} When the Raspberry Pi cannot connect to a known WiFi network,"
+    echo -e "it will automatically create an access point with the configured settings."
+    echo -e "You can then connect to this access point to access your Pi."
+    echo ""
+    echo -e "To manually force AP mode: ${BOLD}sudo /home/pi/metar/bin/python3 /home/pi/wipi/wipi.py --force-ap${NC}"
+    echo -e "To check current status: ${BOLD}sudo /home/pi/metar/bin/python3 /home/pi/wipi/wipi.py --status${NC}"
+    echo ""
+    echo -e "All WiPi files are located in: ${BOLD}/home/pi/wipi/${NC}"
+    echo -e "You can edit these files directly to customize WiPi."
+    echo ""
+    echo -e "To uninstall WiPi, run: ${BOLD}wipi-uninstall${NC}"
+    echo ""
+}
+
+# Main installation
+print_section_header "WiPi - Auto WiFi Broadcasting Installation"
+
+# Check if running as root
+check_root
+
+# Check for NetworkManager
+check_network_manager
+
+# Skip Python package installation (already done in metar venv)
+print_success "Using existing metar virtual environment for Python packages"
+
+# Install WiPi files
+install_wipi_files
+
+# Configure WiPi
+configure_wipi
+
+# Install systemd service
+install_service
+
+# Create command aliases
+create_aliases
+
+# Display completion message
+display_completion
+EOF
+        chmod +x custom_install.sh
+        echo -e "${GREEN}✓${NC}"
+        
+        echo -e "\n${GREEN}Starting WiPi installer with 'metar' virtual environment...${NC}"
+        echo -e "${YELLOW}You will be prompted to configure your access point settings.${NC}"
+        echo -e "${YELLOW}Recommended settings:${NC}"
+        echo -e "  ${CYAN}• SSID: ${GREEN}METAR-Pi${NC}"
+        echo -e "  ${CYAN}• Password: ${GREEN}METAR-Pi${NC}"
+        echo -e "  ${CYAN}• IP Address: ${GREEN}192.168.8.1${NC}"
+        echo -e "  ${CYAN}• Check Interval: ${GREEN}30${NC} (seconds)"
+        echo ""
+        
+        # Run the custom installer
+        sudo bash custom_install.sh
+        
+        # Return to original directory
+        cd /home/pi
+        
+        # Cleanup
+        echo -ne "${CYAN}Cleaning up temporary files... ${NC}"
+        rm -rf "$TEMP_DIR"
+        echo -e "${GREEN}✓${NC}"
+        
+        echo -e "\n${GREEN}✓ WiPi Auto WiFi Broadcasting setup completed using 'metar' virtual environment${NC}"
+        echo -e "${YELLOW}To use WiPi commands, run:${NC}"
+        echo -e "  ${CYAN}• Check status: ${GREEN}sudo /home/pi/metar/bin/python3 /home/pi/wipi/wipi.py --status${NC}"
+        echo -e "  ${CYAN}• Force AP mode: ${GREEN}sudo /home/pi/metar/bin/python3 /home/pi/wipi/wipi.py --force-ap${NC}"
+        echo -e "  ${CYAN}• Edit files: ${GREEN}wipi-edit${NC}"
+        echo -e "  ${CYAN}• Or use the aliases after reboot: ${GREEN}wipi --status${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ Failed to download WiPi${NC}"
+        cd /home/pi
+        rm -rf "$TEMP_DIR"
+        return 1
     fi
 }
 
@@ -264,7 +659,7 @@ echo -e "${YELLOW}This feature allows your METARMap to create its own WiFi netwo
 echo -e "${YELLOW}when no other networks are available, making it easier to configure.${NC}"
 echo ""
 
-read -e -p "$(echo -e "${CYAN}Would you like to install Auto WiFi Broadcasting Capabilities? [Y/n]: ${NC}")" WIFI_CHOICE
+read -e -p "$(echo -e "${CYAN}Would you like to set up WiFi Broadcasting? [Y/n]: ${NC}")" WIFI_CHOICE
 WIFI_CHOICE=${WIFI_CHOICE:-y}
 case ${WIFI_CHOICE,,} in
     [Yy]*|"")
@@ -420,6 +815,29 @@ case ${SERVICES_CHOICE,,} in
         ;;
 esac
 
+# Add Command Aliases Setup right after Service Installation
+print_section_header "Command Aliases Setup"
+echo -e "${YELLOW}Command aliases make it easier to control your METARMap${NC}"
+echo -e "${YELLOW}by providing simple commands like:${NC}"
+echo -e "  ${CYAN}• startmetar${NC} - Start the LED display"
+echo -e "  ${CYAN}• stopmetar${NC} - Stop the LED display"
+echo -e "  ${CYAN}• blank${NC} - Turn off all LEDs"
+echo ""
+
+read -e -p "$(echo -e "${CYAN}Would you like to install command aliases? [Y/n]: ${NC}")" ALIAS_CHOICE
+ALIAS_CHOICE=${ALIAS_CHOICE:-y}
+case ${ALIAS_CHOICE,,} in
+    [Yy]*|"")
+        setup_aliases
+        ;;
+    [Nn]*)
+        echo -e "${YELLOW}⚠ Skipping alias setup${NC}"
+        ;;
+    *)
+        echo -e "${RED}✗ Invalid input${NC}"
+        ;;
+esac
+
 # Function to setup SSL certificate
 setup_ssl() {
     print_section_header "SSL Certificate Setup"
@@ -536,7 +954,18 @@ alias restartsettings='sudo systemctl restart settings.service'
 alias restartscheduler='sudo systemctl restart scheduler.service'
 alias metarstatus='sudo systemctl status metar.service'
 alias settingsstatus='sudo systemctl status settings.service'
-alias schedulerstatus='sudo systemctl status scheduler.service'"
+alias schedulerstatus='sudo systemctl status scheduler.service'
+
+# WiPi commands
+alias wipi-status='sudo systemctl status wipi.service'
+alias wipi-start='sudo systemctl start wipi.service'
+alias wipi-stop='sudo systemctl stop wipi.service'
+alias wipi-restart='sudo systemctl restart wipi.service'
+alias wipi-log='sudo journalctl -u wipi.service'
+alias wipi-config='sudo nano /home/pi/wipi/config.json'
+alias wipi='sudo /home/pi/metar/bin/python3 /home/pi/wipi/wipi.py'
+alias wipi-edit='cd /home/pi/wipi && sudo ls -la'
+alias wipi-uninstall='sudo systemctl stop wipi.service && sudo systemctl disable wipi.service && sudo rm -rf /home/pi/wipi /etc/systemd/system/wipi.service /etc/profile.d/wipi-aliases.sh && echo -e "\033[0;32m✓ WiPi has been uninstalled\033[0m"'
 
     echo -ne "${CYAN}Installing command aliases... ${NC}"
     # Write aliases to the pi user's .bash_aliases file
@@ -548,29 +977,6 @@ alias schedulerstatus='sudo systemctl status scheduler.service'"
     echo -e "${YELLOW}Or log out and log back in for aliases to take effect automatically.${NC}"
     return 0
 }
-
-# Add after service installation section:
-print_section_header "Command Aliases Setup"
-echo -e "${YELLOW}Command aliases make it easier to control your METARMap${NC}"
-echo -e "${YELLOW}by providing simple commands like:${NC}"
-echo -e "  ${CYAN}• startmetar${NC} - Start the LED display"
-echo -e "  ${CYAN}• stopmetar${NC} - Stop the LED display"
-echo -e "  ${CYAN}• blank${NC} - Turn off all LEDs"
-echo ""
-
-read -e -p "$(echo -e "${CYAN}Would you like to install command aliases? [Y/n]: ${NC}")" ALIAS_CHOICE
-ALIAS_CHOICE=${ALIAS_CHOICE:-y}
-case ${ALIAS_CHOICE,,} in
-    [Yy]*|"")
-        setup_aliases
-        ;;
-    [Nn]*)
-        echo -e "${YELLOW}⚠ Skipping alias setup${NC}"
-        ;;
-    *)
-        echo -e "${RED}✗ Invalid input${NC}"
-        ;;
-esac
 
 # Function to install Tailscale
 install_tailscale() {
