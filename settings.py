@@ -624,9 +624,9 @@ def control_service(service_name, action):
 @app.route('/service/logs/<service_name>', methods=['GET'])
 def get_service_logs(service_name):
     try:
-        # Get logs for any service with consistent formatting, limited to last 100 lines
+        # Get logs for any service with consistent formatting, limited to last 200 lines
         result = subprocess.run(
-            ['sudo', 'journalctl', '-u', f'{service_name}.service', '-n', '100',
+            ['sudo', 'journalctl', '-u', f'{service_name}.service', '-n', '200',
              '-o', 'short-precise', '--no-pager', '--no-hostname'],
             capture_output=True,
             text=True,
