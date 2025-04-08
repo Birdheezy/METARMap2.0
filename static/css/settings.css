@@ -7,13 +7,33 @@ body {
     padding: 0;
 }
 
+/* CSS variables for the legend colors - these will be set via JavaScript */
+:root {
+    --vfr-color: #00FF00;
+    --mvfr-color: #0000FF;
+    --ifr-color: #FF0000;
+    --lifr-color: #FF0000;
+    --missing-color: #808080;
+    --lightening-color: #00EEFF;
+    --snowy-color: #FFFFFF;
+}
+
+/* Use CSS variables for the legend dots */
+.legend-dot.vfr { background-color: var(--vfr-color); }
+.legend-dot.mvfr { background-color: var(--mvfr-color); }
+.legend-dot.ifr { background-color: var(--ifr-color); }
+.legend-dot.lifr { background-color: var(--lifr-color); }
+.legend-dot.missing { background-color: var(--missing-color); }
+.legend-dot.lightning { background-color: var(--lightening-color); }
+.legend-dot.snow { background-color: var(--snowy-color); }
+
 /* Container styling to center the form */
 .container {
-    margin-top: 40px;
+    position: relative;
     max-width: 800px;
+    margin: 0 auto;
     padding: 0 20px;
-    margin-left: auto;
-    margin-right: auto;
+    margin-top: 40px;
     text-align: center;  /* Center text and form elements */
 }
 
@@ -40,6 +60,40 @@ body {
     scroll-margin-top: 70px;  /* Adjust to match or exceed your navbar height */
 }
 
+/* Apply dark background to all sections */
+section {
+    margin-bottom: 30px;
+    position: relative;
+    padding: 15px;
+    background-color: #1a1a1a;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Adjust spacing for nested sections */
+section section {
+    margin-top: 20px;
+}
+
+/* Update h2 color to match METARMap header */
+h2 {
+    color: rgba(0, 123, 255, 1.0);
+    font-family: 'Orbitron', sans-serif;
+    margin-bottom: 15px;
+    font-size: 1.5em;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+}
+
+/* Update form section styling */
+form section {
+    margin-bottom: 30px;
+    position: relative;
+    padding: 15px;
+    background-color: #1a1a1a;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
 
 /* Links in the navigation bar */
 .navbar a {
@@ -67,14 +121,6 @@ body {
         font-size: 16px;
         padding: 4px 8px;
     }
-}
-
-/* Form sections centered */
-form section {
-    margin-bottom: 0px;
-    padding-bottom: 0px;
-    border-bottom: 1px solid #444;
-    text-align: center;
 }
 
 /* Align labels */
@@ -112,7 +158,6 @@ form label {
 input, select, textarea {
     padding: 10px;  /* Adjust the padding value as needed */
 }
-
 
 /* Buttons centered with more margin at the bottom */
 .btn-primary {
@@ -179,7 +224,6 @@ textarea {
     padding: 0; /* Ensure no extra padding */
 }
 
-
 /* Toggle switch container */
 .toggle-switch {
     position: relative;
@@ -214,7 +258,6 @@ textarea {
 .toggle-label {
     margin-left: 10px;  /* Add margin to create space between the toggle and label text */
 }
-
 
 /* Custom toggle switch */
 .toggle-input {
@@ -276,6 +319,7 @@ textarea {
     margin-top: 10px;
     margin-bottom: 10px;
 }
+
 /* Flash message container */
 .flash-message {
     padding: 10px;
@@ -330,7 +374,6 @@ textarea {
     opacity: 1;
 }
 
-
 .toast {
     position: fixed;
     top: 10px;
@@ -359,6 +402,7 @@ textarea {
 .toast.danger {
     background-color: #dc3545;
 }
+
 .form-control {
     width: 100%;
     max-width: 150px;
@@ -369,6 +413,7 @@ textarea {
     color: white;
     border-radius: 5px;
 }
+
 .form-controltextarea {
     width: 100%;
     max-width: 150px;
@@ -378,10 +423,6 @@ textarea {
     border: 1px solid #555;
     color: white;
     border-radius: 5px;
-}
-section {
-    margin-bottom: 30px;
-    position: relative;
 }
 
 /* Tooltip text - initially hidden */
@@ -744,158 +785,21 @@ input[type="color"]::-webkit-color-swatch {
     box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
 
+/* Map Legend Styling */
 .map-legend {
-    background: rgba(44, 44, 44, 0.9);
-    padding: 10px;
-    border-radius: 4px;
-    display: inline-block;
-}
-
-.map-legend span {
-    display: inline-flex;
-    align-items: center;
-    margin: 0 10px;
-    font-size: 0.9em;
-}
-
-/* Kiosk Mode Styles */
-.kiosk-container {
-    position: relative;
-    padding-top: 10px;
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 0 20px;
-}
-
-.kiosk-title {
-    margin-top: 0;
-    margin-bottom: 10px;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 2.5em;
-    color: #007bff;
-    text-align: center;
-    letter-spacing: 2px;
-    text-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
-}
-
-.kiosk-timer {
-    position: absolute;
-    top: 10px;
-    right: 20px;
-    text-align: center;
-    font-size: 1.2em;
-    color: #fff;
-    background-color: rgba(0, 0, 0, 0.2);
-    padding: 8px;
-    border-radius: 5px;
-    z-index: 100;
-}
-
-.checkbox-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 15px;
-    margin: 20px 0;
-}
-
-.checkbox-item {
-    background-color: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-    padding: 15px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    position: relative;
-}
-
-.checkbox-item label {
-    display: block;
-    font-size: 1.1em;
-    cursor: pointer;
-    margin-left: 30px;
-}
-
-.checkbox-item input[type="checkbox"] {
-    position: absolute;
-    left: 15px;
-    top: 15px;
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-}
-
-.input-group {
     display: flex;
-    margin: 20px 0;
-}
-
-.kiosk-input {
-    flex: 1;
-    padding: 12px;
-    font-size: 1.1em;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background-color: rgba(0, 0, 0, 0.2);
-    color: #fff;
-    border-radius: 8px 0 0 8px;
-}
-
-#clear-input {
-    padding: 12px 20px;
-    background: #6c757d;
-    color: white;
-    border: none;
-    border-radius: 0 8px 8px 0;
-    cursor: pointer;
-    transition: background 0.3s ease;
-}
-
-#clear-input:hover {
-    background: #5a6268;
-}
-
-.info-panel {
-    background-color: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-    padding: 15px;
-    margin: 10px 0;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.info-header {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    position: relative;
-}
-
-.info-toggle {
-    position: absolute;
-    right: 10px;
-    font-size: 1.2em;
-}
-
-.info-content {
-    margin-top: 10px;
-    display: none;
-}
-
-.info-content.show {
-    display: block;
-}
-
-.kiosk-legend {
-    display: flex;
-    justify-content: center;
-    margin: 10px 0;
     flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 10px;
+    margin-bottom: 10px;
 }
 
-.kiosk-legend-item {
-    margin: 0 10px;
+.legend-item {
     display: flex;
     align-items: center;
+    font-size: 14px;    
 }
 
-/* Legend dot styles */
 .legend-dot {
     display: inline-block;
     width: 12px;
@@ -904,12 +808,6 @@ input[type="color"]::-webkit-color-swatch {
     margin-right: 5px;
 }
 
-/* These colors are now set dynamically in kiosk.html via template variables */
-.legend-dot.vfr { background-color: {{ vfr_color }}; }
-.legend-dot.mvfr { background-color: {{ mvfr_color }}; }
-.legend-dot.ifr { background-color: {{ ifr_color }}; }
-.legend-dot.lifr { background-color: {{ lifr_color }}; }
-
 .legend-item {
     margin-right: 15px;
 }
@@ -917,6 +815,9 @@ input[type="color"]::-webkit-color-swatch {
 .map-legend {
     text-align: center;
     margin-top: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 /* Add these styles for the selection preview */
@@ -1058,4 +959,150 @@ input[type="color"]::-webkit-color-swatch {
     margin: 10px 0;
     font-weight: bold;
     color: #fff;
+}
+
+/* Kiosk Mode Styles */
+.kiosk-container {
+    position: relative;
+    padding-top: 10px;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.kiosk-title {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.5em;
+    color: #007bff;
+    text-align: center;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+}
+
+.kiosk-timer {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    text-align: center;
+    font-size: 1.2em;
+    color: #fff;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 8px;
+    border-radius: 5px;
+    z-index: 100;
+}
+
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.checkbox-item {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+}
+
+.checkbox-item label {
+    display: block;
+    font-size: 1.1em;
+    cursor: pointer;
+    margin-left: 30px;
+}
+
+.checkbox-item input[type="checkbox"] {
+    position: absolute;
+    left: 15px;
+    top: 15px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.input-group {
+    display: flex;
+    margin: 20px 0;
+}
+
+.kiosk-input {
+    flex: 1;
+    padding: 12px;
+    font-size: 1.1em;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(0, 0, 0, 0.2);
+    color: #fff;
+    border-radius: 8px 0 0 8px;
+}
+
+#clear-input {
+    padding: 12px 20px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 0 8px 8px 0;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+#clear-input:hover {
+    background: #5a6268;
+}
+
+.info-panel {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 15px;
+    margin: 10px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+}
+
+.info-toggle {
+    position: absolute;
+    right: 10px;
+    font-size: 1.2em;
+}
+
+.info-content {
+    margin-top: 10px;
+    display: none;
+}
+
+.info-content.show {
+    display: block;
+}
+
+.kiosk-legend {
+    display: flex;
+    justify-content: center;
+    margin: 10px 0;
+    flex-wrap: wrap;
+}
+
+.kiosk-legend-item {
+    margin: 0 10px;
+    display: flex;
+    align-items: center;
+}
+
+.legend-item {
+    margin-right: 15px;
+}
+
+.map-legend {
+    text-align: center;
+    margin-top: 10px;
 }

@@ -44,6 +44,15 @@
             <span class="legend-item">
                 <span class="legend-dot lifr"></span>LIFR
             </span>
+            <span class="legend-item">
+                <span class="legend-dot missing"></span>Missing
+            </span>
+            <span class="legend-item">
+                <span class="legend-dot lightning"></span>Lightning
+            </span>
+            <span class="legend-item">
+                <span class="legend-dot snow"></span>Snow
+            </span>
         </div>
         <br>
         <div style="margin-top: 5px;" class="weather-status">
@@ -642,6 +651,34 @@
     const IFR_COLOR = '{{ ifr_color }}';
     const LIFR_COLOR = '{{ lifr_color }}';
     const MISSING_COLOR = '{{ missing_color }}';
+    const LIGHTENING_COLOR = '{{ lightening_color }}';
+    const SNOWY_COLOR = '{{ snowy_color }}';
+
+    // Set CSS variables for the map
+    document.documentElement.style.setProperty('--vfr-color', VFR_COLOR);
+    document.documentElement.style.setProperty('--mvfr-color', MVFR_COLOR);
+    document.documentElement.style.setProperty('--ifr-color', IFR_COLOR);
+    document.documentElement.style.setProperty('--lifr-color', LIFR_COLOR);
+    document.documentElement.style.setProperty('--missing-color', MISSING_COLOR);
+    document.documentElement.style.setProperty('--lightening-color', LIGHTENING_COLOR);
+    document.documentElement.style.setProperty('--snowy-color', SNOWY_COLOR);
+
+    // Set legend dot colors directly
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get all legend dots
+        const vfrDot = document.querySelector('.legend-dot.vfr');
+        const mvfrDot = document.querySelector('.legend-dot.mvfr');
+        const ifrDot = document.querySelector('.legend-dot.ifr');
+        const lifrDot = document.querySelector('.legend-dot.lifr');
+        const missingDot = document.querySelector('.legend-dot.missing');
+        
+        // Set colors directly
+        if (vfrDot) vfrDot.style.backgroundColor = VFR_COLOR;
+        if (mvfrDot) mvfrDot.style.backgroundColor = MVFR_COLOR;
+        if (ifrDot) ifrDot.style.backgroundColor = IFR_COLOR;
+        if (lifrDot) lifrDot.style.backgroundColor = LIFR_COLOR;
+        if (missingDot) missingDot.style.backgroundColor = MISSING_COLOR;
+    });
 
     const messages = [];
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -729,6 +766,19 @@
     // Call initially and set interval
     updateWeatherStatus();
     setInterval(updateWeatherStatus, 30000); // Update every 30 seconds
+</script>
+
+<script>
+    // Set CSS variables for legend colors
+    document.addEventListener('DOMContentLoaded', function() {
+        document.documentElement.style.setProperty('--vfr-color', '{{ vfr_color }}');
+        document.documentElement.style.setProperty('--mvfr-color', '{{ mvfr_color }}');
+        document.documentElement.style.setProperty('--ifr-color', '{{ ifr_color }}');
+        document.documentElement.style.setProperty('--lifr-color', '{{ lifr_color }}');
+        document.documentElement.style.setProperty('--missing-color', '{{ missing_color }}');
+        document.documentElement.style.setProperty('--lightening-color', '{{ lightening_color }}');
+        document.documentElement.style.setProperty('--snowy-color', '{{ snowy_color }}');
+    });
 </script>
 
 </body>

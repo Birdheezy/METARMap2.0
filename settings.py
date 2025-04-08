@@ -27,7 +27,9 @@ def after_this_response(func):
         return
     return wrapper
 
-app = Flask(__name__)
+app = Flask(__name__, 
+           template_folder='/home/pi/templates',
+           static_folder='static')
 app.secret_key = os.urandom(24)
 
 
@@ -366,6 +368,17 @@ def edit_settings():
     # Get the local IP address
     local_ip = get_local_ip()
 
+    # Add dynamic styles for the map colors
+    map_styles = {
+        'vfr_color': vfr_color,
+        'mvfr_color': mvfr_color,
+        'ifr_color': ifr_color,
+        'lifr_color': lifr_color,
+        'missing_color': missing_color,
+        'lightening_color': lightening_color,
+        'snowy_color': snowy_color
+    }
+
     # Render the template with the updated values, including weather_last_modified
     return render_template(
         'settings.html',
@@ -411,7 +424,8 @@ def edit_settings():
         pixel_pin=config.PIXEL_PIN,
         weather_update_interval=config.WEATHER_UPDATE_INTERVAL,
         stale_indication=config.STALE_INDICATION,
-        wifi_disconnected_color=wifi_disconnected_color
+        wifi_disconnected_color=wifi_disconnected_color,
+        map_styles=map_styles
     )
 
 

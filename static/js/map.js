@@ -17,7 +17,7 @@ function initializeAirportMap(containerId, colorConfig, mapCenter, mapZoom) {
     const lifrColor = colorConfig.lifr;
     const missingColor = colorConfig.missing;
     
-    // Use a standard map style (same as settings.html)
+    // Use a standard map style (OpenStreetMap)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19

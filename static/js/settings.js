@@ -686,6 +686,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(settings => {
                 map = L.map('airport-map').setView(settings.center, settings.zoom);
+                
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '© OpenStreetMap contributors'
                 }).addTo(map);
@@ -788,6 +789,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error loading map settings:', error);
                 // Fallback to default settings if loading fails
                 map = L.map('airport-map').setView([37.0902, -99.7558], 4);
+                
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '© OpenStreetMap contributors'
                 }).addTo(map);
