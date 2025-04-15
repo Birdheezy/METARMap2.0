@@ -797,3 +797,209 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 });
+
+// LED Testing functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle preset color buttons
+    document.querySelectorAll('.led-test-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const color = this.dataset.color;
+            testLEDs(color);
+        });
+    });
+
+    // Handle custom color test
+    document.getElementById('test-custom-color')?.addEventListener('click', function() {
+        const color = document.getElementById('custom-led-color').value;
+        testLEDs(color);
+    });
+
+    // Brightness control
+    const brightnessInput = document.getElementById('test-brightness');
+    if (brightnessInput) {
+        brightnessInput.addEventListener('change', async function() {
+            const brightness = parseFloat(this.value);
+            if (brightness >= 0.01 && brightness <= 1.0) {
+                try {
+                    const response = await fetch('/update-brightness', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ brightness: brightness })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to update brightness');
+                    }
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        showNotification('Brightness updated successfully', 'success');
+                    } else {
+                        showNotification(result.error || 'Failed to update brightness', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error updating brightness:', error);
+                    showNotification('Failed to update brightness: ' + error.message, 'error');
+                }
+            } else {
+                showNotification('Brightness must be between 0.01 and 1.0', 'error');
+                this.value = 0.5; // Reset to default if invalid
+            }
+        });
+    }
+
+    // Handle turn off button
+    document.getElementById('turn-off-leds')?.addEventListener('click', function() {
+        fetch('/turn-off-leds', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                showToast('Failed to turn off LEDs: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            showToast('Error turning off LEDs: ' + error, 'danger');
+        });
+    });
+
+    // Handle automated test
+    let currentIndex = -1;
+    const runAutoTest = document.getElementById('run-auto-test');
+    const nextColor = document.getElementById('next-color');
+    const stopAutoTest = document.getElementById('stop-auto-test');
+    const testProgress = document.getElementById('test-progress');
+    const progressBar = document.querySelector('.progress-bar');
+    const testStatus = document.getElementById('test-status');
+
+    const colors = [
+        { name: 'Red', color: '#ff0000' },
+        { name: 'Green', color: '#00ff00' },
+        { name: 'Blue', color: '#0000ff' },
+        { name: 'White', color: '#ffffff' },
+        { name: 'VFR', color: document.querySelector('[data-color="' + VFR_COLOR + '"]').dataset.color },
+        { name: 'MVFR', color: document.querySelector('[data-color="' + MVFR_COLOR + '"]').dataset.color },
+        { name: 'IFR', color: document.querySelector('[data-color="' + IFR_COLOR + '"]').dataset.color },
+        { name: 'LIFR', color: document.querySelector('[data-color="' + LIFR_COLOR + '"]').dataset.color },
+        { name: 'Lightning', color: document.querySelector('[data-color="' + LIGHTENING_COLOR + '"]').dataset.color },
+        { name: 'Snow', color: document.querySelector('[data-color="' + SNOWY_COLOR + '"]').dataset.color }
+    ];
+
+    if (runAutoTest && stopAutoTest && nextColor) {
+        runAutoTest.addEventListener('click', function() {
+            // Start the LED test service
+            fetch('/led-test-service/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentIndex = -1; // Reset to start
+                    testProgress.style.display = 'block';
+                    runAutoTest.style.display = 'none';
+                    nextColor.style.display = 'inline-block';
+                    stopAutoTest.style.display = 'inline-block';
+                    showNextColor();
+                } else {
+                    showToast('Failed to start LED test service: ' + data.error, 'danger');
+                }
+            })
+            .catch(error => {
+                showToast('Error starting LED test service: ' + error, 'danger');
+            });
+        });
+
+        nextColor.addEventListener('click', function() {
+            showNextColor();
+        });
+
+        stopAutoTest.addEventListener('click', function() {
+            // Reset UI state immediately
+            testProgress.style.display = 'none';
+            runAutoTest.style.display = 'inline-block';
+            nextColor.style.display = 'none';
+            stopAutoTest.style.display = 'none';
+            currentIndex = -1;
+
+            // Create a promise for stopping the service
+            const stopServicePromise = fetch('/led-test-service/stop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    console.warn('Failed to stop LED test service:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error stopping LED test service:', error);
+            });
+
+            // Create a promise for turning off LEDs
+            const turnOffLedsPromise = fetch('/turn-off-leds', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    showToast('Failed to turn off LEDs: ' + data.error, 'danger');
+                }
+            })
+            .catch(error => {
+                showToast('Error turning off LEDs: ' + error, 'danger');
+            });
+
+            // Execute both promises in parallel
+            Promise.all([stopServicePromise, turnOffLedsPromise])
+                .then(() => {
+                    showToast('Test stopped', 'success');
+                })
+                .catch(error => {
+                    console.error('Error during test stop:', error);
+                });
+        });
+
+        function showNextColor() {
+            currentIndex++;
+            if (currentIndex >= colors.length) {
+                currentIndex = 0;
+            }
+
+            const currentColor = colors[currentIndex];
+            testLEDs(currentColor.color);
+            testStatus.textContent = `Testing: ${currentColor.name}`;
+            progressBar.style.width = `${(currentIndex + 1) / colors.length * 100}%`;
+        }
+    }
+});
+
+function testLEDs(color) {
+    fetch('/test-leds', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ color: color })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            showToast('Failed to test LEDs: ' + data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        showToast('Error testing LEDs: ' + error, 'danger');
+    });
+}

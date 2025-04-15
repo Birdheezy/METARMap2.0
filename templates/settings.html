@@ -111,7 +111,57 @@
         </div>
     </section>
 
+    <!-- LED Testing Section -->
+    <section id="led-testing" class="dark-section">
+        <h2 class="section-title">LED Testing</h2>
+        
+        <!-- Automated Test -->
+        <div class="test-section">
+            <h3 class="subsection-title">Automated Test</h3>
+            <div class="test-buttons">
+                <button type="button" class="btn btn-primary" id="run-auto-test">Start Color Test</button>
+                <button type="button" class="btn btn-primary" id="next-color" style="display: none;">Next Color</button>
+                <button type="button" class="btn btn-primary" id="stop-auto-test" style="display: none;">Stop Test</button>
+            </div>
+            <div id="test-progress" style="display: none;">
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar"></div>
+                </div>
+                <div id="test-status">Testing: VFR Color</div>
+            </div>
+        </div>
 
+        <!-- Manual Test -->
+        <div class="test-section">
+            <h3 class="subsection-title">Manual Test</h3>
+            <div class="color-buttons">
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ vfr_color }}">Test VFR</button>
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ mvfr_color }}">Test MVFR</button>
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ ifr_color }}">Test IFR</button>
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ lifr_color }}">Test LIFR</button>
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ lightening_color }}">Test Lightning</button>
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ snowy_color }}">Test Snow</button>
+            </div>
+            
+            <!-- Custom Color Test -->
+            <div class="custom-color-test">
+                <label for="custom-led-color">Custom Color:</label>
+                <input type="color" id="custom-led-color" value="#ffffff">
+                <button type="button" class="btn btn-primary" id="test-custom-color">Test</button>
+            </div>
+
+            <!-- Brightness Control -->
+            <div class="brightness-control">
+                <label for="test-brightness">Brightness (0.01 to 1.0):</label>
+                <input type="number" id="test-brightness" min="0.01" max="1.0" step="0.01" value="0.5" class="form-control input-small dark-input">
+            </div>
+
+            <!-- All Off Button -->
+            <div class="led-controls">
+                <button type="button" class="btn btn-primary" id="turn-off-leds">Turn Off All LEDs</button>
+            </div>
+        </div>
+    </section>
 
     <!-- Animation Settings -->
 

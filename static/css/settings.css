@@ -1106,3 +1106,186 @@ input[type="color"]::-webkit-color-swatch {
     text-align: center;
     margin-top: 10px;
 }
+
+/* LED Testing Section Styles */
+.dark-section {
+    background-color: #1a1a1a;
+    color: #cccccc;
+    border-radius: 8px;
+    margin: 20px 0;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.section-title {
+    color: #007bff;
+    font-family: 'Orbitron', sans-serif;
+    text-align: center;
+    padding: 20px 0;
+    margin: 0;
+    text-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+}
+
+.subsection-title {
+    color: #007bff;
+    font-size: 1.2em;
+    margin: 15px 0;
+    text-align: center;
+}
+
+.test-section {
+    margin-bottom: 30px;
+}
+
+.color-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 10px;
+    margin: 15px 0;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.color-buttons .btn {
+    width: 100%;
+    min-width: 120px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.custom-color-test {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 15px 0;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    align-items: center;  /* This will vertically center all items */
+}
+
+.custom-color-test label {
+    justify-self: end;
+    margin: 0;
+    padding-right: 10px;
+}
+
+.custom-color-test input[type="color"] {
+    width: 100%;
+    min-width: 120px;
+    height: 40px;
+    padding: 5px;
+    border-radius: 4px;
+    background: #333;
+    justify-self: center;
+}
+
+.custom-color-test .btn {
+    width: 100%;
+    min-width: 120px;
+    height: 40px;
+    justify-self: start;
+}
+
+.brightness-control {
+    margin: 20px 0;
+    text-align: center;
+}
+
+.dark-input {
+    background-color: #333333 !important;
+    color: #ffffff !important;
+    border: 1px solid #444 !important;
+}
+
+.dark-input:focus {
+    background-color: #404040 !important;
+    border-color: #007bff !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+}
+
+.led-controls {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.test-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 15px 0;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.test-buttons .btn {
+    min-width: 120px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Center the Start Color Test button when it's alone */
+#run-auto-test {
+    margin: 0 auto;
+}
+
+/* When Next Color and Stop Test are visible, position them properly */
+#next-color {
+    grid-column: 1;
+}
+
+#stop-auto-test {
+    grid-column: 3;
+}
+
+#test-progress {
+    margin: 15px 0;
+}
+
+.progress {
+    background-color: #1a1a1a;
+    height: 10px;
+    border-radius: 5px;
+    margin: 10px 0;
+}
+
+.progress-bar {
+    background-color: #007bff;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+#test-status {
+    text-align: center;
+    color: #007bff;
+}
+
+/* Style adjustments for input elements */
+input[type="color"] {
+    width: 60px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: none;
+}
+
+input[type="number"].dark-input {
+    max-width: 100px;
+    margin: 0 auto;
+    display: block;
+}
+
+/* Label styles */
+#led-testing label {
+    color: #cccccc;
+    margin-bottom: 5px;
+    display: inline-block;
+}

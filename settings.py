@@ -18,6 +18,7 @@ import weather
 import functools
 import socket
 from scheduler import weather_update_lock, update_weather as scheduler_update_weather
+from led_test import test_leds, turn_off_leds, update_brightness
 
 def after_this_response(func):
     @functools.wraps(func)
@@ -1242,6 +1243,223 @@ def get_weather_data():
         return jsonify({"error": "Weather data not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/test-leds', methods=['POST'])
+def test_leds_route():
+    data = request.get_json()
+    color = data.get('color')
+    if not color:
+        return jsonify({'error': 'No color provided'}), 400
+    
+    # Convert hex color to RGB tuple
+    color = color.lstrip('#')
+    rgb = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
+    
+    try:
+        # Create a simple script that imports and uses the led_test module
+        temp_script = '/tmp/led_test_temp.py'
+        with open(temp_script, 'w') as f:
+            f.write(f'''
+import sys
+import os
+import traceback
+
+try:
+    # Add /home/pi to Python path
+    sys.path.append('/home/pi')
+    
+    # Import the led_test module
+    from led_test import test_leds
+    
+    # Test the LEDs with the specified color
+    print(f"Testing LEDs with color: {rgb}")
+    test_leds({rgb})
+    print("LED test completed successfully")
+except Exception as e:
+    print(f"Error in LED test: {{str(e)}}")
+    traceback.print_exc()
+    sys.exit(1)
+''')
+        
+        # Use the correct Python interpreter path
+        python_path = '/home/pi/metar/bin/python3'
+        
+        # Run the script with sudo and capture output
+        result = subprocess.run(['sudo', python_path, temp_script], 
+                               check=True, 
+                               capture_output=True, 
+                               text=True)
+        
+        # Log the output for debugging
+        print(f"Script stdout: {result.stdout}")
+        print(f"Script stderr: {result.stderr}")
+        
+        return jsonify({'success': True, 'output': result.stdout})
+    except subprocess.CalledProcessError as e:
+        error_output = e.stderr if hasattr(e, 'stderr') else "No error output available"
+        stdout_output = e.stdout if hasattr(e, 'stdout') else "No stdout output available"
+        return jsonify({
+            'error': f'Failed to test LEDs: {str(e)}',
+            'stdout': stdout_output,
+            'stderr': error_output
+        }), 500
+    except Exception as e:
+        return jsonify({'error': f'Failed to test LEDs: {str(e)}'}), 500
+
+@app.route('/turn-off-leds', methods=['POST'])
+def turn_off_leds_route():
+    try:
+        # Create a simple script that imports and uses the led_test module
+        temp_script = '/tmp/led_off_temp.py'
+        with open(temp_script, 'w') as f:
+            f.write('''
+import sys
+import os
+import traceback
+
+try:
+    # Add /home/pi to Python path
+    sys.path.append('/home/pi')
+    
+    # Import the led_test module
+    from led_test import turn_off_leds
+    
+    # Turn off all LEDs
+    print("Turning off all LEDs")
+    turn_off_leds()
+    print("LEDs turned off successfully")
+except Exception as e:
+    print(f"Error turning off LEDs: {str(e)}")
+    traceback.print_exc()
+    sys.exit(1)
+''')
+        
+        # Use the correct Python interpreter path
+        python_path = '/home/pi/metar/bin/python3'
+        
+        # Run the script with sudo and capture output
+        result = subprocess.run(['sudo', python_path, temp_script], 
+                               check=True, 
+                               capture_output=True, 
+                               text=True)
+        
+        # Log the output for debugging
+        print(f"Script stdout: {result.stdout}")
+        print(f"Script stderr: {result.stderr}")
+        
+        return jsonify({'success': True, 'output': result.stdout})
+    except subprocess.CalledProcessError as e:
+        error_output = e.stderr if hasattr(e, 'stderr') else "No error output available"
+        stdout_output = e.stdout if hasattr(e, 'stdout') else "No stdout output available"
+        return jsonify({
+            'error': f'Failed to turn off LEDs: {str(e)}',
+            'stdout': stdout_output,
+            'stderr': error_output
+        }), 500
+    except Exception as e:
+        return jsonify({'error': f'Failed to turn off LEDs: {str(e)}'}), 500
+
+@app.route('/update-brightness', methods=['POST'])
+def update_brightness_route():
+    data = request.get_json()
+    brightness = data.get('brightness')
+    if not brightness:
+        return jsonify({'error': 'No brightness provided'}), 400
+    
+    try:
+        # Create a self-contained script that doesn't rely on importing led_test
+        temp_script = '/tmp/led_brightness_temp.py'
+        with open(temp_script, 'w') as f:
+            f.write(f'''
+import sys
+import os
+import traceback
+
+try:
+    # Add /home/pi to Python path
+    sys.path.append('/home/pi')
+    
+    # Import required modules
+    import board
+    import neopixel
+    from config import PIXEL_PIN, NUM_PIXELS, BRIGHTNESS, LED_COLOR_ORDER
+    
+    # Set up the LED strip
+    pixel_pin = f"D{{PIXEL_PIN}}"  # Create "D18"
+    pixels = neopixel.NeoPixel(getattr(board, pixel_pin), NUM_PIXELS, 
+                              brightness=BRIGHTNESS, auto_write=False, 
+                              pixel_order=LED_COLOR_ORDER)
+    
+    # Update brightness
+    print(f"Updating brightness to: {brightness}")
+    pixels.brightness = {brightness}
+    pixels.show()
+    print("Brightness updated successfully")
+except Exception as e:
+    print(f"Error updating brightness: {{str(e)}}")
+    traceback.print_exc()
+    sys.exit(1)
+''')
+        
+        # Use the correct Python interpreter path
+        python_path = '/home/pi/metar/bin/python3'
+        
+        # Run the script with sudo and capture output
+        result = subprocess.run(['sudo', python_path, temp_script], 
+                               check=True, 
+                               capture_output=True, 
+                               text=True)
+        
+        # Log the output for debugging
+        print(f"Script stdout: {result.stdout}")
+        print(f"Script stderr: {result.stderr}")
+        
+        return jsonify({'success': True, 'output': result.stdout})
+    except subprocess.CalledProcessError as e:
+        error_output = e.stderr if hasattr(e, 'stderr') else "No error output available"
+        stdout_output = e.stdout if hasattr(e, 'stdout') else "No stdout output available"
+        return jsonify({
+            'error': f'Failed to update brightness: {str(e)}',
+            'stdout': stdout_output,
+            'stderr': error_output
+        }), 500
+    except Exception as e:
+        return jsonify({'error': f'Failed to update brightness: {str(e)}'}), 500
+
+# LED Test Service Control
+@app.route('/led-test-service/start', methods=['POST'])
+def start_led_test_service():
+    try:
+        result = subprocess.run(['sudo', 'systemctl', 'start', 'led-test.service'], 
+                               capture_output=True, text=True)
+        if result.returncode == 0:
+            return jsonify({'success': True, 'message': 'LED test service started'})
+        else:
+            return jsonify({'success': False, 'error': result.stderr})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/led-test-service/stop', methods=['POST'])
+def stop_led_test_service():
+    try:
+        result = subprocess.run(['sudo', 'systemctl', 'stop', 'led-test.service'], 
+                               capture_output=True, text=True)
+        if result.returncode == 0:
+            return jsonify({'success': True, 'message': 'LED test service stopped'})
+        else:
+            return jsonify({'success': False, 'error': result.stderr})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/led-test-service/status', methods=['GET'])
+def led_test_service_status():
+    try:
+        result = subprocess.run(['systemctl', 'is-active', 'led-test.service'], 
+                               capture_output=True, text=True)
+        status = result.stdout.strip()
+        return jsonify({'success': True, 'status': status})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
     if ENABLE_HTTPS:
