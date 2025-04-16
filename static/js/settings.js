@@ -852,8 +852,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle turn off button
     document.getElementById('turn-off-leds')?.addEventListener('click', function() {
-        fetch('/turn-off-leds', {
-            method: 'POST'
+        // Create a promise for stopping the service
+        const stopServicePromise = fetch('/led-test-service/stop', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                console.warn('Failed to stop LED test service:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error stopping LED test service:', error);
+        });
+
+        // Create a promise for turning off LEDs
+        const turnOffLedsPromise = fetch('/turn-off-leds', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
         })
         .then(response => response.json())
         .then(data => {
@@ -864,6 +885,15 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             showToast('Error turning off LEDs: ' + error, 'danger');
         });
+
+        // Execute both promises in parallel
+        Promise.all([stopServicePromise, turnOffLedsPromise])
+            .then(() => {
+                showToast('LEDs turned off', 'success');
+            })
+            .catch(error => {
+                console.error('Error during LED turn off:', error);
+            });
     });
 
     // Handle automated test

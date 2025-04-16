@@ -111,6 +111,61 @@
         </div>
     </section>
 
+    <section>
+        <h2>Color Settings</h2>
+        <div class="color-settings-container">
+            <!-- Flight Categories Column -->
+            <div class="color-column">
+                <h3>Flight Categories</h3>
+                <div class="color-picker-list">
+                    <div class="color-picker-row">
+                        <label for="vfr-color-picker">VFR Color:</label>
+                        <input type="color" id="vfr-color-picker" name="vfr_color" value="{{ vfr_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="mvfr-color-picker">MVFR Color:</label>
+                        <input type="color" id="mvfr-color-picker" name="mvfr_color" value="{{ mvfr_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="ifr-color-picker">IFR Color:</label>
+                        <input type="color" id="ifr-color-picker" name="ifr_color" value="{{ ifr_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="lifr-color-picker">LIFR Color:</label>
+                        <input type="color" id="lifr-color-picker" name="lifr_color" value="{{ lifr_color }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Special Conditions Column -->
+            <div class="color-column">
+                <h3>Special Conditions</h3>
+                <div class="color-picker-list">
+                    <div class="color-picker-row">
+                        <label for="lightening-color-picker">Lightning Color:</label>
+                        <input type="color" id="lightening-color-picker" name="lightening_color" value="{{ lightening_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="snowy-color-picker">Snowy Color:</label>
+                        <input type="color" id="snowy-color-picker" name="snowy_color" value="{{ snowy_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="missing-color-picker">Missing Color:</label>
+                        <input type="color" id="missing-color-picker" name="missing_color" value="{{ missing_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="stale-data-color-picker">Stale WX Data Color:</label>
+                        <input type="color" id="stale-data-color-picker" name="stale_data_color" value="{{ stale_data_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="wifi-disconnected-color-picker">WiFi Disconnected Color:</label>
+                        <input type="color" id="wifi-disconnected-color-picker" name="wifi_disconnected_color" value="{{ wifi_disconnected_color }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- LED Testing Section -->
     <section id="led-testing" class="dark-section">
         <h2 class="section-title">LED Testing</h2>
@@ -265,64 +320,8 @@
             <input type="text" class="form-control input-small" name="snow_blink_pause" value="{{ config.SNOW_BLINK_PAUSE }}" placeholder="Default: 0.4">
         </div>
     </section>
-    <section>
-        <h2>Color Settings</h2>
-        <div class="color-settings-container">
-            <!-- Flight Categories Column -->
-            <div class="color-column">
-                <h3>Flight Categories</h3>
-                <div class="color-picker-list">
-                    <div class="color-picker-row">
-                        <label for="vfr-color-picker">VFR Color:</label>
-                        <input type="color" id="vfr-color-picker" name="vfr_color" value="{{ vfr_color }}">
-                    </div>
-                    <div class="color-picker-row">
-                        <label for="mvfr-color-picker">MVFR Color:</label>
-                        <input type="color" id="mvfr-color-picker" name="mvfr_color" value="{{ mvfr_color }}">
-                    </div>
-                    <div class="color-picker-row">
-                        <label for="ifr-color-picker">IFR Color:</label>
-                        <input type="color" id="ifr-color-picker" name="ifr_color" value="{{ ifr_color }}">
-                    </div>
-                    <div class="color-picker-row">
-                        <label for="lifr-color-picker">LIFR Color:</label>
-                        <input type="color" id="lifr-color-picker" name="lifr_color" value="{{ lifr_color }}">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Special Conditions Column -->
-            <div class="color-column">
-                <h3>Special Conditions</h3>
-                <div class="color-picker-list">
-                    <div class="color-picker-row">
-                        <label for="lightening-color-picker">Lightning Color:</label>
-                        <input type="color" id="lightening-color-picker" name="lightening_color" value="{{ lightening_color }}">
-                    </div>
-                    <div class="color-picker-row">
-                        <label for="snowy-color-picker">Snowy Color:</label>
-                        <input type="color" id="snowy-color-picker" name="snowy_color" value="{{ snowy_color }}">
-                    </div>
-                    <div class="color-picker-row">
-                        <label for="missing-color-picker">Missing Color:</label>
-                        <input type="color" id="missing-color-picker" name="missing_color" value="{{ missing_color }}">
-                    </div>
-                    <div class="color-picker-row">
-                        <label for="stale-data-color-picker">Stale WX Data Color:</label>
-                        <input type="color" id="stale-data-color-picker" name="stale_data_color" value="{{ stale_data_color }}">
-                    </div>
-                    <div class="color-picker-row">
-                        <label for="wifi-disconnected-color-picker">WiFi Disconnected Color:</label>
-                        <input type="color" id="wifi-disconnected-color-picker" name="wifi_disconnected_color" value="{{ wifi_disconnected_color }}">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-
     
-        <!-- Time Settings Section -->
+    <!-- Time Settings Section -->
         <section id="time-settings">
             <h2>Time Settings</h2>
 
