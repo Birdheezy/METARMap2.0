@@ -56,7 +56,7 @@ body {
     padding-top: 40px;
 }
 
-#brightness, #time-settings, #animation, #airports, #wifi-settings {
+#brightness, #time-settings, #animation, #airports, #wifi-settings, #color {
     scroll-margin-top: 70px;  /* Adjust to match or exceed your navbar height */
 }
 
@@ -94,7 +94,9 @@ form section {
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
-
+a {
+    color: #ffffff;
+}
 /* Links in the navigation bar */
 .navbar a {
     color: #ffffff;
@@ -106,7 +108,14 @@ form section {
     font-size: 18px;
     font-weight: 500;
 }
-
+h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 3em;
+    color: #007bff;
+    margin-bottom: 5px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+}
 .navbar a:hover {
     color: #00ffae;
 }
