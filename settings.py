@@ -945,47 +945,68 @@ def apply_update():
         subprocess.run(['/usr/bin/git', 'fetch', 'origin', branch], check=True, cwd='/home/pi')
         subprocess.run(['/usr/bin/git', 'reset', '--hard', f'origin/{branch}'], check=True, cwd='/home/pi')
 
-        # Merge new configuration options from repository's config.py into user's config.py
-        print("Merging configuration options...")
+        # Preserve user's config.py while adding new variables
+        print("Preserving user's config.py structure...")
         try:
-            # Read the repository's config.py
-            with open('/home/pi/config.py', 'r') as f:
-                repo_config_lines = f.readlines()
-            
             # Read the user's config.py
             with open('/tmp/config.py.tmp', 'r') as f:
-                user_config_lines = f.readlines()
+                user_config_content = f.read()
             
-            # Extract variable names from both files
-            repo_vars = {}
-            for line in repo_config_lines:
-                if '=' in line and not line.strip().startswith('#'):
-                    var_name = line.split('=')[0].strip()
-                    repo_vars[var_name] = line
+            # Read the repository's config.py
+            with open('/home/pi/config.py', 'r') as f:
+                repo_config_content = f.read()
             
+            # Extract imports from user's config
+            import_lines = []
+            for line in user_config_content.split('\n'):
+                if line.strip().startswith('import ') or line.strip().startswith('from '):
+                    import_lines.append(line)
+            
+            # Extract variable definitions from both files
             user_vars = {}
-            for line in user_config_lines:
+            for line in user_config_content.split('\n'):
                 if '=' in line and not line.strip().startswith('#'):
                     var_name = line.split('=')[0].strip()
                     user_vars[var_name] = line
             
-            # Create a merged config.py
+            repo_vars = {}
+            for line in repo_config_content.split('\n'):
+                if '=' in line and not line.strip().startswith('#'):
+                    var_name = line.split('=')[0].strip()
+                    repo_vars[var_name] = line
+            
+            # Create a new config.py that preserves the user's structure
             with open('/home/pi/config.py', 'w') as f:
-                # First write all user variables
-                for var_name, line in user_vars.items():
-                    f.write(line)
+                # First write all imports from the user's config
+                for import_line in import_lines:
+                    f.write(import_line + '\n')
                 
-                # Then add any new variables from the repository that aren't in the user's config
+                # Add a blank line after imports if there were any
+                if import_lines:
+                    f.write('\n')
+                
+                # Write all user variables in their original order
+                for line in user_config_content.split('\n'):
+                    if '=' in line and not line.strip().startswith('#'):
+                        var_name = line.split('=')[0].strip()
+                        if var_name in user_vars:
+                            f.write(line + '\n')
+                
+                # Add any new variables from the repository that aren't in the user's config
+                new_vars_added = False
                 for var_name, line in repo_vars.items():
                     if var_name not in user_vars:
-                        f.write(f"# Added from repository update\n{line}")
+                        if not new_vars_added:
+                            f.write('\n# New variables added from repository update\n')
+                            new_vars_added = True
+                        f.write(line + '\n')
             
-            print("Configuration merge completed successfully")
+            print("Configuration preservation completed successfully")
         except Exception as merge_error:
-            print(f"Error merging configurations: {merge_error}")
-            # If merging fails, restore the user's config.py
+            print(f"Error preserving configuration: {merge_error}")
+            # If preserving fails, restore the user's config.py
             subprocess.run(['mv', '/tmp/config.py.tmp', '/home/pi/config.py'], check=True)
-            print("Restored original config.py due to merge error")
+            print("Restored original config.py due to preservation error")
 
         # Restore airports.txt
         print("Restoring airports.txt...")
