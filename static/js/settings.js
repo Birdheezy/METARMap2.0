@@ -1,4 +1,3 @@
-console.log('settings.js loaded');
 // Save scroll position on form submission
 function saveScrollPosition() {
     sessionStorage.setItem('scrollPosition', window.scrollY);
@@ -94,31 +93,6 @@ function saveScrollPosition() {
             });
     });
 
-    document.addEventListener('DOMContentLoaded', function() {
-        const textarea = document.getElementById('airportsText');
-        const lineNumbers = document.getElementById('line-numbers');
-
-        function updateLineNumbers() {
-            const lines = textarea.value.split('\n').length;
-            let lineNumbersHtml = '';
-            for (let i = 1; i <= lines; i++) {
-                lineNumbersHtml += `${i}<br>`;
-            }
-            lineNumbers.innerHTML = lineNumbersHtml;
-        }
-
-        // Sync scrolling between the textarea and the line numbers
-        textarea.addEventListener('scroll', function () {
-            lineNumbers.style.transform = `translateY(-${textarea.scrollTop}px)`;
-        });
-
-        // Update line numbers on input
-        textarea.addEventListener('input', updateLineNumbers);
-
-        // Initial update on page load
-        updateLineNumbers();
-    });
-
 function saveScrollPosition() {
     sessionStorage.setItem('scrollPosition', window.scrollY);
 }
@@ -183,102 +157,37 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-document.addEventListener('DOMContentLoaded', function() {
-        // Add click and keypress event listener to tooltip icons
-        const tooltipIcons = document.querySelectorAll('.tooltip-icon');
-
-        tooltipIcons.forEach(icon => {
-            icon.addEventListener('click', function() {
-                toggleTooltip(this);
-            });
-
-            icon.addEventListener('keypress', function(event) {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    toggleTooltip(this);
-                }
-            });
-        });
-
-        function toggleTooltip(icon) {
-            // First try to find dropdown content as next sibling of parent
-            let tooltipContent = icon.parentElement.nextElementSibling;
-
-            // If not found, try to find it within the same container
-            if (!tooltipContent || !tooltipContent.classList.contains('dropdown-content')) {
-                tooltipContent = icon.parentElement.querySelector('.dropdown-content');
-            }
-
-            // If still not found, look for it in the parent's parent
-            if (!tooltipContent) {
-                tooltipContent = icon.parentElement.parentElement.querySelector('.dropdown-content');
-            }
-
-            if (tooltipContent) {
-                const isExpanded = icon.getAttribute('aria-expanded') === 'true';
-
-                // Hide any other visible tooltips first
-                document.querySelectorAll('.dropdown-content').forEach(content => {
-                    if (content !== tooltipContent) {
-                        content.style.display = 'none';
-                        const otherIcon = content.parentElement.querySelector('.tooltip-icon');
-                        if (otherIcon) {
-                            otherIcon.setAttribute('aria-expanded', 'false');
-                        }
-                    }
-                });
-
-                if (isExpanded) {
-                    tooltipContent.style.display = 'none';
-                    icon.setAttribute('aria-expanded', 'false');
-                } else {
-                    tooltipContent.style.display = 'block';
-                    icon.setAttribute('aria-expanded', 'true');
-                }
-            }
-        }
-    });
-
-
 // Attach saveScrollPosition to buttons that trigger navigation or page reload
 document.querySelectorAll('a.btn-primary').forEach(button => {
     button.addEventListener('click', saveScrollPosition);
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("settings.js is running");
-
     // Only try to set up the restart button if it exists
     const restartButton = document.getElementById("restart-settings-button");
     if (restartButton) {
         restartButton.addEventListener("click", (event) => {
             event.preventDefault();
-            console.log("Restart Settings button clicked");
 
             // Disable the button to prevent double-clicks
             restartButton.disabled = true;
-            console.log("Restart Settings button disabled.");
 
             const statusDiv = document.getElementById("restart-settings-status");
 
             // Update the status message if the div exists
             if (statusDiv) {
                 statusDiv.textContent = "Restarting Settings Service...";
-                console.log("Status updated to 'Restarting Settings Service...'");
             }
 
             // Send a request to restart the service
             fetch('/restart_settings')
                 .then((response) => {
                     if (response.ok) {
-                        console.log("Settings service restarting...");
-
                         if (statusDiv) {
                             // Start a countdown before showing the refresh button
                             let countdown = 3; // Seconds
                             const countdownInterval = setInterval(() => {
                                 statusDiv.textContent = `Please wait ${countdown} seconds before refreshing...`;
-                                console.log(`Countdown: ${countdown}`);
                                 countdown--;
 
                                 if (countdown < 0) {
@@ -292,13 +201,11 @@ document.addEventListener("DOMContentLoaded", () => {
                                     refreshButton.textContent = "Refresh Page";
                                     refreshButton.classList.add("btn", "btn-secondary", "mt-3");
                                     refreshButton.addEventListener("click", () => {
-                                        console.log("Refreshing the page...");
                                         location.reload();
                                     });
 
                                     // Append the button
                                     statusDiv.appendChild(refreshButton);
-                                    console.log("Refresh button added.");
                                 }
                             }, 1000); // 1 second interval
                         }
@@ -319,7 +226,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     // Re-enable the restart button after 10 seconds
                     setTimeout(() => {
                         restartButton.disabled = false;
-                        console.log("Restart Settings button re-enabled.");
                     }, 10000); // Adjust the delay as needed
                 });
         });
@@ -399,29 +305,84 @@ function updateWeatherStatus() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                const statusContainer = document.querySelector('.weather-status .service-status');
-                const statusDot = statusContainer.querySelector('.status-dot');
-                const statusText = statusContainer.querySelector('.status-text');
-
-                const lastUpdated = new Date(data.last_updated);
-                const now = new Date();
-                const minutesSinceUpdate = Math.floor((now - lastUpdated) / (1000 * 60));
-
-                // Get the update interval from the input field (in minutes)
-                const updateIntervalInput = document.querySelector('input[name="weather_update_interval"]');
-                const expectedInterval = updateIntervalInput ? parseInt(updateIntervalInput.value) : 5;
-
-                // Update status dot and text - turn red after 2x the expected interval
-                if (minutesSinceUpdate > (expectedInterval * 2)) {
-                    statusDot.classList.add('stale');
-                } else {
-                    statusDot.classList.remove('stale');
+                // Update all instances of the timestamp text
+                const lastUpdatedElements = document.querySelectorAll('#map-weather-last-updated, #update-weather-last-updated');
+                const statusDots = document.querySelectorAll('#map-weather-status-dot, #update-weather-status-dot');
+                
+                // Use the formatted_date if available, otherwise use last_updated
+                const displayDate = data.formatted_date || data.last_updated;
+                
+                lastUpdatedElements.forEach(el => {
+                    el.textContent = displayDate;
+                });
+                
+                try {
+                    const lastUpdated = data.last_updated;
+                    
+                    if (lastUpdated !== "Weather data not available") {
+                        const parts = lastUpdated.split(' ');
+                        const dateParts = parts[0].split('-');
+                        const timeParts = parts[1].split(':');
+                        
+                        // Check if the date is in YYYY-MM-DD format (from API) or MM-DD-YYYY format (from UI)
+                        let year, month, day;
+                        if (dateParts[0].length === 4) {
+                            // YYYY-MM-DD format
+                            year = parseInt(dateParts[0]);
+                            month = parseInt(dateParts[1]) - 1; // 0-indexed month
+                            day = parseInt(dateParts[2]);
+                        } else {
+                            // MM-DD-YYYY format
+                            year = parseInt(dateParts[2]);
+                            month = parseInt(dateParts[0]) - 1; // 0-indexed month
+                            day = parseInt(dateParts[1]);
+                        }
+                        
+                        const updateTime = new Date(
+                            year,
+                            month,
+                            day,
+                            parseInt(timeParts[0]), // hour
+                            parseInt(timeParts[1]), // minute
+                            parseInt(timeParts[2])  // second
+                        );
+                        
+                        const now = new Date();
+                        const diffMinutes = (now - updateTime) / (1000 * 60);
+                        
+                        // Use a default threshold if WEATHER_UPDATE_THRESHOLD is not defined
+                        const staleThreshold = typeof WEATHER_UPDATE_THRESHOLD !== 'undefined' ? WEATHER_UPDATE_THRESHOLD : 10;
+                        
+                        // Update all status dots
+                        statusDots.forEach(dot => {
+                            if (diffMinutes < staleThreshold) {
+                                dot.style.backgroundColor = 'green';
+                            } else {
+                                dot.style.backgroundColor = 'red';
+                            }
+                        });
+                    } else {
+                        // If weather data is not available, set dots to red
+                        statusDots.forEach(dot => {
+                            dot.style.backgroundColor = 'red';
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error parsing date:", e);
+                    statusDots.forEach(dot => {
+                        dot.style.backgroundColor = 'red';
+                    });
                 }
-
-                statusText.textContent = `WX Last Updated: ${formatDate(data.last_updated)}`;
             }
         })
-        .catch(error => console.error('Error updating weather status:', error));
+        .catch(error => {
+            console.error('Error fetching weather status:', error);
+            // Set dots to red on error
+            const statusDots = document.querySelectorAll('#map-weather-status-dot, #update-weather-status-dot');
+            statusDots.forEach(dot => {
+                dot.style.backgroundColor = 'red';
+            });
+        });
 }
 
 // Function to update all service statuses
@@ -429,15 +390,7 @@ function updateAllServiceStatuses() {
     ['metar', 'settings', 'scheduler'].forEach(service => {
         updateServiceStatus(service);
     });
-    updateWeatherStatus();  // Add weather status update
 }
-
-// Update statuses on page load and periodically
-document.addEventListener('DOMContentLoaded', () => {
-    updateAllServiceStatuses();
-    // Update every 10 seconds
-    setInterval(updateAllServiceStatuses, 10000);
-});
 
 // Add this at the top with other global variables
 const logIntervals = {};
@@ -544,29 +497,6 @@ function updateTimezone(timezone) {
         showToast('Error updating timezone', 'danger');
     });
 }
-
-// Add event listeners when page loads
-document.addEventListener('DOMContentLoaded', () => {
-    // Existing event listeners...
-
-    // Populate timezone dropdown
-    populateTimezones();
-
-    // Add change event listener for timezone select
-    const timezoneSelect = document.getElementById('timezone-select');
-    if (timezoneSelect) {
-        timezoneSelect.addEventListener('change', (event) => {
-            if (event.target.value) {
-                if (confirm('Are you sure you want to change the timezone? This will restart the scheduler service.')) {
-                    updateTimezone(event.target.value);
-                } else {
-                    // Reset to previous selection
-                    populateTimezones();
-                }
-            }
-        });
-    }
-});
 
 function confirmSettingsStop() {
     if (confirm("Warning: Stopping the settings service will take this settings website offline.\n\nYou will need to power cycle your METARMap to restore access to the settings website.\n\nAre you sure you want to stop the settings service?")) {
@@ -733,7 +663,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Function to get color based on flight category
                 function getMarkerColor(fltCat) {
                     // Return colors directly for map display without LED conversion
-                    switch (fltCat.toLowerCase()) {
+                    switch (fltCat ? fltCat.toLowerCase() : 'missing') {
                         case 'vfr':
                             return VFR_COLOR;
                         case 'mvfr':
@@ -742,6 +672,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             return IFR_COLOR;
                         case 'lifr':
                             return LIFR_COLOR;
+                        case 'missing':
                         default:
                             return MISSING_COLOR;
                     }
@@ -1032,4 +963,66 @@ function testLEDs(color) {
     .catch(error => {
         showToast('Error testing LEDs: ' + error, 'danger');
     });
+}
+
+// Smooth scrolling for navbar links
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.navbar a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            const targetId = this.getAttribute('href').slice(1);
+            const target = document.getElementById(targetId);
+            if (target) {
+                e.preventDefault();
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Optionally update the URL hash
+                history.replaceState(null, null, '#' + targetId);
+            }
+        });
+    });
+});
+
+// Single DOMContentLoaded event listener for all initializations
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    const tooltipIcons = document.querySelectorAll('.tooltip-icon');
+    tooltipIcons.forEach(icon => {
+        icon.addEventListener('click', function() {
+            toggleTooltip(this);
+        });
+    });
+
+    // Initialize all status updates
+    updateAllServiceStatuses();
+    updateWeatherStatus();
+    
+    // Set up intervals for status updates
+    setInterval(updateAllServiceStatuses, 10000);  // Update service statuses every 10 seconds
+    setInterval(updateWeatherStatus, 30000);      // Update weather status every 30 seconds
+
+    // Initialize timezone dropdown
+    populateTimezones();
+
+    // Initialize line numbers for airports textarea
+    const textarea = document.getElementById('airportsText');
+    const lineNumbers = document.getElementById('line-numbers');
+    if (textarea && lineNumbers) {
+        updateLineNumbers(textarea, lineNumbers);
+        textarea.addEventListener('input', () => updateLineNumbers(textarea, lineNumbers));
+        textarea.addEventListener('scroll', () => {
+            lineNumbers.style.transform = `translateY(-${textarea.scrollTop}px)`;
+        });
+    }
+
+    // Restore scroll position if saved
+    const scrollPosition = sessionStorage.getItem('scrollPosition');
+    if (scrollPosition) {
+        window.scrollTo(0, parseInt(scrollPosition));
+        sessionStorage.removeItem('scrollPosition');
+    }
+});
+
+// Function to update line numbers
+function updateLineNumbers(textarea, lineNumbers) {
+    const lines = textarea.value.split('\n');
+    lineNumbers.innerHTML = lines.map((_, index) => `<div>${index + 1}</div>`).join('');
 }

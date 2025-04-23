@@ -30,7 +30,7 @@
         <div style="font-size: 1.1em; color: #cccccc; font-family: 'Orbitron', sans-serif; letter-spacing: 1px;">
             Settings & Configuration </br>
             Thanks for checking out this project! </br>
-            If you have any issues/comments/suggestions, please visit <a href="https://github.com/birdheezy/metarmap2.0">this link.</a>
+            If you have any issues/comments/suggestions, please visit <a href="https://github.com/Birdheezy/METARMap2.0/tree/production">this link.</a>
         </div>
     </div>
     <section>
@@ -62,8 +62,8 @@
         <br>
         <div style="margin-top: 5px;" class="weather-status">
                 <div class="service-status">
-                    <span class="status-dot" id="weather-status-dot"></span>
-                    <span class="status-text">WX Last Updated: <span id="weather-last-updated">{{ weather_last_modified }}</span></span>
+                    <span class="status-dot" id="map-weather-status-dot"></span>
+                    <span class="status-text">WX Last Updated: <span id="map-weather-last-updated">{{ weather_last_modified }}</span></span>
                     <div class="status-tooltip">
                         <span class="green-status">Green: Weather data is current (within expected update interval)</span><br>
                         <span class="red-status">Red: Weather data is stale (no updates for over 2x the update interval)</span>
@@ -180,6 +180,7 @@
             <h3 class="subsection-title">Automated Test</h3>
             <div class="test-buttons">
                 <button type="button" class="btn btn-primary" id="run-auto-test">Start Color Test</button>
+                <button class="btn btn-primary service-btn" onclick="controlService('metar', 'stop')">Stop METAR Service</button>
                 <button type="button" class="btn btn-primary" id="next-color" style="display: none;">Next Color</button>
                 <button type="button" class="btn btn-primary" id="stop-auto-test" style="display: none;">Stop Test</button>
             </div>
@@ -603,8 +604,8 @@
     		</div>
     		<div style="margin-top: 5px;" class="weather-status">
     			<div class="service-status">
-                    <span class="status-dot" id="weather-status-dot"></span>
-                    <span class="status-text">WX Last Updated: <span id="weather-last-updated">{{ weather_last_modified }}</span></span>
+                    <span class="status-dot" id="update-weather-status-dot"></span>
+                    <span class="status-text">WX Last Updated: <span id="update-weather-last-updated">{{ weather_last_modified }}</span></span>
                     <div class="status-tooltip">
                         <span class="green-status">Green: Weather data is current (within expected update interval)</span><br>
                         <span class="red-status">Red: Weather data is stale (no updates for over 2x the update interval)</span>
@@ -748,73 +749,6 @@
 <script>
     // Add constants
     const WEATHER_UPDATE_THRESHOLD = {{ weather_update_threshold }};
-    
-    // Weather status update function
-    function updateWeatherStatus() {
-        fetch('/weather-status')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update all instances of the timestamp text
-                    const lastUpdatedElements = document.querySelectorAll('#weather-last-updated');
-                    lastUpdatedElements.forEach(el => {
-                        el.textContent = data.last_updated;
-                    });
-                    
-                    // Calculate if the data is stale based on the timestamp
-                    const statusDots = document.querySelectorAll('#weather-status-dot');
-                    
-                    try {
-                        // Parse the date in MM-DD-YYYY HH:MM:SS format
-                        const lastUpdated = data.last_updated;
-                        if (lastUpdated !== "Weather data not available") {
-                            const parts = lastUpdated.split(' ');
-                            const dateParts = parts[0].split('-');
-                            const timeParts = parts[1].split(':');
-                            
-                            // Create date object (months are 0-indexed in JS)
-                            const updateTime = new Date(
-                                parseInt(dateParts[2]), // year
-                                parseInt(dateParts[0]) - 1, // month (0-indexed)
-                                parseInt(dateParts[1]), // day
-                                parseInt(timeParts[0]), // hour
-                                parseInt(timeParts[1]), // minute
-                                parseInt(timeParts[2])  // second
-                            );
-                            
-                            const now = new Date();
-                            const diffMinutes = (now - updateTime) / (1000 * 60);
-                            
-                            // Weather is considered stale if it's older than the threshold
-                            const staleThreshold = WEATHER_UPDATE_THRESHOLD;
-                            
-                            // Update all status dots
-                            statusDots.forEach(dot => {
-                                dot.style.backgroundColor = (diffMinutes < staleThreshold) ? 'green' : 'red';
-                            });
-                        } else {
-                            // If weather data is not available, set dots to red
-                            statusDots.forEach(dot => {
-                                dot.style.backgroundColor = 'red';
-                            });
-                        }
-                    } catch (e) {
-                        console.error("Error parsing date:", e);
-                        statusDots.forEach(dot => {
-                            dot.style.backgroundColor = 'red';
-                        });
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching weather status:', error);
-                // Set dots to red on error
-                const statusDots = document.querySelectorAll('#weather-status-dot');
-                statusDots.forEach(dot => {
-                    dot.style.backgroundColor = 'red';
-                });
-            });
-    }
     
     // Call initially and set interval
     updateWeatherStatus();

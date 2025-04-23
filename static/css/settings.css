@@ -46,14 +46,10 @@ body {
     background-color: #1f1f1f;
     padding: 15px;
     gap: 20px;
-    z-index: 1000;
+    z-index: 1000;  /* Increase z-index to be higher than map controls */
     flex-wrap: wrap;
     border-bottom: 2px solid #007bff;
     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
-}
-
-body {
-    padding-top: 40px;
 }
 
 #brightness, #time-settings, #animation, #airports, #wifi-settings, #color {

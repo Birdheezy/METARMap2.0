@@ -362,6 +362,9 @@ def edit_settings():
     except FileNotFoundError:
         weather_last_modified = "Weather data not available"
 
+    # Calculate the weather update threshold in minutes
+    weather_update_threshold = (config.WEATHER_UPDATE_INTERVAL / 60) * 2
+
     # Load the airport list from airports.txt
     with open('/home/pi/airports.txt', 'r') as f:
         airports = f.read()
@@ -424,6 +427,7 @@ def edit_settings():
         enable_https=config.ENABLE_HTTPS,
         pixel_pin=config.PIXEL_PIN,
         weather_update_interval=config.WEATHER_UPDATE_INTERVAL,
+        weather_update_threshold=weather_update_threshold,  # Pass the calculated value
         stale_indication=config.STALE_INDICATION,
         wifi_disconnected_color=wifi_disconnected_color,
         map_styles=map_styles
@@ -941,9 +945,50 @@ def apply_update():
         subprocess.run(['/usr/bin/git', 'fetch', 'origin', branch], check=True, cwd='/home/pi')
         subprocess.run(['/usr/bin/git', 'reset', '--hard', f'origin/{branch}'], check=True, cwd='/home/pi')
 
-        # Restore user files
-        print("Restoring user files...")
-        subprocess.run(['mv', '/tmp/config.py.tmp', '/home/pi/config.py'], check=True)
+        # Merge new configuration options from repository's config.py into user's config.py
+        print("Merging configuration options...")
+        try:
+            # Read the repository's config.py
+            with open('/home/pi/config.py', 'r') as f:
+                repo_config_lines = f.readlines()
+            
+            # Read the user's config.py
+            with open('/tmp/config.py.tmp', 'r') as f:
+                user_config_lines = f.readlines()
+            
+            # Extract variable names from both files
+            repo_vars = {}
+            for line in repo_config_lines:
+                if '=' in line and not line.strip().startswith('#'):
+                    var_name = line.split('=')[0].strip()
+                    repo_vars[var_name] = line
+            
+            user_vars = {}
+            for line in user_config_lines:
+                if '=' in line and not line.strip().startswith('#'):
+                    var_name = line.split('=')[0].strip()
+                    user_vars[var_name] = line
+            
+            # Create a merged config.py
+            with open('/home/pi/config.py', 'w') as f:
+                # First write all user variables
+                for var_name, line in user_vars.items():
+                    f.write(line)
+                
+                # Then add any new variables from the repository that aren't in the user's config
+                for var_name, line in repo_vars.items():
+                    if var_name not in user_vars:
+                        f.write(f"# Added from repository update\n{line}")
+            
+            print("Configuration merge completed successfully")
+        except Exception as merge_error:
+            print(f"Error merging configurations: {merge_error}")
+            # If merging fails, restore the user's config.py
+            subprocess.run(['mv', '/tmp/config.py.tmp', '/home/pi/config.py'], check=True)
+            print("Restored original config.py due to merge error")
+
+        # Restore airports.txt
+        print("Restoring airports.txt...")
         subprocess.run(['mv', '/tmp/airports.txt.tmp', '/home/pi/airports.txt'], check=True)
 
         # Clean up old backups (keep last 5)
