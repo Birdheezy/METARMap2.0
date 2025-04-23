@@ -599,7 +599,7 @@ async function applyUpdate() {
     }
 }
 
-// Airport Map Functionality
+// Initialize map when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize map if the element exists
     const mapElement = document.getElementById('airport-map');
@@ -655,29 +655,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 });
 
-                // Function to convert RGB tuple to hex color
-                function rgbToHex(r, g, b) {
-                    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-                }
-
-                // Function to get color based on flight category
-                function getMarkerColor(fltCat) {
-                    // Return colors directly for map display without LED conversion
-                    switch (fltCat ? fltCat.toLowerCase() : 'missing') {
-                        case 'vfr':
-                            return VFR_COLOR;
-                        case 'mvfr':
-                            return MVFR_COLOR;
-                        case 'ifr':
-                            return IFR_COLOR;
-                        case 'lifr':
-                            return LIFR_COLOR;
-                        case 'missing':
-                        default:
-                            return MISSING_COLOR;
-                    }
-                }
-
                 // Store markers in a layer group for easy removal
                 let markersLayer = L.layerGroup().addTo(map);
 
@@ -713,8 +690,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         .catch(error => console.error('Error updating airport markers:', error));
                 }
 
-                // Add airport markers
+                // Add airport markers initially
                 updateAirportMarkers();
+
+                // Update markers periodically
+                setInterval(updateAirportMarkers, 30000); // Update every 30 seconds
             })
             .catch(error => {
                 console.error('Error loading map settings:', error);
@@ -728,6 +708,31 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 });
+
+// Function to get marker color based on flight category
+function getMarkerColor(fltCat) {
+    // Handle null/undefined flight category
+    if (!fltCat) {
+        return MISSING_COLOR;
+    }
+    
+    // Convert to uppercase for consistency with backend
+    const category = fltCat.toUpperCase();
+    
+    switch (category) {
+        case 'VFR':
+            return VFR_COLOR;
+        case 'MVFR':
+            return MVFR_COLOR;
+        case 'IFR':
+            return IFR_COLOR;
+        case 'LIFR':
+            return LIFR_COLOR;
+        case 'MISSING':
+        default:
+            return MISSING_COLOR;
+    }
+}
 
 // LED Testing functionality
 document.addEventListener('DOMContentLoaded', function() {
@@ -744,42 +749,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const color = document.getElementById('custom-led-color').value;
         testLEDs(color);
     });
-
-    // Brightness control
-    const brightnessInput = document.getElementById('test-brightness');
-    if (brightnessInput) {
-        brightnessInput.addEventListener('change', async function() {
-            const brightness = parseFloat(this.value);
-            if (brightness >= 0.01 && brightness <= 1.0) {
-                try {
-                    const response = await fetch('/update-brightness', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ brightness: brightness })
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to update brightness');
-                    }
-                    
-                    const result = await response.json();
-                    if (result.success) {
-                        showNotification('Brightness updated successfully', 'success');
-                    } else {
-                        showNotification(result.error || 'Failed to update brightness', 'error');
-                    }
-                } catch (error) {
-                    console.error('Error updating brightness:', error);
-                    showNotification('Failed to update brightness: ' + error.message, 'error');
-                }
-            } else {
-                showNotification('Brightness must be between 0.01 and 1.0', 'error');
-                this.value = 0.5; // Reset to default if invalid
-            }
-        });
-    }
 
     // Handle turn off button
     document.getElementById('turn-off-leds')?.addEventListener('click', function() {
@@ -952,7 +921,10 @@ function testLEDs(color) {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ color: color })
+        body: JSON.stringify({ 
+            color: color,
+            brightness: 0.3  // Fixed brightness at 0.3
+        })
     })
     .then(response => response.json())
     .then(data => {
@@ -997,7 +969,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Set up intervals for status updates
     setInterval(updateAllServiceStatuses, 10000);  // Update service statuses every 10 seconds
-    setInterval(updateWeatherStatus, 30000);      // Update weather status every 30 seconds
+    setInterval(updateWeatherStatus, 10000);      // Update weather status every 10 seconds
 
     // Initialize timezone dropdown
     populateTimezones();
@@ -1025,4 +997,36 @@ document.addEventListener('DOMContentLoaded', function() {
 function updateLineNumbers(textarea, lineNumbers) {
     const lines = textarea.value.split('\n');
     lineNumbers.innerHTML = lines.map((_, index) => `<div>${index + 1}</div>`).join('');
+}
+
+// Function to manually update weather
+async function updateWeatherManually() {
+    try {
+        // Show a loading toast
+        showToast('Updating weather data...', 'info');
+
+        const response = await fetch('/update-weather', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showToast('Weather updated successfully', 'success');
+            // Update the weather status display
+            updateWeatherStatus();
+            // If we're on the map page, update the markers
+            if (typeof updateAirportMarkers === 'function') {
+                updateAirportMarkers();
+            }
+        } else {
+            showToast(data.message || 'Failed to update weather', 'danger');
+        }
+    } catch (error) {
+        console.error('Error updating weather:', error);
+        showToast('Error updating weather: ' + error.message, 'danger');
+    }
 }

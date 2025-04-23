@@ -55,6 +55,94 @@ update_system() {
     fi
 }
 
+# Function to setup Git repository
+setup_git() {
+    print_section_header "Git Repository Setup"
+    echo -e "${YELLOW}This will download all the necessary files for METARMap${NC}"
+    echo ""
+
+    # Install Git
+    echo -ne "${CYAN}Installing Git... ${NC}"
+    if sudo apt install git -y > /dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗ Failed${NC}"
+        return 1
+    fi
+
+    cd /home/pi || return 1
+
+    # Let user choose branch
+    echo -e "\n${CYAN}Choose which branch to install:${NC}"
+    echo -e "  ${MAGENTA}1)${NC} ${GREEN}production${NC} (stable branch)"
+    echo -e "  ${MAGENTA}2)${NC} ${GREEN}main${NC} (beta/development branch)"
+
+    read -p "$(echo -e "${CYAN}Enter choice (1 or 2): ${NC}")" BRANCH_CHOICE
+
+    case $BRANCH_CHOICE in
+        1|"") BRANCH="production" ;;
+        2) BRANCH="main" ;;
+        *)
+            echo -e "${RED}✗ Invalid choice${NC}"
+            return 1
+            ;;
+    esac
+
+    # Initialize git repo
+    echo -ne "${CYAN}Initializing Git repository with ${YELLOW}$BRANCH${CYAN} branch... ${NC}"
+    if git init -b "$BRANCH" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗ Failed${NC}"
+        return 1
+    fi
+
+    # Add remote origin
+    echo -ne "${CYAN}Adding remote repository... ${NC}"
+    if git remote add origin https://github.com/Birdheezy/METARMap2.0 > /dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗ Failed${NC}"
+        return 1
+    fi
+
+    # Fetch branches
+    echo -ne "${CYAN}Fetching repository branches... ${NC}"
+    if git fetch origin > /dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗ Failed${NC}"
+        return 1
+    fi
+
+    # Checkout selected branch with force
+    echo -ne "${CYAN}Setting up ${YELLOW}$BRANCH${CYAN} branch... ${NC}"
+    if git checkout -f -b "$BRANCH" "origin/$BRANCH" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗ Failed${NC}"
+        return 1
+    fi
+
+    # Pull latest changes with force
+    echo -ne "${CYAN}Pulling latest changes... ${NC}"
+    if git pull -f origin "$BRANCH" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗ Failed${NC}"
+        return 1
+    fi
+
+    # Set ownership
+    echo -ne "${CYAN}Setting file ownership... ${NC}"
+    sudo chown -R pi:pi /home/pi > /dev/null 2>&1
+    echo -e "${GREEN}✓${NC}"
+
+    echo -e "\n${GREEN}✓ Git repository setup completed successfully${NC}"
+    echo -e "Installed branch: ${GREEN}$BRANCH${NC}"
+    return 0
+}
+
 # Function to create virtual environment
 create_venv() {
     local venv_name=$1
@@ -139,6 +227,55 @@ case ${VENV_SETUP_CHOICE,,} in
         ;;
 esac
 
+# Add Git installation prompt
+print_section_header "Software Installation"
+echo -e "${YELLOW}This step will download all the necessary files for METARMap${NC}"
+echo -e "${YELLOW}from the GitHub repository.${NC}"
+echo ""
+
+read -e -p "$(echo -e "${CYAN}Would you like to install Git and clone the required files? [Y/n]: ${NC}")" GIT_CHOICE
+GIT_CHOICE=${GIT_CHOICE:-y}
+case ${GIT_CHOICE,,} in
+    [Yy]*|"")
+        # Set default branch to production
+        BRANCH="production"
+        setup_git
+        ;;
+    [Nn]*)
+        echo -e "${YELLOW}⚠ Skipping Git installation${NC}"
+        ;;
+    *)
+        echo -e "${RED}✗ Invalid input${NC}"
+        ;;
+esac
+
+# Add package installation prompt
+print_section_header "Python Package Installation"
+echo -e "${YELLOW}The following packages are required for METARMap:${NC}"
+echo -e "  ${CYAN}• adafruit-circuitpython-neopixel${NC} - LED control"
+echo -e "  ${CYAN}• flask${NC} - web interface"
+echo -e "  ${CYAN}• requests${NC} - API communication"
+echo -e "  ${CYAN}• schedule${NC} - task automation"
+echo ""
+
+read -e -p "$(echo -e "${CYAN}Would you like to install the required packages? [Y/n]: ${NC}")" PACKAGES_CHOICE
+PACKAGES_CHOICE=${PACKAGES_CHOICE:-y}
+case ${PACKAGES_CHOICE,,} in
+    [Yy]*|"")
+        if [ -n "$VENV_NAME" ]; then
+            install_packages "$VENV_NAME"
+        else
+            echo -e "${RED}✗ Virtual environment name not set${NC}"
+        fi
+        ;;
+    [Nn]*)
+        echo -e "${YELLOW}⚠ Skipping package installation${NC}"
+        ;;
+    *)
+        echo -e "${RED}✗ Invalid input${NC}"
+        ;;
+esac
+
 # Function to install Python packages
 install_packages() {
     local venv_name=$1
@@ -176,33 +313,6 @@ install_packages() {
     echo -e "\n${GREEN}✓ All packages installed successfully${NC}"
     return 0
 }
-
-# Add package installation prompt
-print_section_header "Python Package Installation"
-echo -e "${YELLOW}The following packages are required for METARMap:${NC}"
-echo -e "  ${CYAN}• adafruit-circuitpython-neopixel${NC} - LED control"
-echo -e "  ${CYAN}• flask${NC} - web interface"
-echo -e "  ${CYAN}• requests${NC} - API communication"
-echo -e "  ${CYAN}• schedule${NC} - task automation"
-echo ""
-
-read -e -p "$(echo -e "${CYAN}Would you like to install the required packages? [Y/n]: ${NC}")" PACKAGES_CHOICE
-PACKAGES_CHOICE=${PACKAGES_CHOICE:-y}
-case ${PACKAGES_CHOICE,,} in
-    [Yy]*|"")
-        if [ -n "$VENV_NAME" ]; then
-            install_packages "$VENV_NAME"
-        else
-            echo -e "${RED}✗ Virtual environment name not set${NC}"
-        fi
-        ;;
-    [Nn]*)
-        echo -e "${YELLOW}⚠ Skipping package installation${NC}"
-        ;;
-    *)
-        echo -e "${RED}✗ Invalid input${NC}"
-        ;;
-esac
 
 # Function to setup WiFi broadcasting
 setup_wifi_broadcast() {
@@ -284,6 +394,9 @@ setup_accesspopup() {
         return 0
     fi
 }
+
+# Add WiFi broadcasting setup prompt
+setup_wifi_broadcast
 
 # Function to install a service
 install_service() {
@@ -394,7 +507,7 @@ enable_services() {
     if sudo systemctl daemon-reload > /dev/null 2>&1; then
         echo -e "${GREEN}✓${NC}"
 
-        local services=("metar.service" "settings.service" "scheduler.service" "led-test.service")
+        local services=("metar.service" "settings.service" "scheduler.service")
         for service in "${services[@]}"; do
             echo -ne "${CYAN}Enabling ${service}... ${NC}"
             if sudo systemctl enable "$service" > /dev/null 2>&1; then
@@ -426,7 +539,7 @@ case ${SERVICES_CHOICE,,} in
         create_service_file "metar.service" "$METAR_SERVICE"
         create_service_file "settings.service" "$SETTINGS_SERVICE"
         create_service_file "scheduler.service" "$SCHEDULER_SERVICE"
-        create_service_file "led-test.service" "$LED_TEST_SERVICE"
+        create_service_file "ledtest.service" "$LED_TEST_SERVICE"
 
         # Enable required services
         enable_services
@@ -444,6 +557,46 @@ case ${SERVICES_CHOICE,,} in
         echo -e "${RED}✗ Invalid input${NC}"
         ;;
 esac
+
+# Function to setup aliases
+setup_aliases() {
+    local ALIASES="alias blank='sudo /home/pi/metar/bin/python3 blank.py'
+alias metar='sudo /home/pi/metar/bin/python3 '
+alias startmetar='sudo systemctl start metar.service'
+alias startscheduler='sudo systemctl start scheduler.service'
+alias startsettings='sudo systemctl start settings.service'
+alias startledtest='sudo systemctl start ledtest.service'
+alias stopmetar='sudo systemctl stop metar.service'
+alias stopsettings='sudo systemctl stop settings.service'
+alias stopscheduler='sudo systemctl stop scheduler.service'
+alias stopledtest='sudo systemctl stop ledtest.service'
+alias restartmetar='sudo systemctl restart metar.service'
+alias restartsettings='sudo systemctl restart settings.service'
+alias restartscheduler='sudo systemctl restart scheduler.service'
+alias restartledtest='sudo systemctl restart ledtest.service'
+alias metarstatus='sudo systemctl status metar.service'
+alias settingsstatus='sudo systemctl status settings.service'
+alias schedulerstatus='sudo systemctl status scheduler.service'
+alias ledteststatus='sudo systemctl status ledtest.service'
+
+# LED Test commands
+alias testleds='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py'
+alias ledtest='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py'
+alias ledtest-red='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py red'
+alias ledtest-green='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py green'
+alias ledtest-blue='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py blue'
+alias ledtest-off='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py off'"
+
+    echo -ne "${CYAN}Installing command aliases... ${NC}"
+    # Write aliases to the pi user's .bash_aliases file
+    echo "$ALIASES" | sudo -u pi tee /home/pi/.bash_aliases > /dev/null
+
+    echo -e "${GREEN}✓${NC}"
+    echo -e "${YELLOW}To use the aliases in your current session, run:${NC}"
+    echo -e "    ${CYAN}source /home/pi/.bash_aliases${NC}"
+    echo -e "${YELLOW}Or log out and log back in for aliases to take effect automatically.${NC}"
+    return 0
+}
 
 # Add Command Aliases Setup right after Service Installation
 print_section_header "Command Aliases Setup"
@@ -467,54 +620,6 @@ case ${ALIAS_CHOICE,,} in
         echo -e "${RED}✗ Invalid input${NC}"
         ;;
 esac
-
-# Function to setup SSL certificate
-setup_ssl() {
-    print_section_header "SSL Certificate Setup"
-    echo -e "${YELLOW}You will be prompted to enter certificate information.${NC}"
-    echo -e "${CYAN}Important: When asked for 'Common Name', enter your Pi's local IP address${NC}"
-    echo -e "${CYAN}For other fields, you can press '.' to leave them blank${NC}"
-    echo -e "Press ${GREEN}Enter${NC} when ready..."
-    read
-
-    # Generate SSL certificate
-    echo -e "${CYAN}Generating SSL certificate...${NC}"
-    if ! sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-        -keyout /etc/ssl/private/flask-selfsigned.key \
-        -out /etc/ssl/certs/flask-selfsigned.crt; then
-        echo -e "${RED}✗ Failed to generate SSL certificate${NC}"
-        return 1
-    fi
-
-    # Update config.py to enable HTTPS
-    local CONFIG_FILE="/home/pi/config.py"
-    if [ -f "$CONFIG_FILE" ]; then
-        echo -ne "${CYAN}Updating config.py to enable HTTPS... ${NC}"
-
-        # Create backup
-        sudo cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
-
-        # Replace ENABLE_HTTPS value or add it if it doesn't exist
-        if grep -q "ENABLE_HTTPS" "$CONFIG_FILE"; then
-            sudo sed -i 's/ENABLE_HTTPS *= *False/ENABLE_HTTPS = True/' "$CONFIG_FILE"
-            sudo sed -i 's/ENABLE_HTTPS *= *True/ENABLE_HTTPS = True/' "$CONFIG_FILE"
-        else
-            echo "ENABLE_HTTPS = True" | sudo tee -a "$CONFIG_FILE" > /dev/null
-        fi
-
-        # Verify the change
-        if grep -q "ENABLE_HTTPS = True" "$CONFIG_FILE"; then
-            echo -e "${GREEN}✓${NC}"
-        else
-            echo -e "${RED}⚠ Warning: Failed to update ENABLE_HTTPS in config.py${NC}"
-        fi
-    else
-        echo -e "${RED}✗ Error: config.py not found at $CONFIG_FILE${NC}"
-        return 1
-    fi
-
-    return 0
-}
 
 # Function to disable HTTPS in config
 disable_https() {
@@ -545,6 +650,76 @@ disable_https() {
     fi
 }
 
+# Function to setup SSL certificate
+setup_ssl() {
+    print_section_header "SSL Certificate Setup"
+    echo -e "${YELLOW}Generating self-signed SSL certificate...${NC}"
+
+    # Create directory for certificates if it doesn't exist
+    sudo mkdir -p /etc/metar/ssl
+
+    # Generate SSL certificate
+    echo -ne "${CYAN}Generating SSL certificate... ${NC}"
+    if sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+        -keyout /etc/metar/ssl/metar.key \
+        -out /etc/metar/ssl/metar.crt \
+        -subj "/C=US/ST=State/L=City/O=METARMap/CN=metar.local" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗ Failed to generate SSL certificate${NC}"
+        return 1
+    fi
+
+    # Set proper permissions
+    echo -ne "${CYAN}Setting certificate permissions... ${NC}"
+    if sudo chmod 644 /etc/metar/ssl/metar.crt && \
+       sudo chmod 600 /etc/metar/ssl/metar.key && \
+       sudo chown -R pi:pi /etc/metar/ssl; then
+        echo -e "${GREEN}✓${NC}"
+    else
+        echo -e "${RED}✗ Failed to set permissions${NC}"
+        return 1
+    fi
+
+    # Update config.py to enable HTTPS
+    local CONFIG_FILE="/home/pi/config.py"
+    if [ -f "$CONFIG_FILE" ]; then
+        echo -ne "${CYAN}Updating config.py to enable HTTPS... ${NC}"
+
+        # Create backup
+        sudo cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
+
+        # Update or add SSL configuration
+        if grep -q "ENABLE_HTTPS" "$CONFIG_FILE"; then
+            sudo sed -i 's/ENABLE_HTTPS *= *False/ENABLE_HTTPS = True/' "$CONFIG_FILE"
+            sudo sed -i 's/ENABLE_HTTPS *= *True/ENABLE_HTTPS = True/' "$CONFIG_FILE"
+        else
+            echo "ENABLE_HTTPS = True" | sudo tee -a "$CONFIG_FILE" > /dev/null
+        fi
+
+        # Add SSL certificate paths if they don't exist
+        if ! grep -q "SSL_CERT" "$CONFIG_FILE"; then
+            echo "SSL_CERT = '/etc/metar/ssl/metar.crt'" | sudo tee -a "$CONFIG_FILE" > /dev/null
+            echo "SSL_KEY = '/etc/metar/ssl/metar.key'" | sudo tee -a "$CONFIG_FILE" > /dev/null
+        fi
+
+        # Verify the changes
+        if grep -q "ENABLE_HTTPS = True" "$CONFIG_FILE"; then
+            echo -e "${GREEN}✓${NC}"
+        else
+            echo -e "${RED}⚠ Warning: Failed to update ENABLE_HTTPS in config.py${NC}"
+        fi
+    else
+        echo -e "${RED}✗ Error: config.py not found at $CONFIG_FILE${NC}"
+        return 1
+    fi
+
+    echo -e "\n${GREEN}✓ SSL setup completed successfully${NC}"
+    echo -e "${YELLOW}Note: Since this is a self-signed certificate, browsers will show a security warning.${NC}"
+    echo -e "${YELLOW}This is normal for self-signed certificates.${NC}"
+    return 0
+}
+
 # Add SSL setup prompt
 print_section_header "SSL Certificate Setup"
 echo -e "${YELLOW}Setting up HTTPS will:${NC}"
@@ -568,47 +743,6 @@ case ${SSL_CHOICE,,} in
         echo -e "${RED}✗ Invalid input${NC}"
         ;;
 esac
-
-# Function to setup aliases
-setup_aliases() {
-    local ALIASES="alias blank='sudo /home/pi/metar/bin/python3 blank.py'
-alias metar='sudo /home/pi/metar/bin/python3 '
-alias startmetar='sudo systemctl start metar.service'
-alias startscheduler='sudo systemctl start scheduler.service'
-alias startsettings='sudo systemctl start settings.service'
-alias startledtest='sudo systemctl start led-test.service'
-alias stopmetar='sudo systemctl stop metar.service'
-alias stopsettings='sudo systemctl stop settings.service'
-alias stopscheduler='sudo systemctl stop scheduler.service'
-alias stopledtest='sudo systemctl stop led-test.service'
-alias restartmetar='sudo systemctl restart metar.service'
-alias restartsettings='sudo systemctl restart settings.service'
-alias restartscheduler='sudo systemctl restart scheduler.service'
-alias restartledtest='sudo systemctl restart led-test.service'
-alias metarstatus='sudo systemctl status metar.service'
-alias settingsstatus='sudo systemctl status settings.service'
-alias schedulerstatus='sudo systemctl status scheduler.service'
-alias ledteststatus='sudo systemctl status led-test.service'
-
-# LED Test commands
-alias testleds='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py'
-alias ledtest='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py'
-alias ledtest-red='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py red'
-alias ledtest-green='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py green'
-alias ledtest-blue='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py blue'
-alias ledtest-off='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py off'
-
-
-    echo -ne "${CYAN}Installing command aliases... ${NC}"
-    # Write aliases to the pi user's .bash_aliases file
-    echo "$ALIASES" | sudo -u pi tee /home/pi/.bash_aliases > /dev/null
-
-    echo -e "${GREEN}✓${NC}"
-    echo -e "${YELLOW}To use the aliases in your current session, run:${NC}"
-    echo -e "    ${CYAN}source /home/pi/.bash_aliases${NC}"
-    echo -e "${YELLOW}Or log out and log back in for aliases to take effect automatically.${NC}"
-    return 0
-}
 
 # Function to install Tailscale
 install_tailscale() {
@@ -701,115 +835,6 @@ case ${TAILSCALE_CHOICE,,} in
         ;;
     [Nn]*|"")
         echo -e "${YELLOW}⚠ Skipping Tailscale installation${NC}"
-        ;;
-    *)
-        echo -e "${RED}✗ Invalid input${NC}"
-        ;;
-esac
-
-setup_git() {
-    print_section_header "Git Repository Setup"
-    echo -e "${YELLOW}This will download all the necessary files for METARMap${NC}"
-    echo ""
-
-    # Install Git
-    echo -ne "${CYAN}Installing Git... ${NC}"
-    if sudo apt install git -y > /dev/null 2>&1; then
-        echo -e "${GREEN}✓${NC}"
-    else
-        echo -e "${RED}✗ Failed${NC}"
-        return 1
-    fi
-
-    cd /home/pi || return 1
-
-    # Let user choose branch
-    echo -e "\n${CYAN}Choose which branch to install:${NC}"
-    echo -e "  ${MAGENTA}1)${NC} ${GREEN}main${NC} (beta/development branch)"
-    echo -e "  ${MAGENTA}2)${NC} ${GREEN}production${NC} (stable branch)"
-    
-    read -p "$(echo -e "${CYAN}Enter choice (1 or 2): ${NC}")" BRANCH_CHOICE
-
-    case $BRANCH_CHOICE in
-        1) BRANCH="main" ;;
-        2) BRANCH="production" ;;
-        *)
-            echo -e "${RED}✗ Invalid choice${NC}"
-            return 1
-            ;;
-    esac
-
-    # Initialize git repo
-    echo -ne "${CYAN}Initializing Git repository with ${YELLOW}$BRANCH${CYAN} branch... ${NC}"
-    if git init -b "$BRANCH" > /dev/null 2>&1; then
-        echo -e "${GREEN}✓${NC}"
-    else
-        echo -e "${RED}✗ Failed${NC}"
-        return 1
-    fi
-
-    # Add remote origin
-    echo -ne "${CYAN}Adding remote repository... ${NC}"
-    if git remote add origin https://github.com/Birdheezy/METARMap2.0 > /dev/null 2>&1; then
-        echo -e "${GREEN}✓${NC}"
-    else
-        echo -e "${RED}✗ Failed${NC}"
-        return 1
-    fi
-
-    # Fetch branches
-    echo -ne "${CYAN}Fetching repository branches... ${NC}"
-    if git fetch origin > /dev/null 2>&1; then
-        echo -e "${GREEN}✓${NC}"
-    else
-        echo -e "${RED}✗ Failed${NC}"
-        return 1
-    fi
-
-    # Checkout selected branch with force
-    echo -ne "${CYAN}Setting up ${YELLOW}$BRANCH${CYAN} branch... ${NC}"
-    if git checkout -f -b "$BRANCH" "origin/$BRANCH" > /dev/null 2>&1; then
-        echo -e "${GREEN}✓${NC}"
-    else
-        echo -e "${RED}✗ Failed${NC}"
-        return 1
-    fi
-
-    # Pull latest changes with force
-    echo -ne "${CYAN}Pulling latest changes... ${NC}"
-    if git pull -f origin "$BRANCH" > /dev/null 2>&1; then
-        echo -e "${GREEN}✓${NC}"
-    else
-        echo -e "${RED}✗ Failed${NC}"
-        return 1
-    fi
-
-    # Set ownership
-    echo -ne "${CYAN}Setting file ownership... ${NC}"
-    sudo chown -R pi:pi /home/pi > /dev/null 2>&1
-    echo -e "${GREEN}✓${NC}"
-
-    echo -e "\n${GREEN}✓ Git repository setup completed successfully${NC}"
-    echo -e "Installed branch: ${GREEN}$BRANCH${NC}"
-    return 0
-}
-
-# Add Git installation prompt
-print_section_header "Software Installation"
-echo -e "${YELLOW}This step will download all the necessary files for METARMap${NC}"
-echo -e "${YELLOW}from the GitHub repository.${NC}"
-echo ""
-
-read -e -p "$(echo -e "${CYAN}Would you like to install Git and clone the required files? [Y/n]: ${NC}")" GIT_CHOICE
-GIT_CHOICE=${GIT_CHOICE:-y}
-case ${GIT_CHOICE,,} in
-    [Yy]*|"")
-        # Modify setup_git function to default to production branch
-        BRANCH="production"  # Set default branch
-        setup_git
-        ;;
-    [Nn]*)
-        echo -e "${YELLOW}⚠ Skipping Git installation${NC}"
         ;;
     *)
         echo -e "${RED}✗ Invalid input${NC}"

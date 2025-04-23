@@ -58,7 +58,7 @@ def is_metar_running():
     except subprocess.CalledProcessError:
         return False
 
-def update_weather():
+def update_weather(force=False):
     """Update weather data directly using the weather module."""
     global weather_update_lock
     
@@ -67,7 +67,7 @@ def update_weather():
         return
         
     try:
-        if not is_metar_running():
+        if not force and not is_metar_running():
             logger.info("Skipping weather update - METAR service is not running.")
             return
         
@@ -85,8 +85,6 @@ def update_weather():
                 logger.error("Failed to parse weather data")
         else:
             logger.error("Failed to fetch weather data")
-    except Exception as e:
-        logger.error(f"Error updating weather data: {e}")
     finally:
         weather_update_lock.release()
 

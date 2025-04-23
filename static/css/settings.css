@@ -1115,26 +1115,20 @@ input[type="color"]::-webkit-color-swatch {
 /* LED Testing Section Styles */
 .dark-section {
     background-color: #1a1a1a;
-    color: #cccccc;
-    border-radius: 8px;
-    margin: 20px 0;
     padding: 20px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    margin-bottom: 20px;
 }
 
 .section-title {
     color: #007bff;
-    font-family: 'Orbitron', sans-serif;
     text-align: center;
-    padding: 20px 0;
-    margin: 0;
-    text-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+    margin-bottom: 20px;
 }
 
 .subsection-title {
-    color: #007bff;
-    font-size: 1.2em;
-    margin: 15px 0;
+    color: #ffffff;
+    margin-bottom: 15px;
     text-align: center;
 }
 
@@ -1142,155 +1136,114 @@ input[type="color"]::-webkit-color-swatch {
     margin-bottom: 30px;
 }
 
-.color-buttons {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(2, 1fr);
-    gap: 10px;
-    margin: 15px 0;
-    max-width: 500px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.color-buttons .btn {
-    width: 100%;
-    min-width: 120px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.custom-color-test {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin: 15px 0;
-    max-width: 500px;
-    margin-left: auto;
-    margin-right: auto;
-    align-items: center;  /* This will vertically center all items */
-}
-
-.custom-color-test label {
-    justify-self: end;
-    margin: 0;
-    padding-right: 10px;
-}
-
-.custom-color-test input[type="color"] {
-    width: 100%;
-    min-width: 120px;
-    height: 40px;
-    padding: 5px;
-    border-radius: 4px;
-    background: #333;
-    justify-self: center;
-}
-
-.custom-color-test .btn {
-    width: 100%;
-    min-width: 120px;
-    height: 40px;
-    justify-self: start;
-}
-
-.brightness-control {
-    margin: 20px 0;
-    text-align: center;
-}
-
-.dark-input {
-    background-color: #333333 !important;
-    color: #ffffff !important;
-    border: 1px solid #444 !important;
-}
-
-.dark-input:focus {
-    background-color: #404040 !important;
-    border-color: #007bff !important;
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
-}
-
-.led-controls {
-    text-align: center;
-    margin-top: 20px;
-}
-
 .test-buttons {
     display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin: 15px 0;
-    max-width: 500px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.test-buttons .btn {
-    min-width: 120px;
-    height: 40px;
-    display: flex;
+    flex-direction: column;
+    gap: 15px;
     align-items: center;
-    justify-content: center;
 }
 
-/* Center the Start Color Test button when it's alone */
-#run-auto-test {
+.button-row {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    width: 100%;
+}
+
+.button-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    width: 100%;
+    max-width: 600px;
     margin: 0 auto;
 }
 
-/* When Next Color and Stop Test are visible, position them properly */
-#next-color {
-    grid-column: 1;
+.btn {
+    min-width: 150px;
+    height: 40px;
+    font-size: 14px;
 }
 
-#stop-auto-test {
-    grid-column: 3;
+.custom-color-test,
+.brightness-control,
+.led-controls {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
 }
 
-#test-progress {
-    margin: 15px 0;
+.input-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
 }
 
-.progress {
-    background-color: #1a1a1a;
-    height: 10px;
-    border-radius: 5px;
-    margin: 10px 0;
+.input-group label {
+    color: #ffffff;
+    margin-bottom: 0;
 }
 
-.progress-bar {
-    background-color: #007bff;
-    width: 0%;
-    transition: width 0.3s ease;
-}
-
-#test-status {
-    text-align: center;
-    color: #007bff;
-}
-
-/* Style adjustments for input elements */
-input[type="color"] {
+.input-group input[type="color"] {
     width: 60px;
     height: 30px;
     padding: 0;
     border: none;
     border-radius: 4px;
-    background: none;
 }
 
-input[type="number"].dark-input {
-    max-width: 100px;
-    margin: 0 auto;
-    display: block;
+.input-group input[type="number"] {
+    width: 80px;
+    height: 30px;
+    text-align: center;
+    background-color: #2a2a2a;
+    color: #ffffff;
+    border: 1px solid #3a3a3a;
 }
 
-/* Label styles */
-#led-testing label {
-    color: #cccccc;
-    margin-bottom: 5px;
-    display: inline-block;
+#test-progress {
+    margin-top: 20px;
+    width: 100%;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.progress {
+    height: 20px;
+    background-color: #2a2a2a;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.progress-bar {
+    background-color: #007bff;
+    transition: width 0.3s ease;
+}
+
+#test-status {
+    color: #ffffff;
+    text-align: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .button-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .button-row {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
+    .input-group {
+        flex-direction: column;
+        gap: 5px;
+    }
 }

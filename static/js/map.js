@@ -33,11 +33,14 @@ function initializeAirportMap(containerId, colorConfig, mapCenter, mapZoom) {
         
         // Function to get marker color based on flight category
         getMarkerColor: function(fltCat) {
-            switch(fltCat) {
+            // Convert to uppercase for consistency
+            const category = fltCat ? fltCat.toUpperCase() : 'MISSING';
+            switch(category) {
                 case 'VFR': return vfrColor;
                 case 'MVFR': return mvfrColor;
                 case 'IFR': return ifrColor;
                 case 'LIFR': return lifrColor;
+                case 'MISSING':
                 default: return missingColor;
             }
         },

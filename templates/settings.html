@@ -17,8 +17,8 @@
 <nav class="navbar">
     <a href="#brightness">Brightness</a>
     <a href="#color">Color</a>
-    <a href="#time-settings">Time</a>
     <a href="#animation">Animation</a>
+    <a href="#time-settings">Time</a>
     <a href="#airports">Airports</a>
     <a href="#wifi-settings">Wifi</a>
 </nav>
@@ -179,10 +179,14 @@
         <div class="test-section">
             <h3 class="subsection-title">Automated Test</h3>
             <div class="test-buttons">
-                <button type="button" class="btn btn-primary" id="run-auto-test">Start Color Test</button>
-                <button class="btn btn-primary service-btn" onclick="controlService('metar', 'stop')">Stop METAR Service</button>
-                <button type="button" class="btn btn-primary" id="next-color" style="display: none;">Next Color</button>
-                <button type="button" class="btn btn-primary" id="stop-auto-test" style="display: none;">Stop Test</button>
+                <div class="button-row">
+                    <button type="button" class="btn btn-primary" id="run-auto-test">Start Color Test</button>
+                    <button type="button" class="btn btn-primary service-btn" onclick="event.preventDefault(); controlService('metar', 'stop')">Stop METAR Service</button>
+                </div>
+                <div class="button-row">
+                    <button type="button" class="btn btn-primary" id="next-color" style="display: none;">Next Color</button>
+                    <button type="button" class="btn btn-primary" id="stop-auto-test" style="display: none;">Stop Test</button>
+                </div>
             </div>
             <div id="test-progress" style="display: none;">
                 <div class="progress">
@@ -196,25 +200,23 @@
         <div class="test-section">
             <h3 class="subsection-title">Manual Test</h3>
             <div class="color-buttons">
-                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ vfr_color }}">Test VFR</button>
-                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ mvfr_color }}">Test MVFR</button>
-                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ ifr_color }}">Test IFR</button>
-                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ lifr_color }}">Test LIFR</button>
-                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ lightening_color }}">Test Lightning</button>
-                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ snowy_color }}">Test Snow</button>
+                <div class="button-grid">
+                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ vfr_color }}">Test VFR</button>
+                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ mvfr_color }}">Test MVFR</button>
+                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ ifr_color }}">Test IFR</button>
+                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ lifr_color }}">Test LIFR</button>
+                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ lightening_color }}">Test Lightning</button>
+                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ snowy_color }}">Test Snow</button>
+                </div>
             </div>
             
             <!-- Custom Color Test -->
             <div class="custom-color-test">
-                <label for="custom-led-color">Custom Color:</label>
-                <input type="color" id="custom-led-color" value="#ffffff">
-                <button type="button" class="btn btn-primary" id="test-custom-color">Test</button>
-            </div>
-
-            <!-- Brightness Control -->
-            <div class="brightness-control">
-                <label for="test-brightness">Brightness (0.01 to 1.0):</label>
-                <input type="number" id="test-brightness" min="0.01" max="1.0" step="0.01" value="0.5" class="form-control input-small dark-input">
+                <div class="input-group">
+                    <label for="custom-led-color">Custom Color:</label>
+                    <input type="color" id="custom-led-color" value="#ffffff">
+                    <button type="button" class="btn btn-primary" id="test-custom-color">Test</button>
+                </div>
             </div>
 
             <!-- All Off Button -->
@@ -595,11 +597,11 @@
     	<div class="mt-4">
     		<div class="dropdown-container">
     			<div>
-    				<a href="{{ url_for('update_weather_page') }}" class="btn btn-primary">Update Weather</a>
-    				<span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+    				<button type="button" class="btn btn-primary" onclick="updateWeatherManually()">Update Weather</button>
     			</div>
     			<div class="dropdown-content" style="display: none;">
     				This will force an immediate weather update for all airports.<br>
+    				This works even when the METAR service is stopped.
     			</div>
     		</div>
     		<div style="margin-top: 5px;" class="weather-status">

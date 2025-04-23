@@ -103,12 +103,13 @@ def update_weather_page():
 
 @app.route('/update-weather', methods=['POST'])
 def refresh_weather():
+    """Endpoint to manually trigger a weather update."""
     try:
-        # Use the scheduler's update_weather function
-        scheduler_update_weather()
-        return jsonify({"status": "Weather update requested"}), 200
+        scheduler_update_weather(force=True)  # Force update regardless of service state
+        return jsonify({'status': 'success', 'message': 'Weather update requested'})
     except Exception as e:
-        return jsonify({"status": f"Error requesting weather update: {str(e)}"}), 500
+        app.logger.error(f"Error requesting weather update: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/leds/status', methods=['GET'])
 def get_led_status():
