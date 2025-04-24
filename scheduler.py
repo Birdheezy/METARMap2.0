@@ -142,11 +142,18 @@ def monitor_config_changes(config_file):
         if current_time - last_check >= 5:
             current_modified = os.path.getmtime(config_file)
             if current_modified != last_modified:
-                logger.info("Detected config.py changes. Reloading schedules...")
+                logger.info("Detected config.py changes. Reloading schedules and restarting METAR service...")
                 last_modified = current_modified
                 
                 # Reload the config module to get updated values
                 importlib.reload(config)
+                
+                # Restart the METAR service to apply all config changes
+                try:
+                    subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
+                    logger.info("METAR service restarted successfully")
+                except subprocess.CalledProcessError as e:
+                    logger.error(f"Error restarting METAR service: {e}")
                 
                 # Reschedule with the updated values
                 schedule_lights()

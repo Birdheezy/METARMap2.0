@@ -174,26 +174,18 @@
     <!-- LED Testing Section -->
     <section id="led-testing" class="dark-section">
         <h2 class="section-title">LED Testing</h2>
-        
+        <p>NOTE: This will light up all LEDs on your strand. Be aware of power draw.</p>
         <!-- Automated Test -->
         <div class="test-section">
             <h3 class="subsection-title">Automated Test</h3>
-            <div class="test-buttons">
-                <div class="button-row">
+            <div class="color-buttons">
+                <div class="button-grid">
                     <button type="button" class="btn btn-primary" id="run-auto-test">Start Color Test</button>
-                    <button type="button" class="btn btn-primary service-btn" onclick="event.preventDefault(); controlService('metar', 'stop')">Stop METAR Service</button>
-                </div>
-                <div class="button-row">
-                    <button type="button" class="btn btn-primary" id="next-color" style="display: none;">Next Color</button>
-                    <button type="button" class="btn btn-primary" id="stop-auto-test" style="display: none;">Stop Test</button>
+                    <button type="button" class="btn btn-primary" id="stop-auto-test">Stop Test</button>
+                    <button type="button" class="btn btn-primary service-btn" id="metar-control-btn" onclick="event.preventDefault(); controlService('metar', 'stop')">Stop METAR Service</button>
                 </div>
             </div>
-            <div id="test-progress" style="display: none;">
-                <div class="progress">
-                    <div class="progress-bar" role="progressbar"></div>
-                </div>
-                <div id="test-status">Testing: VFR Color</div>
-            </div>
+            <div id="test-status" style="text-align: center; margin-top: 10px;">Testing: Not Started</div>
         </div>
 
         <!-- Manual Test -->
@@ -561,6 +553,7 @@
             <div class="line-numbers" id="line-numbers"></div>
             <textarea class="form-controltextarea" name="airports" id="airportsText" rows="10">{{ airports }}</textarea>
         </div>
+    </br>
     </section>
 
     <!-- WiFi Settings Section -->
@@ -591,7 +584,7 @@
         Be sure to click "Save" before restarting any services
 
      	<div class="mt-4">
-    		<button type="submit" class="btn btn-primary" onclick="saveAndRestart()">Save</button>
+    		<button type="submit" class="btn btn-primary" onclick="saveSettings()">Save</button>
     	</div>
 
     	<div class="mt-4">

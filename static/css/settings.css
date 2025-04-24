@@ -113,7 +113,7 @@ h1 {
     text-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
 }
 .navbar a:hover {
-    color: #00ffae;
+    color: #007bff;
 }
 
 @media (max-width: 768px) {
@@ -176,7 +176,7 @@ input, select, textarea {
     margin-top: 10px;
     margin-left: auto;
     margin-right: auto;
-    margin-bottom: 20px; /* Add more space below the button */
+    margin-bottom: 20px;
     display: inline-block;
     text-align: center;
     transition: background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
@@ -584,11 +584,12 @@ input[type="color"]::-webkit-color-swatch {
     display: flex;
     justify-content: center;
     gap: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 0px;
 }
 
 .service-btn {
-    min-width: 80px;
+    min-width: 100px;
+    min-height: 30px;
 }
 
 .service-status {
@@ -1115,39 +1116,40 @@ input[type="color"]::-webkit-color-swatch {
 /* LED Testing Section Styles */
 .dark-section {
     background-color: #1a1a1a;
-    padding: 20px;
+    padding: 30px;
     border-radius: 8px;
-    margin-bottom: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .section-title {
     color: #007bff;
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
+    font-size: 1.8em;
+    font-family: 'Orbitron', sans-serif;
+    text-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
 }
 
 .subsection-title {
-    color: #ffffff;
-    margin-bottom: 15px;
+    color: #007bff;
+    margin: 30px 0 20px;
     text-align: center;
+    font-size: 1.4em;
 }
 
 .test-section {
-    margin-bottom: 30px;
+    margin-bottom: 40px;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    border-radius: 6px;
 }
 
 .test-buttons {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 20px;
     align-items: center;
-}
-
-.button-row {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    width: 100%;
 }
 
 .button-grid {
@@ -1159,91 +1161,153 @@ input[type="color"]::-webkit-color-swatch {
     margin: 0 auto;
 }
 
-.btn {
-    min-width: 150px;
-    height: 40px;
-    font-size: 14px;
+.button-grid .btn {
+    width: 100%;
+    min-height: 40px;
+    font-size: 0.95em;
+    padding: 8px 15px;
+    white-space: nowrap;
+    transition: all 0.3s ease;
 }
 
-.custom-color-test,
-.brightness-control,
-.led-controls {
-    margin-top: 20px;
-    display: flex;
-    justify-content: center;
+/* Hide buttons without disrupting layout */
+.button-grid .btn.hidden {
+    visibility: hidden;
+    pointer-events: none;
 }
 
-.input-group {
+/* Ensure middle button stays in place */
+.button-grid #stop-auto-test {
+    grid-column: 2;
+}
+
+/* Ensure right button stays in place */
+.button-grid #metar-control-btn {
+    grid-column: 3;
+}
+
+/* Ensure left button stays in place */
+.button-grid #run-auto-test {
+    grid-column: 1;
+}
+
+.button-grid .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+#test-status {
+    text-align: center;
+    margin: 20px auto;
+    padding: 10px;
+    font-size: 1.1em;
+    color: #007bff;
+    background-color: rgba(0, 123, 255, 0.1);
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    max-width: 200px;
+}
+
+/* Custom color test styling */
+.custom-color-test {
+    margin: 30px auto;
+    max-width: 400px;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    border-radius: 6px;
+}
+
+.custom-color-test .input-group {
     display: flex;
     align-items: center;
-    gap: 10px;
     justify-content: center;
+    gap: 15px;
 }
 
-.input-group label {
-    color: #ffffff;
-    margin-bottom: 0;
+.custom-color-test label {
+    color: #007bff;
+    margin: 0;
+    font-weight: 500;
+    white-space: nowrap;
 }
 
-.input-group input[type="color"] {
+.custom-color-test input[type="color"] {
     width: 60px;
-    height: 30px;
+    height: 35px;
     padding: 0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background: none;
+    -webkit-appearance: none;
+}
+
+.custom-color-test input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+    border: none;    
+}
+
+.custom-color-test input[type="color"]::-webkit-color-swatch {
     border: none;
     border-radius: 4px;
 }
 
-.input-group input[type="number"] {
-    width: 80px;
-    height: 30px;
-    text-align: center;
-    background-color: #2a2a2a;
-    color: #ffffff;
-    border: 1px solid #3a3a3a;
-}
-
-#test-progress {
-    margin-top: 20px;
-    width: 100%;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.progress {
-    height: 20px;
-    background-color: #2a2a2a;
+.custom-color-test input[type="color"]::-moz-color-swatch {
+    border: none;
     border-radius: 4px;
-    margin-bottom: 10px;
 }
 
-.progress-bar {
-    background-color: #007bff;
-    transition: width 0.3s ease;
+/* Remove focus outline */
+.custom-color-test input[type="color"]:focus {
+    outline: none;
 }
 
-#test-status {
-    color: #ffffff;
+.custom-color-test button {
+    min-width: 80px;
+    min-height: 35px;
+    font-weight: 500;
+}
+
+/* Turn off LEDs button container */
+.led-controls {
     text-align: center;
+    margin-top: 30px;
+}
+
+.led-controls .btn {
+    min-width: 200px;
+    min-height: 40px;
+    font-weight: 500;
+    background-color: #dc3545;
+    transition: all 0.3s ease;
+}
+
+.led-controls .btn:hover {
+    background-color: #c82333;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .button-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
     }
 
-    .button-row {
+    .button-grid .btn {
+        font-size: 0.9em;
+        padding: 6px 10px;
+    }
+
+    .custom-color-test .input-group {
         flex-direction: column;
+        gap: 10px;
     }
+}
 
-    .btn {
-        width: 100%;
-        margin-bottom: 10px;
-    }
-
-    .input-group {
-        flex-direction: column;
-        gap: 5px;
+@media (max-width: 480px) {
+    .button-grid {
+        grid-template-columns: 1fr;
     }
 }

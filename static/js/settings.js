@@ -97,30 +97,9 @@ function saveScrollPosition() {
     sessionStorage.setItem('scrollPosition', window.scrollY);
 }
 
-function saveAndRestart() {
-  // Trigger the form submission first
+function saveSettings() {
+  // Just submit the form without restarting METAR service
   document.forms[0].submit();
-
-  // After a slight delay, make a request to restart the metar service
-  setTimeout(() => {
-    fetch('/restart_metar')
-      .then(response => {
-        if (response.ok) {
-          return response.json();
-        }
-        throw new Error('Failed to restart METAR service');
-      })
-      .then(data => {
-        if (data.success) {
-          alert('Settings saved and METAR service restarted successfully!');
-        } else {
-          console.error('Settings saved but failed to restart METAR service.');
-        }
-      })
-      .catch(error => {
-        console.error('Error restarting METAR service:', error);
-      });
-  }, 500); // Delay to allow settings to save
 }
 
 
@@ -319,33 +298,55 @@ function updateWeatherStatus() {
                 try {
                     const lastUpdated = data.last_updated;
                     
-                    if (lastUpdated !== "Weather data not available") {
-                        const parts = lastUpdated.split(' ');
-                        const dateParts = parts[0].split('-');
-                        const timeParts = parts[1].split(':');
-                        
-                        // Check if the date is in YYYY-MM-DD format (from API) or MM-DD-YYYY format (from UI)
-                        let year, month, day;
-                        if (dateParts[0].length === 4) {
-                            // YYYY-MM-DD format
-                            year = parseInt(dateParts[0]);
-                            month = parseInt(dateParts[1]) - 1; // 0-indexed month
-                            day = parseInt(dateParts[2]);
-                        } else {
-                            // MM-DD-YYYY format
-                            year = parseInt(dateParts[2]);
-                            month = parseInt(dateParts[0]) - 1; // 0-indexed month
-                            day = parseInt(dateParts[1]);
+                    if (lastUpdated && lastUpdated !== "Weather data not available") {
+                        let updateTime;
+                        try {
+                            const parts = lastUpdated.split(' ');
+                            if (parts.length !== 2) throw new Error('Invalid date format');
+                            
+                            const dateParts = parts[0].split('-');
+                            const timeParts = parts[1].split(':');
+                            
+                            if (dateParts.length !== 3 || timeParts.length !== 3) {
+                                throw new Error('Invalid date/time parts');
+                            }
+                            
+                            // Check if the date is in YYYY-MM-DD format (from API) or MM-DD-YYYY format (from UI)
+                            let year, month, day;
+                            if (dateParts[0].length === 4) {
+                                // YYYY-MM-DD format
+                                year = parseInt(dateParts[0]);
+                                month = parseInt(dateParts[1]) - 1; // 0-indexed month
+                                day = parseInt(dateParts[2]);
+                            } else {
+                                // MM-DD-YYYY format
+                                year = parseInt(dateParts[2]);
+                                month = parseInt(dateParts[0]) - 1; // 0-indexed month
+                                day = parseInt(dateParts[1]);
+                            }
+                            
+                            // Validate parsed values
+                            if (isNaN(year) || isNaN(month) || isNaN(day)) {
+                                throw new Error('Invalid date numbers');
+                            }
+                            
+                            const hour = parseInt(timeParts[0]);
+                            const minute = parseInt(timeParts[1]);
+                            const second = parseInt(timeParts[2]);
+                            
+                            if (isNaN(hour) || isNaN(minute) || isNaN(second)) {
+                                throw new Error('Invalid time numbers');
+                            }
+                            
+                            updateTime = new Date(year, month, day, hour, minute, second);
+                            
+                            if (isNaN(updateTime.getTime())) {
+                                throw new Error('Invalid date object');
+                            }
+                        } catch (dateError) {
+                            console.error('Error parsing date:', dateError);
+                            throw new Error('Failed to parse date: ' + dateError.message);
                         }
-                        
-                        const updateTime = new Date(
-                            year,
-                            month,
-                            day,
-                            parseInt(timeParts[0]), // hour
-                            parseInt(timeParts[1]), // minute
-                            parseInt(timeParts[2])  // second
-                        );
                         
                         const now = new Date();
                         const diffMinutes = (now - updateTime) / (1000 * 60);
@@ -355,20 +356,17 @@ function updateWeatherStatus() {
                         
                         // Update all status dots
                         statusDots.forEach(dot => {
-                            if (diffMinutes < staleThreshold) {
-                                dot.style.backgroundColor = 'green';
-                            } else {
-                                dot.style.backgroundColor = 'red';
-                            }
+                            dot.style.backgroundColor = diffMinutes < staleThreshold ? 'green' : 'red';
                         });
                     } else {
-                        // If weather data is not available, set dots to red
+                        // If weather data is not available or invalid, set dots to red
                         statusDots.forEach(dot => {
                             dot.style.backgroundColor = 'red';
                         });
                     }
                 } catch (e) {
-                    console.error("Error parsing date:", e);
+                    console.error("Error processing weather status:", e);
+                    // Set dots to red on error
                     statusDots.forEach(dot => {
                         dot.style.backgroundColor = 'red';
                     });
@@ -799,11 +797,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle automated test
     let currentIndex = -1;
     const runAutoTest = document.getElementById('run-auto-test');
-    const nextColor = document.getElementById('next-color');
     const stopAutoTest = document.getElementById('stop-auto-test');
-    const testProgress = document.getElementById('test-progress');
-    const progressBar = document.querySelector('.progress-bar');
+    const metarControlBtn = document.getElementById('metar-control-btn');
     const testStatus = document.getElementById('test-status');
+    let isTestRunning = false;
 
     const colors = [
         { name: 'Red', color: '#ff0000' },
@@ -818,44 +815,54 @@ document.addEventListener('DOMContentLoaded', function() {
         { name: 'Snow', color: document.querySelector('[data-color="' + SNOWY_COLOR + '"]').dataset.color }
     ];
 
-    if (runAutoTest && stopAutoTest && nextColor) {
+    if (runAutoTest && stopAutoTest && metarControlBtn) {
         runAutoTest.addEventListener('click', function() {
-            // Start the LED test service
-            fetch('/led-test-service/start', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    currentIndex = -1; // Reset to start
-                    testProgress.style.display = 'block';
-                    runAutoTest.style.display = 'none';
-                    nextColor.style.display = 'inline-block';
-                    stopAutoTest.style.display = 'inline-block';
-                    showNextColor();
-                } else {
-                    showToast('Failed to start LED test service: ' + data.error, 'danger');
-                }
-            })
-            .catch(error => {
-                showToast('Error starting LED test service: ' + error, 'danger');
-            });
+            if (!isTestRunning) {
+                // Start the LED test service
+                fetch('/led-test-service/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        currentIndex = -1; // Reset to start
+                        isTestRunning = true;
+                        // Update button states
+                        runAutoTest.textContent = 'Next Color';
+                        stopAutoTest.style.visibility = 'visible';
+                        metarControlBtn.style.visibility = 'hidden';
+                        showNextColor();
+                    } else {
+                        showToast('Failed to start LED test service: ' + data.error, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showToast('Error starting LED test service: ' + error, 'danger');
+                });
+            } else {
+                // Just show next color if test is already running
+                showNextColor();
+            }
         });
 
-        nextColor.addEventListener('click', function() {
-            showNextColor();
-        });
-
-        stopAutoTest.addEventListener('click', function() {
+        stopAutoTest.addEventListener('click', stopTest);
+        
+        function stopTest() {
             // Reset UI state immediately
-            testProgress.style.display = 'none';
-            runAutoTest.style.display = 'inline-block';
-            nextColor.style.display = 'none';
-            stopAutoTest.style.display = 'none';
+            isTestRunning = false;
+            runAutoTest.textContent = 'Start Color Test';
+            stopAutoTest.style.visibility = 'visible';
+            metarControlBtn.style.visibility = 'visible';
+            metarControlBtn.textContent = 'Stop METAR Service';
+            metarControlBtn.onclick = (event) => {
+                event.preventDefault();
+                controlService('metar', 'stop');
+            };
             currentIndex = -1;
+            testStatus.textContent = 'Testing: Not Started';
 
             // Create a promise for stopping the service
             const stopServicePromise = fetch('/led-test-service/stop', {
@@ -899,7 +906,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch(error => {
                     console.error('Error during test stop:', error);
                 });
-        });
+        }
 
         function showNextColor() {
             currentIndex++;
@@ -910,7 +917,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const currentColor = colors[currentIndex];
             testLEDs(currentColor.color);
             testStatus.textContent = `Testing: ${currentColor.name}`;
-            progressBar.style.width = `${(currentIndex + 1) / colors.length * 100}%`;
         }
     }
 });

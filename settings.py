@@ -306,12 +306,8 @@ def edit_settings():
                 with open('/home/pi/airports.txt', 'w') as f:  # Replace with actual path to airports.txt
                     f.write(updated_airports)
 
-            # Restart the METAR service to apply changes
-            try:
-                subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
-                flash('Configuration updated and METAR service restarted!', 'success')
-            except subprocess.CalledProcessError as e:
-                flash(f'Configuration updated but failed to restart METAR service: {str(e)}', 'warning')
+            # Configuration updated successfully
+            flash('Configuration updated successfully!', 'success')
 
         except ValueError as e:
             flash(str(e), 'danger')  # Show specific error messages
