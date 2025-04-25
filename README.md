@@ -19,8 +19,14 @@ I hope people find this project and collaborate on it. I'm not here to make mone
 
 # Software Install instructions
 ## Setup.sh
-There is now a batch script that will guide you through the setup. After first boot of the pi, copy over setup.sh to /home/pi and run "sudo bash setup.sh" the script will walk you through everything. 
+
+There is now a batch script that will guide you through the setup. After first boot of the pi, SSH into the Pi and run this command `curl -sSL https://raw.githubusercontent.com/Birdheezy/METARMap2.0/production/setup.sh -o setup.sh && chmod +x setup.sh && sudo ./setup.sh`. It will download the setup.sh file and run it. 
+
+Alternatively you can copy over setup.sh to /home/pi and run "sudo bash setup.sh" the script will walk you through everything. 
+
 If you get an error when running setup.sh, run `sed -i 's/\r$//' setup.sh`. This will fix the line endings then re-run `sudo bash setup.sh`
+
+Or
 
 After writing the OS to the SD card, a window should pop up. If you copy setup.sh to that folder, you can then connect via SSH and run `sudo mv /boot/firmware/setup.sh /home/pi/`. 
 This will move setup.sh to the home/pi folder, where you can then run `sudo bash setup.sh`
@@ -42,6 +48,7 @@ Allow the the card to be written and varified. It can take 5-10 min for this pro
 When the SD card is finished you can remove it and put it into your Pi. Plug your Pi into a power source and let it boot. It can take 5-10 min for the frist boot and for the pi to show up on your wifi. 
 
 ## Connecting to your Pi
+
 
 There are several ways to find your Pi's IP address and connect to it:
 
@@ -78,6 +85,12 @@ There are several ways to find your Pi's IP address and connect to it:
 4. Enter your password when prompted. NOTE nothing will appear as you type your password
 
 You should now see a command prompt like `pi@pi:~ $` which indicates you're successfully connected to your Pi.
+
+1. Go to your WiFi routers settings and find the pi and it's local IP address.
+2. Open putty and in the Hostname (or IP) box, enter pi@XXX.XXX.X.XXX <-- the local IP address of your Pi that you got from your router. The port should be 22 and "connection type" is SSH.
+3. Click "open". You should get a pop up asking if you trust this device. Click Yes. You should then have a black terminal window asking for a password. Enter the password you set up earlier. NOTE: nothing will show up as your type your password. Hit enter.
+4. You sould now see pi@pi:~ $
+
 
 ## Installing Packages
 NOTE: When i say "run ```sudo apt update```" that means type the command "sudo apt update" (without the quotes) into the terminal window and hit enter. Some of these commands can take anywhere from a second to a few minutes to run. Be patient! Also, using ctrl+v to past into putty dones't work, simply copy the code snipit from here, then right click in putty. This should past the command. 
@@ -126,7 +139,11 @@ Services on the pi allow a script or program to run at an elevated level. We wil
 
 We will create 4 services. One for metar.py and one for scheduler.py one for wather.py and one for settings.py
 `sudo nano settings.service`
+
 When asked which editor you'd like to use, select nano (option 1) and hit enter. You should now be presented with a mostly blank screen. Copy over 
+
+When asked which editor you’d like to use, select nano (option 1) and hit enter. You should now be presented with a mostly blank screen. Copy over 
+
 ```
 [Unit]
 
@@ -270,7 +287,8 @@ and
 
 This will enable scheduler.py, settings.py and metar.py at boot as well which handles LED on and off times if enabled in the settings. 
 
-## CRON Setup
+## CRON Setup - this is no longer needed as scheduler.py handles all of this.
+
 CRON is a very simple and powerful scheduling language that we'll use to trigger the weather update script. I have mine to run every 5 min. This will get the weather for your airports and parse the data every 5 min.
 
 1. `CRON tab -e` <— opens the CRONtab file to edit.
