@@ -427,7 +427,8 @@ def edit_settings():
         weather_update_threshold=weather_update_threshold,  # Pass the calculated value
         stale_indication=config.STALE_INDICATION,
         wifi_disconnected_color=wifi_disconnected_color,
-        map_styles=map_styles
+        map_styles=map_styles,
+        show_save_button=True
     )
 
 
@@ -942,7 +943,7 @@ def apply_update():
         subprocess.run(['/usr/bin/git', 'fetch', 'origin', branch], check=True, cwd='/home/pi')
         subprocess.run(['/usr/bin/git', 'reset', '--hard', f'origin/{branch}'], check=True, cwd='/home/pi')
 
-        # Preserve user's config.py while adding new variables
+        # Preserve user's config.py while maintaining GitHub's structure
         print("Preserving user's config.py structure...")
         try:
             # Read the user's config.py
@@ -953,51 +954,69 @@ def apply_update():
             with open('/home/pi/config.py', 'r') as f:
                 repo_config_content = f.read()
             
-            # Extract imports from user's config
-            import_lines = []
-            for line in user_config_content.split('\n'):
-                if line.strip().startswith('import ') or line.strip().startswith('from '):
-                    import_lines.append(line)
-            
-            # Extract variable definitions from both files
-            user_vars = {}
-            for line in user_config_content.split('\n'):
-                if '=' in line and not line.strip().startswith('#'):
-                    var_name = line.split('=')[0].strip()
-                    user_vars[var_name] = line
-            
-            repo_vars = {}
-            for line in repo_config_content.split('\n'):
-                if '=' in line and not line.strip().startswith('#'):
-                    var_name = line.split('=')[0].strip()
-                    repo_vars[var_name] = line
-            
-            # Create a new config.py that preserves the user's structure
-            with open('/home/pi/config.py', 'w') as f:
-                # First write all imports from the user's config
-                for import_line in import_lines:
-                    f.write(import_line + '\n')
-                
-                # Add a blank line after imports if there were any
-                if import_lines:
-                    f.write('\n')
-                
-                # Write all user variables in their original order
-                for line in user_config_content.split('\n'):
-                    if '=' in line and not line.strip().startswith('#'):
+            # Extract variables and their values from both files
+            def extract_variables(content):
+                variables = {}
+                imports = []
+                comments = {}
+                current_comment = []
+                last_var = None
+
+                for line in content.split('\n'):
+                    stripped = line.strip()
+                    
+                    # Handle imports
+                    if stripped.startswith('import ') or stripped.startswith('from '):
+                        imports.append(line)
+                        continue
+                    
+                    # Handle comments
+                    if stripped.startswith('#'):
+                        current_comment.append(line)
+                        continue
+                    
+                    # Handle variable assignments
+                    if '=' in line and not stripped.startswith('#'):
                         var_name = line.split('=')[0].strip()
-                        if var_name in user_vars:
-                            f.write(line + '\n')
+                        variables[var_name] = line
+                        if current_comment:
+                            comments[var_name] = current_comment
+                            current_comment = []
+                        last_var = var_name
+                    elif not stripped and last_var:
+                        # Associate blank lines with the last variable
+                        if last_var in comments:
+                            comments[last_var].append('')
+                        else:
+                            comments[last_var] = ['']
                 
-                # Add any new variables from the repository that aren't in the user's config
-                new_vars_added = False
-                for var_name, line in repo_vars.items():
-                    if var_name not in user_vars:
-                        if not new_vars_added:
-                            f.write('\n# New variables added from repository update\n')
-                            new_vars_added = True
-                        f.write(line + '\n')
-            
+                return imports, variables, comments
+
+            # Extract information from both files
+            user_imports, user_vars, user_comments = extract_variables(user_config_content)
+            repo_imports, repo_vars, repo_comments = extract_variables(repo_config_content)
+
+            # Create the new config file
+            with open('/home/pi/config.py', 'w') as f:
+                # Write imports (use repo's imports as they might have new ones)
+                for imp in repo_imports:
+                    f.write(imp + '\n')
+                if repo_imports:
+                    f.write('\n')
+
+                # Process each variable from the repo's config in order
+                for var_name, repo_line in repo_vars.items():
+                    # Write associated comments from repo
+                    if var_name in repo_comments:
+                        for comment in repo_comments[var_name]:
+                            f.write(comment + '\n')
+                    
+                    # Write the variable line, using user's value if it exists
+                    if var_name in user_vars:
+                        f.write(user_vars[var_name] + '\n')
+                    else:
+                        f.write(repo_line + '\n')
+
             print("Configuration preservation completed successfully")
         except Exception as merge_error:
             print(f"Error preserving configuration: {merge_error}")
@@ -1175,7 +1194,8 @@ def kiosk():
         weather_update_interval=WEATHER_UPDATE_INTERVAL,
         weather_update_threshold=weather_update_threshold,  # Pass the calculated value
         animation_pause=ANIMATION_PAUSE,
-        config=config
+        config=config,
+        show_save_button=False
     )
 
 @app.route('/kiosk/apply-filters', methods=['POST'])
@@ -1311,12 +1331,28 @@ def get_weather_data():
 def test_leds_route():
     data = request.get_json()
     color = data.get('color')
+    start_pixel = data.get('start_pixel')
+    end_pixel = data.get('end_pixel')
+    
     if not color:
         return jsonify({'error': 'No color provided'}), 400
     
     # Convert hex color to RGB tuple
     color = color.lstrip('#')
     rgb = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
+    
+    # Convert pixel indices to integers if provided
+    if start_pixel is not None:
+        try:
+            start_pixel = int(start_pixel)
+        except ValueError:
+            return jsonify({'error': 'Invalid start_pixel value'}), 400
+            
+    if end_pixel is not None:
+        try:
+            end_pixel = int(end_pixel)
+        except ValueError:
+            return jsonify({'error': 'Invalid end_pixel value'}), 400
     
     try:
         # Create a simple script that imports and uses the led_test module
@@ -1332,11 +1368,12 @@ try:
     sys.path.append('/home/pi')
     
     # Import the led_test module
-    from led_test import test_leds
+    from led_test import test_specific_leds
     
-    # Test the LEDs with the specified color
+    # Test the LEDs with the specified color and pixel range
     print(f"Testing LEDs with color: {rgb}")
-    test_leds({rgb})
+    print(f"Pixel range: {start_pixel} to {end_pixel}")
+    test_specific_leds({rgb}, {start_pixel}, {end_pixel})
     print("LED test completed successfully")
 except Exception as e:
     print(f"Error in LED test: {{str(e)}}")
@@ -1493,35 +1530,81 @@ except Exception as e:
 @app.route('/led-test-service/start', methods=['POST'])
 def start_led_test_service():
     try:
-        result = subprocess.run(['sudo', 'systemctl', 'start', 'led-test.service'], 
+        result = subprocess.run(['sudo', 'systemctl', 'start', 'ledtest.service'], 
                                capture_output=True, text=True)
         if result.returncode == 0:
-            return jsonify({'success': True, 'message': 'LED test service started'})
+            return jsonify({'success': True})
         else:
+            app.logger.error(f"Failed to start LED test service: {result.stderr}")
             return jsonify({'success': False, 'error': result.stderr})
     except Exception as e:
+        app.logger.error(f"Error starting LED test service: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/led-test-service/stop', methods=['POST'])
 def stop_led_test_service():
     try:
-        result = subprocess.run(['sudo', 'systemctl', 'stop', 'led-test.service'], 
+        result = subprocess.run(['sudo', 'systemctl', 'stop', 'ledtest.service'], 
                                capture_output=True, text=True)
         if result.returncode == 0:
-            return jsonify({'success': True, 'message': 'LED test service stopped'})
+            return jsonify({'success': True})
         else:
+            app.logger.error(f"Failed to stop LED test service: {result.stderr}")
             return jsonify({'success': False, 'error': result.stderr})
     except Exception as e:
+        app.logger.error(f"Error stopping LED test service: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/led-test-service/status', methods=['GET'])
 def led_test_service_status():
     try:
-        result = subprocess.run(['systemctl', 'is-active', 'led-test.service'], 
+        result = subprocess.run(['systemctl', 'is-active', 'ledtest.service'], 
                                capture_output=True, text=True)
-        status = result.stdout.strip()
-        return jsonify({'success': True, 'status': status})
+        is_active = result.stdout.strip() == 'active'
+        return jsonify({'success': True, 'active': is_active})
     except Exception as e:
+        app.logger.error(f"Error checking LED test service status: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/shutdown', methods=['POST'])
+def shutdown_system():
+    """Stop all services, blank the lights, and shut down the Raspberry Pi."""
+    try:
+        # First, send a response to the client
+        response = jsonify({'success': True, 'message': 'System is shutting down'})
+        response.headers['Connection'] = 'close'  # Force the connection to close after sending
+        
+        # Schedule the shutdown to happen after the response is sent
+        def shutdown_after_response():
+            try:
+                # Stop the METAR service
+                subprocess.run(['sudo', 'systemctl', 'stop', 'metar.service'], check=True)
+                app.logger.info("METAR service stopped for shutdown")
+                
+                # Try to run blank.py to turn off all LEDs, but continue even if it fails
+                try:
+                    # Use the virtual environment Python interpreter
+                    subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/blank.py'], check=True)
+                    app.logger.info("LEDs blanked for shutdown")
+                except subprocess.CalledProcessError as e:
+                    app.logger.warning(f"Failed to blank LEDs: {e}. Continuing with shutdown.")
+                
+                # Stop the scheduler service
+                subprocess.run(['sudo', 'systemctl', 'stop', 'scheduler.service'], check=True)
+                app.logger.info("Scheduler service stopped for shutdown")
+                
+                # Shutdown the Raspberry Pi
+                subprocess.run(['sudo', 'shutdown', 'now'], check=True)
+                app.logger.info("Shutdown command executed")
+            except Exception as e:
+                app.logger.error(f"Error during shutdown process: {e}")
+        
+        # Start the shutdown process in a separate thread
+        threading.Thread(target=shutdown_after_response).start()
+        
+        return response
+    except Exception as e:
+        app.logger.error(f"Unexpected error during shutdown: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':

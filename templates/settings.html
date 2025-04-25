@@ -35,43 +35,7 @@
     </div>
     <section>
         <h2>Airport Map</h2>
-        <div id="airport-map" style="height: 450px; margin-bottom: 10px; border-radius: 8px;"></div>
-        <div class="map-legend">
-            <span class="legend-item">
-                <span class="legend-dot vfr"></span>VFR
-            </span>
-            <span class="legend-item">
-                <span class="legend-dot mvfr"></span>MVFR
-            </span>
-            <span class="legend-item">
-                <span class="legend-dot ifr"></span>IFR
-            </span>
-            <span class="legend-item">
-                <span class="legend-dot lifr"></span>LIFR
-            </span>
-            <span class="legend-item">
-                <span class="legend-dot missing"></span>Missing
-            </span>
-            <span class="legend-item">
-                <span class="legend-dot lightning"></span>Lightning
-            </span>
-            <span class="legend-item">
-                <span class="legend-dot snow"></span>Snow
-            </span>
-        </div>
-        <br>
-        <div style="margin-top: 5px;" class="weather-status">
-                <div class="service-status">
-                    <span class="status-dot" id="map-weather-status-dot"></span>
-                    <span class="status-text">WX Last Updated: <span id="map-weather-last-updated">{{ weather_last_modified }}</span></span>
-                    <div class="status-tooltip">
-                        <span class="green-status">Green: Weather data is current (within expected update interval)</span><br>
-                        <span class="red-status">Red: Weather data is stale (no updates for over 2x the update interval)</span>
-                    </div>
-                </div>
-            </div>
-        <br>
-        <button type="button" id="save-map-view" class="btn btn-primary" style="margin-bottom: 20px;">Save Current View</button>
+        {% include 'map.html' with context %}
     </section>
 
     <form method="POST" action="/" onsubmit="saveScrollPosition()">
@@ -171,19 +135,56 @@
         </div>
     </section>
 
-    <!-- LED Testing Section -->
+    <!-- LED Test Section -->
     <section id="led-testing" class="dark-section">
         <h2 class="section-title">LED Testing</h2>
-        <p>NOTE: This will light up all LEDs on your strand. Be aware of power draw.</p>
+        <!-- LED Mode Selection -->
+        <div class="test-section">
+            <div class="led-mode-selection">
+                <label class="radio-label">
+                    <input type="radio" name="led-mode" value="all" checked> All LEDs
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="led-mode" value="range"> LED Range
+                </label>
+            </div>
+            <div>    
+                <!-- LED Range Inputs (initially hidden) -->
+                <div id="led-range-inputs" class="led-range-container" style="display: none;">
+                    <div class="led-range-inputs">
+                        <div class="range-label">LED Range:</div>
+                        <div class="range-inputs">
+                            <input type="number" id="start-pixel" min="1" max="50" placeholder="Start (1-50)">
+                            <span class="range-separator">to</span>
+                            <input type="number" id="end-pixel" min="1" max="50" placeholder="End (1-50)">
+                        </div>
+                    </div>
+                    <div class="led-range-info">
+                        <small>Enter a single number to test one LED.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- LED Color Order Selection -->
+            <div class="led-color-order">
+                <label for="test-led-color-order">LED Color Order:</label>
+                <select id="test-led-color-order" class="form-control input-small">
+                    <option value="RGB" {% if config.LED_COLOR_ORDER == 'RGB' %}selected{% endif %}>RGB</option>
+                    <option value="GRB" {% if config.LED_COLOR_ORDER == 'GRB' %}selected{% endif %}>GRB</option>
+                </select>
+                <div class="color-order-info">
+                    <small>RGB: Common for NeoPixels<br>GRB: Standard for WS2811 Bullet style lights</small>
+                </div>
+            </div>
+        </div>
+
         <!-- Automated Test -->
         <div class="test-section">
             <h3 class="subsection-title">Automated Test</h3>
-            <div class="color-buttons">
-                <div class="button-grid">
-                    <button type="button" class="btn btn-primary" id="run-auto-test">Start Color Test</button>
-                    <button type="button" class="btn btn-primary" id="stop-auto-test">Stop Test</button>
-                    <button type="button" class="btn btn-primary service-btn" id="metar-control-btn" onclick="event.preventDefault(); controlService('metar', 'stop')">Stop METAR Service</button>
-                </div>
+            <div class="button-grid three-column">
+                <button type="button" class="btn btn-primary" id="run-auto-test">Start Test</button>
+                <button type="button" class="btn btn-primary" id="stop-auto-test">Stop Test</button>
+                <button type="button" class="btn btn-primary service-btn" id="metar-control-btn" onclick="event.preventDefault(); controlService('metar', 'stop')">Stop METAR</button>
             </div>
             <div id="test-status" style="text-align: center; margin-top: 10px;">Testing: Not Started</div>
         </div>
@@ -191,30 +192,29 @@
         <!-- Manual Test -->
         <div class="test-section">
             <h3 class="subsection-title">Manual Test</h3>
-            <div class="color-buttons">
-                <div class="button-grid">
-                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ vfr_color }}">Test VFR</button>
-                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ mvfr_color }}">Test MVFR</button>
-                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ ifr_color }}">Test IFR</button>
-                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ lifr_color }}">Test LIFR</button>
-                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ lightening_color }}">Test Lightning</button>
-                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ snowy_color }}">Test Snow</button>
-                </div>
+            <div class="button-grid three-column">
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ vfr_color }}">Test VFR</button>
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ mvfr_color }}">Test MVFR</button>
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ ifr_color }}">Test IFR</button>
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ lifr_color }}">Test LIFR</button>
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ lightening_color }}">Test Lightning</button>
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ snowy_color }}">Test Snow</button>
             </div>
-            
-            <!-- Custom Color Test -->
-            <div class="custom-color-test">
-                <div class="input-group">
-                    <label for="custom-led-color">Custom Color:</label>
-                    <input type="color" id="custom-led-color" value="#ffffff">
-                    <button type="button" class="btn btn-primary" id="test-custom-color">Test</button>
-                </div>
+        </div>
+        
+        <!-- Custom Color Test -->
+        <div class="test-section">
+            <h3 class="subsection-title">Custom Color Test</h3>
+            <div class="input-group">
+                <label for="custom-led-color">Custom Color:</label>
+                <input type="color" id="custom-led-color" value="#ffffff">
+                <button type="button" class="btn btn-primary" id="test-custom-color">Test</button>
             </div>
+        </div>
 
-            <!-- All Off Button -->
-            <div class="led-controls">
-                <button type="button" class="btn btn-primary" id="turn-off-leds">Turn Off All LEDs</button>
-            </div>
+        <!-- All Off Button -->
+        <div class="led-controls">
+            <button type="button" class="btn btn-primary" id="turn-off-leds">Turn Off LEDs</button>
         </div>
     </section>
 
@@ -690,6 +690,25 @@
                 <pre class="logs-content"></pre>
             </div>
         </div>
+        
+        <!-- Shutdown Controls -->
+        <div class="service-control-panel shutdown-panel">
+            <h3>System Shutdown</h3>
+            <div class="shutdown-warning">
+                <p>This will stop all services, turn off the LEDs, and shut down the map controller.</p>
+            </div>
+            <div class="service-buttons">
+                <button class="btn btn-danger service-btn" onclick="confirmShutdown()">Shutdown System</button>
+            </div>
+            <div id="shutdown-countdown" class="shutdown-overlay">
+                <div class="shutdown-countdown">
+                    <p>System will shut down in</p>
+                    <p id="countdown-timer">20</p>
+                    <p>seconds...</p>
+                    <p>It is safe to remove power when the countdown reaches zero.</p>
+                </div>
+            </div>
+        </div>
     </section>
 </div>
 
@@ -744,6 +763,7 @@
 <script>
     // Add constants
     const WEATHER_UPDATE_THRESHOLD = {{ weather_update_threshold }};
+    const NUM_PIXELS = {{ config.NUM_PIXELS }};
     
     // Call initially and set interval
     updateWeatherStatus();

@@ -112,31 +112,7 @@
 
         <div class="map-section">
             <h2>Airport Map <span style="font-size: 0.7em; font-weight: normal; color: #777;">(Tap on an airport to display the METAR)</span></h2>
-            <div id="airport-map" class="kiosk-map"></div>
-            <!-- Map Legend - Styled like settings.html -->
-            <div class="map-legend" style="margin-top: 10px; margin-bottom: 10px;">
-                <span class="legend-item">
-                    <span class="legend-dot vfr"></span>VFR
-                </span>
-                <span class="legend-item">
-                    <span class="legend-dot mvfr"></span>MVFR
-                </span>
-                <span class="legend-item">
-                    <span class="legend-dot ifr"></span>IFR
-                </span>
-                <span class="legend-item">
-                    <span class="legend-dot lifr"></span>LIFR
-                </span>
-                <span class="legend-item">
-                    <span class="legend-dot missing"></span>Missing
-                </span>
-                <span class="legend-item">
-                    <span class="legend-dot lightning"></span>Lightning
-                </span>
-                <span class="legend-item">
-                    <span class="legend-dot snow"></span>Snow
-                </span>
-            </div>
+            {% include 'map.html' with context %}
         </div>
         <!-- Status Messages -->
         <div id="status-message" class="status-message"></div>

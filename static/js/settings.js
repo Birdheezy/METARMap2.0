@@ -734,18 +734,47 @@ function getMarkerColor(fltCat) {
 
 // LED Testing functionality
 document.addEventListener('DOMContentLoaded', function() {
+    // Handle LED mode selection
+    const ledModeRadios = document.querySelectorAll('input[name="led-mode"]');
+    const ledRangeInputs = document.getElementById('led-range-inputs');
+
+    ledModeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            ledRangeInputs.style.display = this.value === 'range' ? 'block' : 'none';
+        });
+    });
+
+    // Function to get current LED range based on mode
+    function getLedRange() {
+        const mode = document.querySelector('input[name="led-mode"]:checked').value;
+        if (mode === 'all') {
+            return { startPixel: null, endPixel: null };
+        } else {
+            const startPixel = document.getElementById('start-pixel').value;
+            const endPixel = document.getElementById('end-pixel').value;
+            
+            // Convert from 1-based (user) to 0-based (system) indexing
+            return {
+                startPixel: startPixel ? Math.max(0, parseInt(startPixel) - 1) : null,
+                endPixel: endPixel ? Math.max(0, parseInt(endPixel) - 1) : null
+            };
+        }
+    }
+
     // Handle preset color buttons
     document.querySelectorAll('.led-test-btn').forEach(button => {
         button.addEventListener('click', function() {
             const color = this.dataset.color;
-            testLEDs(color);
+            const { startPixel, endPixel } = getLedRange();
+            testLEDs(color, startPixel, endPixel);
         });
     });
 
     // Handle custom color test
     document.getElementById('test-custom-color')?.addEventListener('click', function() {
         const color = document.getElementById('custom-led-color').value;
-        testLEDs(color);
+        const { startPixel, endPixel } = getLedRange();
+        testLEDs(color, startPixel, endPixel);
     });
 
     // Handle turn off button
@@ -915,21 +944,42 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             const currentColor = colors[currentIndex];
-            testLEDs(currentColor.color);
+            const { startPixel, endPixel } = getLedRange();
+            testLEDs(currentColor.color, startPixel, endPixel);
             testStatus.textContent = `Testing: ${currentColor.name}`;
         }
     }
 });
 
-function testLEDs(color) {
+function convertColor(color, colorOrder) {
+    // Convert hex color to RGB components
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+
+    // Return color components in the specified order
+    if (colorOrder === 'GRB') {
+        return `#${g.toString(16).padStart(2, '0')}${r.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    }
+    return color; // Return original color for RGB order
+}
+
+function testLEDs(color, startPixel = null, endPixel = null) {
+    const colorOrder = document.getElementById('test-led-color-order').value;
+    const adjustedColor = convertColor(color, colorOrder);
+
     fetch('/test-leds', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({ 
-            color: color,
-            brightness: 0.3  // Fixed brightness at 0.3
+            color: adjustedColor,
+            color_order: colorOrder,
+            brightness: 0.3,  // Fixed brightness at 0.3
+            start_pixel: startPixel,
+            end_pixel: endPixel
         })
     })
     .then(response => response.json())
@@ -997,6 +1047,20 @@ document.addEventListener('DOMContentLoaded', function() {
         window.scrollTo(0, parseInt(scrollPosition));
         sessionStorage.removeItem('scrollPosition');
     }
+
+    // Add color order change handler
+    const colorOrderSelect = document.getElementById('test-led-color-order');
+    if (colorOrderSelect) {
+        colorOrderSelect.addEventListener('change', function() {
+            // If a test is currently running, update with the new color order
+            const testStatus = document.getElementById('test-status');
+            if (testStatus && testStatus.textContent !== 'Testing: Not Started') {
+                const currentColor = document.getElementById('custom-led-color').value;
+                const { startPixel, endPixel } = getLedRange();
+                testLEDs(currentColor, startPixel, endPixel);
+            }
+        });
+    }
 });
 
 // Function to update line numbers
@@ -1036,3 +1100,96 @@ async function updateWeatherManually() {
         showToast('Error updating weather: ' + error.message, 'danger');
     }
 }
+
+// Function to confirm and execute system shutdown
+function confirmShutdown() {
+    if (confirm("WARNING: This will stop all services, turn off the LEDs, and shut down the Raspberry Pi.\n\nAre you sure you want to proceed with the shutdown?")) {
+        // Show the countdown
+        const countdownDiv = document.getElementById('shutdown-countdown');
+        const countdownTimer = document.getElementById('countdown-timer');
+        countdownDiv.style.display = 'block';
+        
+        // Disable the shutdown button to prevent multiple clicks
+        const shutdownButton = document.querySelector('.shutdown-panel .btn-danger');
+        shutdownButton.disabled = true;
+        
+        // Start the countdown
+        let secondsLeft = 20;
+        const countdownInterval = setInterval(() => {
+            secondsLeft--;
+            countdownTimer.textContent = secondsLeft;
+            
+            if (secondsLeft <= 0) {
+                clearInterval(countdownInterval);
+                // The actual shutdown will happen on the server side
+            }
+        }, 1000);
+        
+        // Send the shutdown request to the server
+        fetch('/shutdown', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            // Check if the response is JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // If not JSON, throw an error
+                throw new Error('Server returned non-JSON response');
+            }
+        })
+        .then(data => {
+            if (data.success) {
+                showToast('System is shutting down...', 'info');
+            } else {
+                showToast('Error initiating shutdown: ' + (data.error || 'Unknown error'), 'danger');
+                // Re-enable the button if there was an error
+                shutdownButton.disabled = false;
+                countdownDiv.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error during shutdown:', error);
+            showToast('Error during shutdown: ' + error.message, 'danger');
+            // Re-enable the button if there was an error
+            shutdownButton.disabled = false;
+            countdownDiv.style.display = 'none';
+        });
+    }
+}
+
+// Add input validation for LED range
+document.addEventListener('DOMContentLoaded', function() {
+    const startPixelInput = document.getElementById('start-pixel');
+    const endPixelInput = document.getElementById('end-pixel');
+
+    function validateRange(input) {
+        let value = parseInt(input.value);
+        if (isNaN(value)) {
+            input.value = '';
+        } else {
+            value = Math.min(Math.max(value, 1), 50);
+            input.value = value;
+        }
+    }
+
+    if (startPixelInput && endPixelInput) {
+        startPixelInput.addEventListener('change', function() {
+            validateRange(this);
+            if (endPixelInput.value && parseInt(endPixelInput.value) < parseInt(this.value)) {
+                endPixelInput.value = this.value;
+            }
+        });
+
+        endPixelInput.addEventListener('change', function() {
+            validateRange(this);
+            if (startPixelInput.value && parseInt(startPixelInput.value) > parseInt(this.value)) {
+                startPixelInput.value = this.value;
+            }
+        });
+    }
+});
