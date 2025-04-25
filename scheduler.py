@@ -58,7 +58,7 @@ def is_metar_running():
     except subprocess.CalledProcessError:
         return False
 
-def update_weather():
+def update_weather(force=False):
     """Update weather data directly using the weather module."""
     global weather_update_lock
     
@@ -67,7 +67,7 @@ def update_weather():
         return
         
     try:
-        if not is_metar_running():
+        if not force and not is_metar_running():
             logger.info("Skipping weather update - METAR service is not running.")
             return
         
@@ -85,8 +85,6 @@ def update_weather():
                 logger.error("Failed to parse weather data")
         else:
             logger.error("Failed to fetch weather data")
-    except Exception as e:
-        logger.error(f"Error updating weather data: {e}")
     finally:
         weather_update_lock.release()
 
@@ -144,11 +142,18 @@ def monitor_config_changes(config_file):
         if current_time - last_check >= 5:
             current_modified = os.path.getmtime(config_file)
             if current_modified != last_modified:
-                logger.info("Detected config.py changes. Reloading schedules...")
+                logger.info("Detected config.py changes. Reloading schedules and restarting METAR service...")
                 last_modified = current_modified
                 
                 # Reload the config module to get updated values
                 importlib.reload(config)
+                
+                # Restart the METAR service to apply all config changes
+                try:
+                    subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
+                    logger.info("METAR service restarted successfully")
+                except subprocess.CalledProcessError as e:
+                    logger.error(f"Error restarting METAR service: {e}")
                 
                 # Reschedule with the updated values
                 schedule_lights()

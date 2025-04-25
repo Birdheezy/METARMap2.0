@@ -1,0 +1,229 @@
+<!-- Map Component for METARMap2.0 -->
+<!-- This file contains the map component that can be included in both settings.html and kiosk.html -->
+
+<!-- Map Container -->
+<div id="airport-map" style="height: 450px; margin-bottom: 10px; border-radius: 8px;"></div>
+
+<!-- Map Legend -->
+<div class="map-legend">
+    <span class="legend-item">
+        <span class="legend-dot vfr"></span>VFR
+    </span>
+    <span class="legend-item">
+        <span class="legend-dot mvfr"></span>MVFR
+    </span>
+    <span class="legend-item">
+        <span class="legend-dot ifr"></span>IFR
+    </span>
+    <span class="legend-item">
+        <span class="legend-dot lifr"></span>LIFR
+    </span>
+    <span class="legend-item">
+        <span class="legend-dot missing"></span>Missing
+    </span>
+    <span class="legend-item">
+        <span class="legend-dot lightning"></span>Lightning
+    </span>
+    <span class="legend-item">
+        <span class="legend-dot snow"></span>Snow
+    </span>
+</div>
+
+<!-- Weather Status -->
+<div style="margin-top: 5px;" class="weather-status">
+    <div class="service-status">
+        <span class="status-dot" id="map-weather-status-dot"></span>
+        <span class="status-text">WX Last Updated: <span id="map-weather-last-updated">{{ weather_last_modified }}</span></span>
+        <div class="status-tooltip">
+            <span class="green-status">Green: Weather data is current (within expected update interval)</span><br>
+            <span class="red-status">Red: Weather data is stale (no updates for over 2x the update interval)</span>
+        </div>
+    </div>
+</div>
+
+<!-- Save Map View Button (only shown in settings.html) -->
+{% if show_save_button %}
+<br>
+<button type="button" id="save-map-view" class="btn btn-primary" style="margin-bottom: 20px;">Save Current View</button>
+{% endif %}
+
+<!-- Map-specific CSS -->
+<style>
+    /* Map container styles */
+    #airport-map {
+        width: 100%;
+        border: 1px solid #444;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    #airport-map:hover {
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    }
+    
+    /* Map legend styles */
+    .map-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+        padding: 10px;
+        background-color: rgba(0, 0, 0, 0.7);
+        border-radius: 5px;
+        color: #fff;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin-right: 10px;
+    }
+    
+    .legend-dot {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+    
+    /* Set legend dot colors using CSS variables */
+    .legend-dot.vfr { background-color: var(--vfr-color); }
+    .legend-dot.mvfr { background-color: var(--mvfr-color); }
+    .legend-dot.ifr { background-color: var(--ifr-color); }
+    .legend-dot.lifr { background-color: var(--lifr-color); }
+    .legend-dot.missing { background-color: var(--missing-color); }
+    .legend-dot.lightning { background-color: var(--lightening-color); }
+    .legend-dot.snow { background-color: var(--snowy-color); }
+    
+    /* Weather status styles */
+    .weather-status {
+        margin-top: 10px;
+    }
+    
+    .service-status {
+        display: flex;
+        align-items: center;
+        position: relative;
+    }
+    
+    .status-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .status-tooltip {
+        display: none;
+        position: absolute;
+        background-color: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        z-index: 1000;
+        width: 300px;
+        top: 100%;
+        left: 0;
+        margin-top: 5px;
+    }
+    
+    .service-status:hover .status-tooltip {
+        display: block;
+    }
+    
+    .green-status {
+        color: #4CAF50;
+    }
+    
+    .red-status {
+        color: #F44336;
+    }
+
+    /* Leaflet popup styles */
+    .leaflet-popup-content-wrapper {
+        background-color: #333 !important;
+        color: #fff !important;
+        border-radius: 5px !important;
+        padding: 0 !important;  /* Remove default padding */
+    }
+
+    .leaflet-popup-content {
+        margin: 0 !important;  /* Remove default margin */
+        line-height: 1.5 !important;
+    }
+
+    .leaflet-popup-tip {
+        background-color: #333 !important;
+    }
+
+    .leaflet-container a.leaflet-popup-close-button {
+        color: #fff !important;
+        padding: 8px 12px 0 0 !important;  /* Increase clickable area */
+        font-size: 16px !important;
+        font-weight: bold !important;
+    }
+
+    .leaflet-container a.leaflet-popup-close-button:hover {
+        color: #ccc !important;
+    }
+
+    /* Custom popup content styles */
+    .airport-popup {
+        min-width: 250px;
+        font-size: 14px;
+    }
+
+    .airport-popup-header {
+        display: flex;
+        align-items: center;
+        padding: 12px 15px;
+        border-bottom: 1px solid #555;
+        background-color: rgba(0, 0, 0, 0.2);
+    }
+
+    .airport-popup-header h3 {
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .airport-popup-content {
+        padding: 12px 15px;
+    }
+
+    .metar-label {
+        color: #ccc;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+
+    .metar-text {
+        font-family: monospace;
+        word-break: break-all;
+        line-height: 1.5;
+        background-color: #222;
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #444;
+        font-size: 13px;
+    }
+</style>
+
+<!-- Map-specific JavaScript -->
+<script>
+    // Initialize map when document is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize the map system with configuration
+        initializeMapSystem({
+            vfrColor: '{{ vfr_color }}',
+            mvfrColor: '{{ mvfr_color }}',
+            ifrColor: '{{ ifr_color }}',
+            lifrColor: '{{ lifr_color }}',
+            missingColor: '{{ missing_color }}',
+            lighteningColor: '{{ lightening_color }}',
+            snowyColor: '{{ snowy_color }}',
+            weatherUpdateThreshold: {{ weather_update_threshold }}
+        });
+    });
+</script> 

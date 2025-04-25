@@ -18,6 +18,7 @@ import weather
 import functools
 import socket
 from scheduler import weather_update_lock, update_weather as scheduler_update_weather
+from led_test import test_leds, turn_off_leds, update_brightness
 
 def after_this_response(func):
     @functools.wraps(func)
@@ -27,7 +28,9 @@ def after_this_response(func):
         return
     return wrapper
 
-app = Flask(__name__)
+app = Flask(__name__, 
+           template_folder='/home/pi/templates',
+           static_folder='static')
 app.secret_key = os.urandom(24)
 
 
@@ -100,12 +103,13 @@ def update_weather_page():
 
 @app.route('/update-weather', methods=['POST'])
 def refresh_weather():
+    """Endpoint to manually trigger a weather update."""
     try:
-        # Use the scheduler's update_weather function
-        scheduler_update_weather()
-        return jsonify({"status": "Weather update requested"}), 200
+        scheduler_update_weather(force=True)  # Force update regardless of service state
+        return jsonify({'status': 'success', 'message': 'Weather update requested'})
     except Exception as e:
-        return jsonify({"status": f"Error requesting weather update: {str(e)}"}), 500
+        app.logger.error(f"Error requesting weather update: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/leds/status', methods=['GET'])
 def get_led_status():
@@ -302,12 +306,8 @@ def edit_settings():
                 with open('/home/pi/airports.txt', 'w') as f:  # Replace with actual path to airports.txt
                     f.write(updated_airports)
 
-            # Restart the METAR service to apply changes
-            try:
-                subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
-                flash('Configuration updated and METAR service restarted!', 'success')
-            except subprocess.CalledProcessError as e:
-                flash(f'Configuration updated but failed to restart METAR service: {str(e)}', 'warning')
+            # Configuration updated successfully
+            flash('Configuration updated successfully!', 'success')
 
         except ValueError as e:
             flash(str(e), 'danger')  # Show specific error messages
@@ -359,12 +359,26 @@ def edit_settings():
     except FileNotFoundError:
         weather_last_modified = "Weather data not available"
 
+    # Calculate the weather update threshold in minutes
+    weather_update_threshold = (config.WEATHER_UPDATE_INTERVAL / 60) * 2
+
     # Load the airport list from airports.txt
     with open('/home/pi/airports.txt', 'r') as f:
         airports = f.read()
 
     # Get the local IP address
     local_ip = get_local_ip()
+
+    # Add dynamic styles for the map colors
+    map_styles = {
+        'vfr_color': vfr_color,
+        'mvfr_color': mvfr_color,
+        'ifr_color': ifr_color,
+        'lifr_color': lifr_color,
+        'missing_color': missing_color,
+        'lightening_color': lightening_color,
+        'snowy_color': snowy_color
+    }
 
     # Render the template with the updated values, including weather_last_modified
     return render_template(
@@ -410,8 +424,11 @@ def edit_settings():
         enable_https=config.ENABLE_HTTPS,
         pixel_pin=config.PIXEL_PIN,
         weather_update_interval=config.WEATHER_UPDATE_INTERVAL,
+        weather_update_threshold=weather_update_threshold,  # Pass the calculated value
         stale_indication=config.STALE_INDICATION,
-        wifi_disconnected_color=wifi_disconnected_color
+        wifi_disconnected_color=wifi_disconnected_color,
+        map_styles=map_styles,
+        show_save_button=True
     )
 
 
@@ -926,9 +943,89 @@ def apply_update():
         subprocess.run(['/usr/bin/git', 'fetch', 'origin', branch], check=True, cwd='/home/pi')
         subprocess.run(['/usr/bin/git', 'reset', '--hard', f'origin/{branch}'], check=True, cwd='/home/pi')
 
-        # Restore user files
-        print("Restoring user files...")
-        subprocess.run(['mv', '/tmp/config.py.tmp', '/home/pi/config.py'], check=True)
+        # Preserve user's config.py while maintaining GitHub's structure
+        print("Preserving user's config.py structure...")
+        try:
+            # Read the user's config.py
+            with open('/tmp/config.py.tmp', 'r') as f:
+                user_config_content = f.read()
+            
+            # Read the repository's config.py
+            with open('/home/pi/config.py', 'r') as f:
+                repo_config_content = f.read()
+            
+            # Extract variables and their values from both files
+            def extract_variables(content):
+                variables = {}
+                imports = []
+                comments = {}
+                current_comment = []
+                last_var = None
+
+                for line in content.split('\n'):
+                    stripped = line.strip()
+                    
+                    # Handle imports
+                    if stripped.startswith('import ') or stripped.startswith('from '):
+                        imports.append(line)
+                        continue
+                    
+                    # Handle comments
+                    if stripped.startswith('#'):
+                        current_comment.append(line)
+                        continue
+                    
+                    # Handle variable assignments
+                    if '=' in line and not stripped.startswith('#'):
+                        var_name = line.split('=')[0].strip()
+                        variables[var_name] = line
+                        if current_comment:
+                            comments[var_name] = current_comment
+                            current_comment = []
+                        last_var = var_name
+                    elif not stripped and last_var:
+                        # Associate blank lines with the last variable
+                        if last_var in comments:
+                            comments[last_var].append('')
+                        else:
+                            comments[last_var] = ['']
+                
+                return imports, variables, comments
+
+            # Extract information from both files
+            user_imports, user_vars, user_comments = extract_variables(user_config_content)
+            repo_imports, repo_vars, repo_comments = extract_variables(repo_config_content)
+
+            # Create the new config file
+            with open('/home/pi/config.py', 'w') as f:
+                # Write imports (use repo's imports as they might have new ones)
+                for imp in repo_imports:
+                    f.write(imp + '\n')
+                if repo_imports:
+                    f.write('\n')
+
+                # Process each variable from the repo's config in order
+                for var_name, repo_line in repo_vars.items():
+                    # Write associated comments from repo
+                    if var_name in repo_comments:
+                        for comment in repo_comments[var_name]:
+                            f.write(comment + '\n')
+                    
+                    # Write the variable line, using user's value if it exists
+                    if var_name in user_vars:
+                        f.write(user_vars[var_name] + '\n')
+                    else:
+                        f.write(repo_line + '\n')
+
+            print("Configuration preservation completed successfully")
+        except Exception as merge_error:
+            print(f"Error preserving configuration: {merge_error}")
+            # If preserving fails, restore the user's config.py
+            subprocess.run(['mv', '/tmp/config.py.tmp', '/home/pi/config.py'], check=True)
+            print("Restored original config.py due to preservation error")
+
+        # Restore airports.txt
+        print("Restoring airports.txt...")
         subprocess.run(['mv', '/tmp/airports.txt.tmp', '/home/pi/airports.txt'], check=True)
 
         # Clean up old backups (keep last 5)
@@ -1097,7 +1194,8 @@ def kiosk():
         weather_update_interval=WEATHER_UPDATE_INTERVAL,
         weather_update_threshold=weather_update_threshold,  # Pass the calculated value
         animation_pause=ANIMATION_PAUSE,
-        config=config
+        config=config,
+        show_save_button=False
     )
 
 @app.route('/kiosk/apply-filters', methods=['POST'])
@@ -1228,6 +1326,286 @@ def get_weather_data():
         return jsonify({"error": "Weather data not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/test-leds', methods=['POST'])
+def test_leds_route():
+    data = request.get_json()
+    color = data.get('color')
+    start_pixel = data.get('start_pixel')
+    end_pixel = data.get('end_pixel')
+    
+    if not color:
+        return jsonify({'error': 'No color provided'}), 400
+    
+    # Convert hex color to RGB tuple
+    color = color.lstrip('#')
+    rgb = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
+    
+    # Convert pixel indices to integers if provided
+    if start_pixel is not None:
+        try:
+            start_pixel = int(start_pixel)
+        except ValueError:
+            return jsonify({'error': 'Invalid start_pixel value'}), 400
+            
+    if end_pixel is not None:
+        try:
+            end_pixel = int(end_pixel)
+        except ValueError:
+            return jsonify({'error': 'Invalid end_pixel value'}), 400
+    
+    try:
+        # Create a simple script that imports and uses the led_test module
+        temp_script = '/tmp/led_test_temp.py'
+        with open(temp_script, 'w') as f:
+            f.write(f'''
+import sys
+import os
+import traceback
+
+try:
+    # Add /home/pi to Python path
+    sys.path.append('/home/pi')
+    
+    # Import the led_test module
+    from led_test import test_specific_leds
+    
+    # Test the LEDs with the specified color and pixel range
+    print(f"Testing LEDs with color: {rgb}")
+    print(f"Pixel range: {start_pixel} to {end_pixel}")
+    test_specific_leds({rgb}, {start_pixel}, {end_pixel})
+    print("LED test completed successfully")
+except Exception as e:
+    print(f"Error in LED test: {{str(e)}}")
+    traceback.print_exc()
+    sys.exit(1)
+''')
+        
+        # Use the correct Python interpreter path
+        python_path = '/home/pi/metar/bin/python3'
+        
+        # Run the script with sudo and capture output
+        result = subprocess.run(['sudo', python_path, temp_script], 
+                               check=True, 
+                               capture_output=True, 
+                               text=True)
+        
+        # Log the output for debugging
+        print(f"Script stdout: {result.stdout}")
+        print(f"Script stderr: {result.stderr}")
+        
+        return jsonify({'success': True, 'output': result.stdout})
+    except subprocess.CalledProcessError as e:
+        error_output = e.stderr if hasattr(e, 'stderr') else "No error output available"
+        stdout_output = e.stdout if hasattr(e, 'stdout') else "No stdout output available"
+        return jsonify({
+            'error': f'Failed to test LEDs: {str(e)}',
+            'stdout': stdout_output,
+            'stderr': error_output
+        }), 500
+    except Exception as e:
+        return jsonify({'error': f'Failed to test LEDs: {str(e)}'}), 500
+
+@app.route('/turn-off-leds', methods=['POST'])
+def turn_off_leds_route():
+    try:
+        # Create a simple script that imports and uses the led_test module
+        temp_script = '/tmp/led_off_temp.py'
+        with open(temp_script, 'w') as f:
+            f.write('''
+import sys
+import os
+import traceback
+
+try:
+    # Add /home/pi to Python path
+    sys.path.append('/home/pi')
+    
+    # Import the led_test module
+    from led_test import turn_off_leds
+    
+    # Turn off all LEDs
+    print("Turning off all LEDs")
+    turn_off_leds()
+    print("LEDs turned off successfully")
+except Exception as e:
+    print(f"Error turning off LEDs: {str(e)}")
+    traceback.print_exc()
+    sys.exit(1)
+''')
+        
+        # Use the correct Python interpreter path
+        python_path = '/home/pi/metar/bin/python3'
+        
+        # Run the script with sudo and capture output
+        result = subprocess.run(['sudo', python_path, temp_script], 
+                               check=True, 
+                               capture_output=True, 
+                               text=True)
+        
+        # Log the output for debugging
+        print(f"Script stdout: {result.stdout}")
+        print(f"Script stderr: {result.stderr}")
+        
+        return jsonify({'success': True, 'output': result.stdout})
+    except subprocess.CalledProcessError as e:
+        error_output = e.stderr if hasattr(e, 'stderr') else "No error output available"
+        stdout_output = e.stdout if hasattr(e, 'stdout') else "No stdout output available"
+        return jsonify({
+            'error': f'Failed to turn off LEDs: {str(e)}',
+            'stdout': stdout_output,
+            'stderr': error_output
+        }), 500
+    except Exception as e:
+        return jsonify({'error': f'Failed to turn off LEDs: {str(e)}'}), 500
+
+@app.route('/update-brightness', methods=['POST'])
+def update_brightness_route():
+    data = request.get_json()
+    brightness = data.get('brightness')
+    if not brightness:
+        return jsonify({'error': 'No brightness provided'}), 400
+    
+    try:
+        # Create a self-contained script that doesn't rely on importing led_test
+        temp_script = '/tmp/led_brightness_temp.py'
+        with open(temp_script, 'w') as f:
+            f.write(f'''
+import sys
+import os
+import traceback
+
+try:
+    # Add /home/pi to Python path
+    sys.path.append('/home/pi')
+    
+    # Import required modules
+    import board
+    import neopixel
+    from config import PIXEL_PIN, NUM_PIXELS, BRIGHTNESS, LED_COLOR_ORDER
+    
+    # Set up the LED strip
+    pixel_pin = f"D{{PIXEL_PIN}}"  # Create "D18"
+    pixels = neopixel.NeoPixel(getattr(board, pixel_pin), NUM_PIXELS, 
+                              brightness=BRIGHTNESS, auto_write=False, 
+                              pixel_order=LED_COLOR_ORDER)
+    
+    # Update brightness
+    print(f"Updating brightness to: {brightness}")
+    pixels.brightness = {brightness}
+    pixels.show()
+    print("Brightness updated successfully")
+except Exception as e:
+    print(f"Error updating brightness: {{str(e)}}")
+    traceback.print_exc()
+    sys.exit(1)
+''')
+        
+        # Use the correct Python interpreter path
+        python_path = '/home/pi/metar/bin/python3'
+        
+        # Run the script with sudo and capture output
+        result = subprocess.run(['sudo', python_path, temp_script], 
+                               check=True, 
+                               capture_output=True, 
+                               text=True)
+        
+        # Log the output for debugging
+        print(f"Script stdout: {result.stdout}")
+        print(f"Script stderr: {result.stderr}")
+        
+        return jsonify({'success': True, 'output': result.stdout})
+    except subprocess.CalledProcessError as e:
+        error_output = e.stderr if hasattr(e, 'stderr') else "No error output available"
+        stdout_output = e.stdout if hasattr(e, 'stdout') else "No stdout output available"
+        return jsonify({
+            'error': f'Failed to update brightness: {str(e)}',
+            'stdout': stdout_output,
+            'stderr': error_output
+        }), 500
+    except Exception as e:
+        return jsonify({'error': f'Failed to update brightness: {str(e)}'}), 500
+
+# LED Test Service Control
+@app.route('/led-test-service/start', methods=['POST'])
+def start_led_test_service():
+    try:
+        result = subprocess.run(['sudo', 'systemctl', 'start', 'ledtest.service'], 
+                               capture_output=True, text=True)
+        if result.returncode == 0:
+            return jsonify({'success': True})
+        else:
+            app.logger.error(f"Failed to start LED test service: {result.stderr}")
+            return jsonify({'success': False, 'error': result.stderr})
+    except Exception as e:
+        app.logger.error(f"Error starting LED test service: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/led-test-service/stop', methods=['POST'])
+def stop_led_test_service():
+    try:
+        result = subprocess.run(['sudo', 'systemctl', 'stop', 'ledtest.service'], 
+                               capture_output=True, text=True)
+        if result.returncode == 0:
+            return jsonify({'success': True})
+        else:
+            app.logger.error(f"Failed to stop LED test service: {result.stderr}")
+            return jsonify({'success': False, 'error': result.stderr})
+    except Exception as e:
+        app.logger.error(f"Error stopping LED test service: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/led-test-service/status', methods=['GET'])
+def led_test_service_status():
+    try:
+        result = subprocess.run(['systemctl', 'is-active', 'ledtest.service'], 
+                               capture_output=True, text=True)
+        is_active = result.stdout.strip() == 'active'
+        return jsonify({'success': True, 'active': is_active})
+    except Exception as e:
+        app.logger.error(f"Error checking LED test service status: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/shutdown', methods=['POST'])
+def shutdown_system():
+    """Stop all services, blank the lights, and shut down the Raspberry Pi."""
+    try:
+        # First, send a response to the client
+        response = jsonify({'success': True, 'message': 'System is shutting down'})
+        response.headers['Connection'] = 'close'  # Force the connection to close after sending
+        
+        # Schedule the shutdown to happen after the response is sent
+        def shutdown_after_response():
+            try:
+                # Stop the METAR service
+                subprocess.run(['sudo', 'systemctl', 'stop', 'metar.service'], check=True)
+                app.logger.info("METAR service stopped for shutdown")
+                
+                # Try to run blank.py to turn off all LEDs, but continue even if it fails
+                try:
+                    # Use the virtual environment Python interpreter
+                    subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/blank.py'], check=True)
+                    app.logger.info("LEDs blanked for shutdown")
+                except subprocess.CalledProcessError as e:
+                    app.logger.warning(f"Failed to blank LEDs: {e}. Continuing with shutdown.")
+                
+                # Stop the scheduler service
+                subprocess.run(['sudo', 'systemctl', 'stop', 'scheduler.service'], check=True)
+                app.logger.info("Scheduler service stopped for shutdown")
+                
+                # Shutdown the Raspberry Pi
+                subprocess.run(['sudo', 'shutdown', 'now'], check=True)
+                app.logger.info("Shutdown command executed")
+            except Exception as e:
+                app.logger.error(f"Error during shutdown process: {e}")
+        
+        # Start the shutdown process in a separate thread
+        threading.Thread(target=shutdown_after_response).start()
+        
+        return response
+    except Exception as e:
+        app.logger.error(f"Unexpected error during shutdown: {e}")
+        return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
     if ENABLE_HTTPS:

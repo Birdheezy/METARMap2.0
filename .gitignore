@@ -2,3 +2,4 @@ airports.txt
 weather.json
 config.py
 static/js/bootstrap.bundle.min.js
+/.dev

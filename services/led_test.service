@@ -1,0 +1,14 @@
+[Unit]
+Description=METARMap LED Test Service
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi
+ExecStart=/home/pi/metar/bin/python3 /home/pi/led_test.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target 

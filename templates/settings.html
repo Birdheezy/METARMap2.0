@@ -16,48 +16,26 @@
 <!-- Navigation Bar -->
 <nav class="navbar">
     <a href="#brightness">Brightness</a>
-    <a href="#time-settings">Time Settings</a>
-    <a href="#animation">Animation Settings</a>
+    <a href="#color">Color</a>
+    <a href="#animation">Animation</a>
+    <a href="#time-settings">Time</a>
     <a href="#airports">Airports</a>
-    <a href="#wifi-settings">Wifi Settings</a>
+    <a href="#wifi-settings">Wifi</a>
 </nav>
 
 <div class="container">
     <!-- Title Section -->
     <div style="margin-top: 30px; margin-bottom: 40px; text-align: center;">
-        <h1 style="font-family: 'Orbitron', sans-serif; font-size: 3em; color: #007bff; margin-bottom: 5px; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0, 123, 255, 0.3);">METARMap</h1>
-        <div style="font-size: 1.1em; color: #cccccc; font-family: 'Orbitron', sans-serif; letter-spacing: 1px;">Settings & Configuration</div>
+        <h1>METARMap 2.0</h1>
+        <div style="font-size: 1.1em; color: #cccccc; font-family: 'Orbitron', sans-serif; letter-spacing: 1px;">
+            Settings & Configuration </br>
+            Thanks for checking out this project! </br>
+            If you have any issues/comments/suggestions, please visit <a href="https://github.com/Birdheezy/METARMap2.0/tree/production">this link.</a>
+        </div>
     </div>
     <section>
         <h2>Airport Map</h2>
-        <div id="airport-map" style="height: 450px; margin-bottom: 10px; border-radius: 8px;"></div>
-        <div class="map-legend">
-            <span class="legend-item">
-                <span class="legend-dot vfr"></span>VFR
-            </span>
-            <span class="legend-item">
-                <span class="legend-dot mvfr"></span>MVFR
-            </span>
-            <span class="legend-item">
-                <span class="legend-dot ifr"></span>IFR
-            </span>
-            <span class="legend-item">
-                <span class="legend-dot lifr"></span>LIFR
-            </span>
-        </div>
-        <br>
-        <div style="margin-top: 5px;" class="weather-status">
-                <div class="service-status">
-                    <span class="status-dot" id="weather-status-dot"></span>
-                    <span class="status-text">WX Last Updated: <span id="weather-last-updated">{{ weather_last_modified }}</span></span>
-                    <div class="status-tooltip">
-                        <span class="green-status">Green: Weather data is current (within expected update interval)</span><br>
-                        <span class="red-status">Red: Weather data is stale (no updates for over 2x the update interval)</span>
-                    </div>
-                </div>
-            </div>
-        <br>
-        <button type="button" id="save-map-view" class="btn btn-primary" style="margin-bottom: 20px;">Save Current View</button>
+        {% include 'map.html' with context %}
     </section>
 
     <form method="POST" action="/" onsubmit="saveScrollPosition()">
@@ -102,7 +80,143 @@
         </div>
     </section>
 
+    <section id="color">
+        <h2>Color Settings</h2>
+        <div class="color-settings-container">
+            <!-- Flight Categories Column -->
+            <div class="color-column">
+                <h3>Flight Categories</h3>
+                <div class="color-picker-list">
+                    <div class="color-picker-row">
+                        <label for="vfr-color-picker">VFR Color:</label>
+                        <input type="color" id="vfr-color-picker" name="vfr_color" value="{{ vfr_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="mvfr-color-picker">MVFR Color:</label>
+                        <input type="color" id="mvfr-color-picker" name="mvfr_color" value="{{ mvfr_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="ifr-color-picker">IFR Color:</label>
+                        <input type="color" id="ifr-color-picker" name="ifr_color" value="{{ ifr_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="lifr-color-picker">LIFR Color:</label>
+                        <input type="color" id="lifr-color-picker" name="lifr_color" value="{{ lifr_color }}">
+                    </div>
+                </div>
+            </div>
 
+            <!-- Special Conditions Column -->
+            <div class="color-column">
+                <h3>Special Conditions</h3>
+                <div class="color-picker-list">
+                    <div class="color-picker-row">
+                        <label for="lightening-color-picker">Lightning Color:</label>
+                        <input type="color" id="lightening-color-picker" name="lightening_color" value="{{ lightening_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="snowy-color-picker">Snowy Color:</label>
+                        <input type="color" id="snowy-color-picker" name="snowy_color" value="{{ snowy_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="missing-color-picker">Missing Color:</label>
+                        <input type="color" id="missing-color-picker" name="missing_color" value="{{ missing_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="stale-data-color-picker">Stale WX Data Color:</label>
+                        <input type="color" id="stale-data-color-picker" name="stale_data_color" value="{{ stale_data_color }}">
+                    </div>
+                    <div class="color-picker-row">
+                        <label for="wifi-disconnected-color-picker">WiFi Disconnected Color:</label>
+                        <input type="color" id="wifi-disconnected-color-picker" name="wifi_disconnected_color" value="{{ wifi_disconnected_color }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- LED Test Section -->
+    <section id="led-testing" class="dark-section">
+        <h2 class="section-title">LED Testing</h2>
+        <!-- LED Mode Selection -->
+        <div class="test-section">
+            <div class="led-mode-selection">
+                <label class="radio-label">
+                    <input type="radio" name="led-mode" value="all" checked> All LEDs
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="led-mode" value="range"> LED Range
+                </label>
+            </div>
+            <div>    
+                <!-- LED Range Inputs (initially hidden) -->
+                <div id="led-range-inputs" class="led-range-container" style="display: none;">
+                    <div class="led-range-inputs">
+                        <div class="range-label">LED Range:</div>
+                        <div class="range-inputs">
+                            <input type="number" id="start-pixel" min="1" max="50" placeholder="Start (1-50)">
+                            <span class="range-separator">to</span>
+                            <input type="number" id="end-pixel" min="1" max="50" placeholder="End (1-50)">
+                        </div>
+                    </div>
+                    <div class="led-range-info">
+                        <small>Enter a single number to test one LED.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- LED Color Order Selection -->
+            <div class="led-color-order">
+                <label for="test-led-color-order">LED Color Order:</label>
+                <select id="test-led-color-order" class="form-control input-small">
+                    <option value="RGB" {% if config.LED_COLOR_ORDER == 'RGB' %}selected{% endif %}>RGB</option>
+                    <option value="GRB" {% if config.LED_COLOR_ORDER == 'GRB' %}selected{% endif %}>GRB</option>
+                </select>
+                <div class="color-order-info">
+                    <small>RGB: Common for NeoPixels<br>GRB: Standard for WS2811 Bullet style lights</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Automated Test -->
+        <div class="test-section">
+            <h3 class="subsection-title">Automated Test</h3>
+            <div class="button-grid three-column">
+                <button type="button" class="btn btn-primary" id="run-auto-test">Start Test</button>
+                <button type="button" class="btn btn-primary" id="stop-auto-test">Stop Test</button>
+                <button type="button" class="btn btn-primary service-btn" id="metar-control-btn" onclick="event.preventDefault(); controlService('metar', 'stop')">Stop METAR</button>
+            </div>
+            <div id="test-status" style="text-align: center; margin-top: 10px;">Testing: Not Started</div>
+        </div>
+
+        <!-- Manual Test -->
+        <div class="test-section">
+            <h3 class="subsection-title">Manual Test</h3>
+            <div class="button-grid three-column">
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ vfr_color }}">Test VFR</button>
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ mvfr_color }}">Test MVFR</button>
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ ifr_color }}">Test IFR</button>
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ lifr_color }}">Test LIFR</button>
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ lightening_color }}">Test Lightning</button>
+                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ snowy_color }}">Test Snow</button>
+            </div>
+        </div>
+        
+        <!-- Custom Color Test -->
+        <div class="test-section">
+            <h3 class="subsection-title">Custom Color Test</h3>
+            <div class="input-group">
+                <label for="custom-led-color">Custom Color:</label>
+                <input type="color" id="custom-led-color" value="#ffffff">
+                <button type="button" class="btn btn-primary" id="test-custom-color">Test</button>
+            </div>
+        </div>
+
+        <!-- All Off Button -->
+        <div class="led-controls">
+            <button type="button" class="btn btn-primary" id="turn-off-leds">Turn Off LEDs</button>
+        </div>
+    </section>
 
     <!-- Animation Settings -->
 
@@ -206,64 +320,8 @@
             <input type="text" class="form-control input-small" name="snow_blink_pause" value="{{ config.SNOW_BLINK_PAUSE }}" placeholder="Default: 0.4">
         </div>
     </section>
-    <section>
-        <h2>Color Settings</h2>
-        <div class="color-settings-container">
-            <!-- Flight Categories Column -->
-            <div class="color-column">
-                <h3>Flight Categories</h3>
-                <div class="color-picker-list">
-                    <div class="color-picker-row">
-                        <label for="vfr-color-picker">VFR Color:</label>
-                        <input type="color" id="vfr-color-picker" name="vfr_color" value="{{ vfr_color }}">
-                    </div>
-                    <div class="color-picker-row">
-                        <label for="mvfr-color-picker">MVFR Color:</label>
-                        <input type="color" id="mvfr-color-picker" name="mvfr_color" value="{{ mvfr_color }}">
-                    </div>
-                    <div class="color-picker-row">
-                        <label for="ifr-color-picker">IFR Color:</label>
-                        <input type="color" id="ifr-color-picker" name="ifr_color" value="{{ ifr_color }}">
-                    </div>
-                    <div class="color-picker-row">
-                        <label for="lifr-color-picker">LIFR Color:</label>
-                        <input type="color" id="lifr-color-picker" name="lifr_color" value="{{ lifr_color }}">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Special Conditions Column -->
-            <div class="color-column">
-                <h3>Special Conditions</h3>
-                <div class="color-picker-list">
-                    <div class="color-picker-row">
-                        <label for="lightening-color-picker">Lightning Color:</label>
-                        <input type="color" id="lightening-color-picker" name="lightening_color" value="{{ lightening_color }}">
-                    </div>
-                    <div class="color-picker-row">
-                        <label for="snowy-color-picker">Snowy Color:</label>
-                        <input type="color" id="snowy-color-picker" name="snowy_color" value="{{ snowy_color }}">
-                    </div>
-                    <div class="color-picker-row">
-                        <label for="missing-color-picker">Missing Color:</label>
-                        <input type="color" id="missing-color-picker" name="missing_color" value="{{ missing_color }}">
-                    </div>
-                    <div class="color-picker-row">
-                        <label for="stale-data-color-picker">Stale WX Data Color:</label>
-                        <input type="color" id="stale-data-color-picker" name="stale_data_color" value="{{ stale_data_color }}">
-                    </div>
-                    <div class="color-picker-row">
-                        <label for="wifi-disconnected-color-picker">WiFi Disconnected Color:</label>
-                        <input type="color" id="wifi-disconnected-color-picker" name="wifi_disconnected_color" value="{{ wifi_disconnected_color }}">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-
-    <section>
-        <!-- Time Settings Section -->
+    
+    <!-- Time Settings Section -->
         <section id="time-settings">
             <h2>Time Settings</h2>
 
@@ -372,7 +430,7 @@
         </section>
 
         <!-- Advanced Settings Section -->
-        <section>
+        <section id="advanced-settings">
             <h2>Advanced Settings</h2>
 
             <!-- Number of Windy Animation Steps -->
@@ -484,8 +542,7 @@
                     </div>
                 </div>
             </div>
-
-        <br>
+        </section>
 
     <!-- Airports Section with Line Numbers -->
     <section id="airports" class="airports">
@@ -496,6 +553,7 @@
             <div class="line-numbers" id="line-numbers"></div>
             <textarea class="form-controltextarea" name="airports" id="airportsText" rows="10">{{ airports }}</textarea>
         </div>
+    </br>
     </section>
 
     <!-- WiFi Settings Section -->
@@ -526,23 +584,23 @@
         Be sure to click "Save" before restarting any services
 
      	<div class="mt-4">
-    		<button type="submit" class="btn btn-primary" onclick="saveAndRestart()">Save</button>
+    		<button type="submit" class="btn btn-primary" onclick="saveSettings()">Save</button>
     	</div>
 
     	<div class="mt-4">
     		<div class="dropdown-container">
     			<div>
-    				<a href="{{ url_for('update_weather_page') }}" class="btn btn-primary">Update Weather</a>
-    				<span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+    				<button type="button" class="btn btn-primary" onclick="updateWeatherManually()">Update Weather</button>
     			</div>
     			<div class="dropdown-content" style="display: none;">
     				This will force an immediate weather update for all airports.<br>
+    				This works even when the METAR service is stopped.
     			</div>
     		</div>
     		<div style="margin-top: 5px;" class="weather-status">
     			<div class="service-status">
-                    <span class="status-dot" id="weather-status-dot"></span>
-                    <span class="status-text">WX Last Updated: <span id="weather-last-updated">{{ weather_last_modified }}</span></span>
+                    <span class="status-dot" id="update-weather-status-dot"></span>
+                    <span class="status-text">WX Last Updated: <span id="update-weather-last-updated">{{ weather_last_modified }}</span></span>
                     <div class="status-tooltip">
                         <span class="green-status">Green: Weather data is current (within expected update interval)</span><br>
                         <span class="red-status">Red: Weather data is stale (no updates for over 2x the update interval)</span>
@@ -632,6 +690,25 @@
                 <pre class="logs-content"></pre>
             </div>
         </div>
+        
+        <!-- Shutdown Controls -->
+        <div class="service-control-panel shutdown-panel">
+            <h3>System Shutdown</h3>
+            <div class="shutdown-warning">
+                <p>This will stop all services, turn off the LEDs, and shut down the map controller.</p>
+            </div>
+            <div class="service-buttons">
+                <button class="btn btn-danger service-btn" onclick="confirmShutdown()">Shutdown System</button>
+            </div>
+            <div id="shutdown-countdown" class="shutdown-overlay">
+                <div class="shutdown-countdown">
+                    <p>System will shut down in</p>
+                    <p id="countdown-timer">20</p>
+                    <p>seconds...</p>
+                    <p>It is safe to remove power when the countdown reaches zero.</p>
+                </div>
+            </div>
+        </div>
     </section>
 </div>
 
@@ -642,6 +719,34 @@
     const IFR_COLOR = '{{ ifr_color }}';
     const LIFR_COLOR = '{{ lifr_color }}';
     const MISSING_COLOR = '{{ missing_color }}';
+    const LIGHTENING_COLOR = '{{ lightening_color }}';
+    const SNOWY_COLOR = '{{ snowy_color }}';
+
+    // Set CSS variables for the map
+    document.documentElement.style.setProperty('--vfr-color', VFR_COLOR);
+    document.documentElement.style.setProperty('--mvfr-color', MVFR_COLOR);
+    document.documentElement.style.setProperty('--ifr-color', IFR_COLOR);
+    document.documentElement.style.setProperty('--lifr-color', LIFR_COLOR);
+    document.documentElement.style.setProperty('--missing-color', MISSING_COLOR);
+    document.documentElement.style.setProperty('--lightening-color', LIGHTENING_COLOR);
+    document.documentElement.style.setProperty('--snowy-color', SNOWY_COLOR);
+
+    // Set legend dot colors directly
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get all legend dots
+        const vfrDot = document.querySelector('.legend-dot.vfr');
+        const mvfrDot = document.querySelector('.legend-dot.mvfr');
+        const ifrDot = document.querySelector('.legend-dot.ifr');
+        const lifrDot = document.querySelector('.legend-dot.lifr');
+        const missingDot = document.querySelector('.legend-dot.missing');
+        
+        // Set colors directly
+        if (vfrDot) vfrDot.style.backgroundColor = VFR_COLOR;
+        if (mvfrDot) mvfrDot.style.backgroundColor = MVFR_COLOR;
+        if (ifrDot) ifrDot.style.backgroundColor = IFR_COLOR;
+        if (lifrDot) lifrDot.style.backgroundColor = LIFR_COLOR;
+        if (missingDot) missingDot.style.backgroundColor = MISSING_COLOR;
+    });
 
     const messages = [];
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -658,77 +763,24 @@
 <script>
     // Add constants
     const WEATHER_UPDATE_THRESHOLD = {{ weather_update_threshold }};
-    
-    // Weather status update function
-    function updateWeatherStatus() {
-        fetch('/weather-status')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update all instances of the timestamp text
-                    const lastUpdatedElements = document.querySelectorAll('#weather-last-updated');
-                    lastUpdatedElements.forEach(el => {
-                        el.textContent = data.last_updated;
-                    });
-                    
-                    // Calculate if the data is stale based on the timestamp
-                    const statusDots = document.querySelectorAll('#weather-status-dot');
-                    
-                    try {
-                        // Parse the date in MM-DD-YYYY HH:MM:SS format
-                        const lastUpdated = data.last_updated;
-                        if (lastUpdated !== "Weather data not available") {
-                            const parts = lastUpdated.split(' ');
-                            const dateParts = parts[0].split('-');
-                            const timeParts = parts[1].split(':');
-                            
-                            // Create date object (months are 0-indexed in JS)
-                            const updateTime = new Date(
-                                parseInt(dateParts[2]), // year
-                                parseInt(dateParts[0]) - 1, // month (0-indexed)
-                                parseInt(dateParts[1]), // day
-                                parseInt(timeParts[0]), // hour
-                                parseInt(timeParts[1]), // minute
-                                parseInt(timeParts[2])  // second
-                            );
-                            
-                            const now = new Date();
-                            const diffMinutes = (now - updateTime) / (1000 * 60);
-                            
-                            // Weather is considered stale if it's older than the threshold
-                            const staleThreshold = WEATHER_UPDATE_THRESHOLD;
-                            
-                            // Update all status dots
-                            statusDots.forEach(dot => {
-                                dot.style.backgroundColor = (diffMinutes < staleThreshold) ? 'green' : 'red';
-                            });
-                        } else {
-                            // If weather data is not available, set dots to red
-                            statusDots.forEach(dot => {
-                                dot.style.backgroundColor = 'red';
-                            });
-                        }
-                    } catch (e) {
-                        console.error("Error parsing date:", e);
-                        statusDots.forEach(dot => {
-                            dot.style.backgroundColor = 'red';
-                        });
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching weather status:', error);
-                // Set dots to red on error
-                const statusDots = document.querySelectorAll('#weather-status-dot');
-                statusDots.forEach(dot => {
-                    dot.style.backgroundColor = 'red';
-                });
-            });
-    }
+    const NUM_PIXELS = {{ config.NUM_PIXELS }};
     
     // Call initially and set interval
     updateWeatherStatus();
     setInterval(updateWeatherStatus, 30000); // Update every 30 seconds
+</script>
+
+<script>
+    // Set CSS variables for legend colors
+    document.addEventListener('DOMContentLoaded', function() {
+        document.documentElement.style.setProperty('--vfr-color', '{{ vfr_color }}');
+        document.documentElement.style.setProperty('--mvfr-color', '{{ mvfr_color }}');
+        document.documentElement.style.setProperty('--ifr-color', '{{ ifr_color }}');
+        document.documentElement.style.setProperty('--lifr-color', '{{ lifr_color }}');
+        document.documentElement.style.setProperty('--missing-color', '{{ missing_color }}');
+        document.documentElement.style.setProperty('--lightening-color', '{{ lightening_color }}');
+        document.documentElement.style.setProperty('--snowy-color', '{{ snowy_color }}');
+    });
 </script>
 
 </body>
