@@ -675,21 +675,36 @@ def get_service_logs(service_name):
 
 @app.route('/weather-status')
 def weather_status():
-    weather_file_path = '/home/pi/weather.json'
     try:
-        last_modified_timestamp = os.path.getmtime(weather_file_path)
-        # Ensure consistent date format: MM-DD-YYYY HH:MM:SS
-        last_updated = datetime.datetime.fromtimestamp(last_modified_timestamp).strftime('%m-%d-%Y %H:%M:%S')
-        return jsonify({
-            'success': True,
-            'last_updated': last_updated
-        })
-    except FileNotFoundError:
-        return jsonify({
-            'success': True,
-            'last_updated': "Weather data not available"
-        })
+        # Get the last modified time of weather.json
+        weather_file = '/home/pi/weather.json'
+        if os.path.exists(weather_file):
+            last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(weather_file))
+            
+            formatted_date = last_modified.strftime('%m-%d-%Y %H:%M:%S')
+            
+            # Calculate time difference in minutes
+            now = datetime.datetime.now()
+            diff_minutes = (now - last_modified).total_seconds() / 60
+            
+            # The threshold should be 2x the update interval
+            weather_update_threshold = (config.WEATHER_UPDATE_INTERVAL / 60) * 2  # 2x the update interval in minutes
+            
+            return jsonify({
+                'success': True,
+                'last_updated': formatted_date,
+                'formatted_date': formatted_date,
+                'diff_minutes': diff_minutes,
+                'threshold': weather_update_threshold
+            })
+        else:
+            app.logger.warning("Weather file not found")
+            return jsonify({
+                'success': False,
+                'error': 'Weather data not available'
+            })
     except Exception as e:
+        app.logger.error(f"Error in weather-status: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -1319,12 +1334,16 @@ def get_condition_airports():
 def get_weather_data():
     try:
         weather_file_path = '/home/pi/weather.json'
+        app.logger.info(f"Reading weather data from: {weather_file_path}")
         with open(weather_file_path, 'r') as f:
             weather_data = json.load(f)
+        app.logger.info("Successfully loaded weather data")
         return jsonify(weather_data)
     except FileNotFoundError:
+        app.logger.error("Weather data file not found")
         return jsonify({"error": "Weather data not found"}), 404
     except Exception as e:
+        app.logger.error(f"Error reading weather data: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/test-leds', methods=['POST'])
