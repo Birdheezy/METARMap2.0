@@ -1418,3 +1418,30 @@ input[type="color"]::-webkit-color-swatch {
     font-size: 0.9em;
     line-height: 1.4;
 }
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 10px;
+    background-color: #2a2a2a;
+    border-radius: 5px;
+}
+
+.section-header:hover {
+    background-color: #333;
+}
+
+.section-toggle {
+    font-size: 1.2em;
+    color: #ccc;
+    transition: transform 0.3s ease;
+}
+
+.section-content {
+    padding: 20px;
+    background-color: #2a2a2a;
+    border-radius: 0 0 5px 5px;
+    margin-top: 2px;
+}

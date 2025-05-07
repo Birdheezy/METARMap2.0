@@ -602,108 +602,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize map if the element exists
     const mapElement = document.getElementById('airport-map');
     if (mapElement) {
-        let map = null;
-
-        // Load saved map settings
-        fetch('/map-settings')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to load map settings');
-                }
-                return response.json();
-            })
-            .then(settings => {
-                map = L.map('airport-map').setView(settings.center, settings.zoom);
-                
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors'
-                }).addTo(map);
-
-                // Add save button event listener
-                document.getElementById('save-map-view').addEventListener('click', function() {
-                    const center = map.getCenter();
-                    const zoom = map.getZoom();
-
-                    fetch('/map-settings', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            center: [center.lat, center.lng],
-                            zoom: zoom
-                        })
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Failed to save map settings');
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (data.success) {
-                            showToast('Map view saved successfully!', 'success');
-                        } else {
-                            showToast(data.error || 'Failed to save map view', 'danger');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        showToast('Error saving map view: ' + error.message, 'danger');
-                    });
-                });
-
-                // Store markers in a layer group for easy removal
-                let markersLayer = L.layerGroup().addTo(map);
-
-                function updateAirportMarkers() {
-                    fetch('/airport-conditions')
-                        .then(response => response.json())
-                        .then(data => {
-                            // Clear existing markers
-                            markersLayer.clearLayers();
-
-                            data.airports.forEach(airport => {
-                                const marker = L.circleMarker([airport.lat, airport.lon], {
-                                    radius: 8,
-                                    fillColor: getMarkerColor(airport.fltCat),
-                                    color: '#000',
-                                    weight: 1,
-                                    opacity: 1,
-                                    fillOpacity: 0.8
-                                });
-
-                                // Add popup with airport info
-                                marker.bindPopup(`
-                                    <b>${airport.icao}</b><br>
-                                    <b>${airport.site}</b><br>
-                                    Flight Category: ${airport.fltCat}<br>
-                                    <hr>
-                                    <small>${airport.raw_observation}</small>
-                                `);
-
-                                markersLayer.addLayer(marker);
-                            });
-                        })
-                        .catch(error => console.error('Error updating airport markers:', error));
-                }
-
-                // Add airport markers initially
-                updateAirportMarkers();
-
-                // Update markers periodically
-                setInterval(updateAirportMarkers, 30000); // Update every 30 seconds
-            })
-            .catch(error => {
-                console.error('Error loading map settings:', error);
-                // Fallback to default settings if loading fails
-                map = L.map('airport-map').setView([37.0902, -99.7558], 4);
-                
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors'
-                }).addTo(map);
-                updateAirportMarkers();
-            });
+        // Initialize the map system with color configuration
+        const colorConfig = {
+            vfrColor: VFR_COLOR,
+            mvfrColor: MVFR_COLOR,
+            ifrColor: IFR_COLOR,
+            lifrColor: LIFR_COLOR,
+            missingColor: MISSING_COLOR,
+            lighteningColor: LIGHTENING_COLOR,
+            snowyColor: SNOWY_COLOR,
+            weatherUpdateThreshold: WEATHER_UPDATE_THRESHOLD
+        };
+        
+        initializeMapSystem(colorConfig);
     }
 });
 
@@ -847,30 +758,45 @@ document.addEventListener('DOMContentLoaded', function() {
     if (runAutoTest && stopAutoTest && metarControlBtn) {
         runAutoTest.addEventListener('click', function() {
             if (!isTestRunning) {
-                // Start the LED test service
-                fetch('/led-test-service/start', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        currentIndex = -1; // Reset to start
-                        isTestRunning = true;
-                        // Update button states
-                        runAutoTest.textContent = 'Next Color';
-                        stopAutoTest.style.visibility = 'visible';
-                        metarControlBtn.style.visibility = 'hidden';
-                        showNextColor();
-                    } else {
-                        showToast('Failed to start LED test service: ' + data.error, 'danger');
-                    }
-                })
-                .catch(error => {
-                    showToast('Error starting LED test service: ' + error, 'danger');
-                });
+                // First check if METAR service is running and stop it if needed
+                fetch('/service/status/metar')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'running') {
+                            // Stop METAR service first
+                            return fetch('/service/control/metar/stop', {
+                                method: 'POST'
+                            }).then(() => {
+                                showToast('METAR service stopped', 'info');
+                            });
+                        }
+                    })
+                    .then(() => {
+                        // Start the LED test service
+                        return fetch('/led-test-service/start', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            currentIndex = -1; // Reset to start
+                            isTestRunning = true;
+                            // Update button states
+                            runAutoTest.textContent = 'Next Color';
+                            stopAutoTest.style.visibility = 'visible';
+                            metarControlBtn.style.visibility = 'hidden';
+                            showNextColor();
+                        } else {
+                            showToast('Failed to start LED test service: ' + data.error, 'danger');
+                        }
+                    })
+                    .catch(error => {
+                        showToast('Error starting LED test service: ' + error, 'danger');
+                    });
             } else {
                 // Just show next color if test is already running
                 showNextColor();
@@ -882,10 +808,10 @@ document.addEventListener('DOMContentLoaded', function() {
         function stopTest() {
             // Reset UI state immediately
             isTestRunning = false;
-            runAutoTest.textContent = 'Start Color Test';
-            stopAutoTest.style.visibility = 'visible';
+            runAutoTest.textContent = 'Start Test';
+            stopAutoTest.style.visibility = 'hidden';
             metarControlBtn.style.visibility = 'visible';
-            metarControlBtn.textContent = 'Stop METAR Service';
+            metarControlBtn.textContent = 'Stop METAR';
             metarControlBtn.onclick = (event) => {
                 event.preventDefault();
                 controlService('metar', 'stop');
@@ -1019,14 +945,23 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Initialize LED test section toggle
+    const ledTestToggle = document.getElementById('led-test-toggle');
+    const ledTestContent = document.getElementById('led-test-content');
+    if (ledTestToggle && ledTestContent) {
+        ledTestToggle.addEventListener('click', function() {
+            const isVisible = ledTestContent.classList.contains('show');
+            ledTestContent.classList.toggle('show');
+            this.querySelector('.info-toggle').textContent = isVisible ? '▼' : '▲';
+        });
+    }
+
     // Initialize all status updates
     updateAllServiceStatuses();
-    updateWeatherStatus();
     
     // Set up intervals for status updates
     setInterval(updateAllServiceStatuses, 10000);  // Update service statuses every 10 seconds
-    setInterval(updateWeatherStatus, 10000);      // Update weather status every 10 seconds
-
+   
     // Initialize timezone dropdown
     populateTimezones();
 
@@ -1193,3 +1128,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Function to start METAR service after stopping LED test service
+async function startMetarWithCleanup() {
+    // Stop the LED test service first
+    await fetch('/led-test-service/stop', { method: 'POST' });
+    // Now start the METAR service
+    controlService('metar', 'start');
+}

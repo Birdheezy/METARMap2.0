@@ -3,6 +3,10 @@
 // Global variable to store the current map instance
 let currentAirportMap;
 
+// Add this at the top of the file with other global variables
+let weatherUpdateInterval = null;
+let isUpdatingWeather = false;
+
 // Function to initialize map colors from config
 function initializeMapColors(config) {
     // Set CSS variables for the legend colors
@@ -16,7 +20,14 @@ function initializeMapColors(config) {
 }
 
 // Function to update the weather status
-function updateWeatherStatus(weatherUpdateThreshold) {
+function updateWeatherStatus() {
+    // Prevent multiple simultaneous calls
+    if (window.isUpdatingWeather) {
+        return;
+    }
+    
+    window.isUpdatingWeather = true;
+    
     fetch('/weather-status')
         .then(response => response.json())
         .then(data => {
@@ -50,23 +61,20 @@ function updateWeatherStatus(weatherUpdateThreshold) {
                         const diffMinutes = (now - updateTime) / (1000 * 60);
                         
                         statusDots.forEach(dot => {
-                            dot.style.backgroundColor = (diffMinutes < weatherUpdateThreshold) ? 'green' : 'red';
+                            dot.style.backgroundColor = (diffMinutes < data.threshold) ? 'green' : 'red';
                         });
 
-                        // If weather data has been updated, refresh the airport markers
-                        if (window.lastWeatherUpdate === undefined || window.lastWeatherUpdate < updateTime) {
-                            window.lastWeatherUpdate = updateTime;
-                            if (currentAirportMap) {
-                                fetch('/get-weather-data')
-                                    .then(response => response.json())
-                                    .then(weatherData => {
-                                        currentAirportMap.loadAirports(weatherData);
-                                    })
-                                    .catch(error => {
-                                        console.error("Error updating airport markers:", error);
-                                    });
-                            }
-                        }
+                        // Always fetch and update weather data
+                        fetch('/get-weather-data')
+                            .then(response => response.json())
+                            .then(weatherData => {
+                                if (currentAirportMap) {
+                                    currentAirportMap.loadAirports(weatherData);
+                                }
+                            })
+                            .catch(error => {
+                                console.error("Error updating airport markers:", error);
+                            });
                     } else {
                         statusDots.forEach(dot => dot.style.backgroundColor = 'red');
                     }
@@ -80,8 +88,23 @@ function updateWeatherStatus(weatherUpdateThreshold) {
             console.error('Error fetching weather status:', error);
             const statusDots = document.querySelectorAll('[id$="weather-status-dot"]');
             statusDots.forEach(dot => dot.style.backgroundColor = 'red');
+        })
+        .finally(() => {
+            window.isUpdatingWeather = false;
         });
 }
+
+// Make the function available globally
+window.updateWeatherStatus = updateWeatherStatus;
+
+// Start weather updates when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Initial update
+    updateWeatherStatus();
+    
+    // Set up interval for updates
+    setInterval(updateWeatherStatus, 30000); // Update every 30 seconds
+});
 
 // Function to initialize the map system
 function initializeMapSystem(config) {
@@ -125,10 +148,6 @@ function initializeMapSystem(config) {
         .catch(error => {
             console.error('Error initializing map system:', error);
         });
-
-    // Start weather status updates
-    updateWeatherStatus(config.weatherUpdateThreshold);
-    setInterval(() => updateWeatherStatus(config.weatherUpdateThreshold), 30000);
 }
 
 // Function to save the current map view
@@ -163,6 +182,12 @@ function saveMapView(airportMap) {
 
 // Map initialization function
 function initializeAirportMap(containerId, colorConfig, mapCenter, mapZoom) {
+    // Check if map is already initialized
+    if (currentAirportMap && currentAirportMap.map) {
+        console.log('Map already initialized, returning existing instance');
+        return currentAirportMap;
+    }
+
     // Initialize map with configuration from settings
     // Default to US center if not provided
     const centerLat = mapCenter ? mapCenter[0] : 39.8283;

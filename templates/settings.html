@@ -19,6 +19,7 @@
     <a href="#color">Color</a>
     <a href="#animation">Animation</a>
     <a href="#time-settings">Time</a>
+    <a href="#advanced-settings">Advanced</a>
     <a href="#airports">Airports</a>
     <a href="#wifi-settings">Wifi</a>
 </nav>
@@ -137,84 +138,92 @@
 
     <!-- LED Test Section -->
     <section id="led-testing" class="dark-section">
-        <h2 class="section-title">LED Testing</h2>
-        <!-- LED Mode Selection -->
-        <div class="test-section">
-            <div class="led-mode-selection">
-                <label class="radio-label">
-                    <input type="radio" name="led-mode" value="all" checked> All LEDs
-                </label>
-                <label class="radio-label">
-                    <input type="radio" name="led-mode" value="range"> LED Range
-                </label>
-            </div>
-            <div>    
-                <!-- LED Range Inputs (initially hidden) -->
-                <div id="led-range-inputs" class="led-range-container" style="display: none;">
-                    <div class="led-range-inputs">
-                        <div class="range-label">LED Range:</div>
-                        <div class="range-inputs">
-                            <input type="number" id="start-pixel" min="1" max="50" placeholder="Start (1-50)">
-                            <span class="range-separator">to</span>
-                            <input type="number" id="end-pixel" min="1" max="50" placeholder="End (1-50)">
+        <div class="info-header" id="led-test-toggle">
+            <h2 style="margin: 0;">LED Testing</h2>
+            <span class="info-toggle">▼</span>
+        </div>
+        <div class="info-content" id="led-test-content">
+            <!-- LED Mode Selection -->
+            <div class="test-section">
+                <div class="led-mode-selection">
+                    <label class="radio-label">
+                        <input type="radio" name="led-mode" value="all" checked> All LEDs
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="led-mode" value="range"> LED Range
+                    </label>
+                </div>
+                <div>    
+                    <!-- LED Range Inputs (initially hidden) -->
+                    <div id="led-range-inputs" class="led-range-container" style="display: none;">
+                        <div class="led-range-inputs">
+                            <div class="range-label">LED Range:</div>
+                            <div class="range-inputs">
+                                <input type="number" id="start-pixel" min="1" max="50" placeholder="Start (1-50)">
+                                <span class="range-separator">to</span>
+                                <input type="number" id="end-pixel" min="1" max="50" placeholder="End (1-50)">
+                            </div>
+                        </div>
+                        <div class="led-range-info">
+                            <small>Enter a single number to test one LED.</small>
                         </div>
                     </div>
-                    <div class="led-range-info">
-                        <small>Enter a single number to test one LED.</small>
+                </div>
+                
+                <!-- LED Color Order Selection -->
+                <div class="led-color-order">
+                    <label for="test-led-color-order">LED Color Order:</label>
+                    <select id="test-led-color-order" class="form-control input-small">
+                        <option value="RGB" {% if config.LED_COLOR_ORDER == 'RGB' %}selected{% endif %}>RGB</option>
+                        <option value="GRB" {% if config.LED_COLOR_ORDER == 'GRB' %}selected{% endif %}>GRB</option>
+                    </select>
+                    <div class="color-order-info">
+                        <small>RGB: Common for NeoPixels<br>GRB: Standard for WS2811 Bullet style lights</small>
                     </div>
+                </div>
+            </div>
+
+            <!-- Automated Test -->
+            <div class="test-section">
+                <h3 class="subsection-title">Automated Test</h3>
+                <div class="button-grid three-column">
+                    <button type="button" class="btn btn-primary" id="run-auto-test">Start Test</button>
+                    <button type="button" class="btn btn-primary" id="stop-auto-test" style="visibility: hidden;">Stop Test</button>
+                    <button type="button" class="btn btn-primary service-btn" id="metar-control-btn" onclick="event.preventDefault(); controlService('metar', 'stop')">Stop METAR</button>
+                </div>
+                <div id="test-status" style="text-align: center; margin-top: 10px;">Testing: Not Started</div>
+            </div>
+
+            <!-- Manual Test -->
+            <div class="test-section">
+                <h3 class="subsection-title">Manual Test</h3>
+                <div class="button-grid three-column">
+                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ vfr_color }}">VFR</button>
+                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ mvfr_color }}">MVFR</button>
+                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ ifr_color }}">IFR</button>
+                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ lifr_color }}">LIFR</button>
+                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ lightening_color }}">Lightning</button>
+                    <button type="button" class="btn btn-primary led-test-btn" data-color="{{ snowy_color }}">Snow</button>
                 </div>
             </div>
             
-            <!-- LED Color Order Selection -->
-            <div class="led-color-order">
-                <label for="test-led-color-order">LED Color Order:</label>
-                <select id="test-led-color-order" class="form-control input-small">
-                    <option value="RGB" {% if config.LED_COLOR_ORDER == 'RGB' %}selected{% endif %}>RGB</option>
-                    <option value="GRB" {% if config.LED_COLOR_ORDER == 'GRB' %}selected{% endif %}>GRB</option>
-                </select>
-                <div class="color-order-info">
-                    <small>RGB: Common for NeoPixels<br>GRB: Standard for WS2811 Bullet style lights</small>
+            <!-- Custom Color Test -->
+            <div class="test-section">
+                <h3 class="subsection-title">Custom Color Test</h3>
+                <div style="display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 10px;">
+                    <label for="custom-led-color" style="margin: 0;">Custom Color:</label>
+                    <input type="color" id="custom-led-color" value="#ffffff">
+                </div>
+                <div style="display: flex; justify-content: center;">
+                    <button type="button" class="btn btn-primary" id="test-custom-color">Test</button>
                 </div>
             </div>
-        </div>
 
-        <!-- Automated Test -->
-        <div class="test-section">
-            <h3 class="subsection-title">Automated Test</h3>
-            <div class="button-grid three-column">
-                <button type="button" class="btn btn-primary" id="run-auto-test">Start Test</button>
-                <button type="button" class="btn btn-primary" id="stop-auto-test">Stop Test</button>
-                <button type="button" class="btn btn-primary service-btn" id="metar-control-btn" onclick="event.preventDefault(); controlService('metar', 'stop')">Stop METAR</button>
+            <!-- All Off Button -->
+            <div class="test-section">
+                <button type="button" class="btn btn-primary" id="turn-off-leds">Turn Off LEDs</button>
+                <button type="button" class="btn btn-primary service-btn" onclick="event.preventDefault(); startMetarWithCleanup()">Start METAR</button>
             </div>
-            <div id="test-status" style="text-align: center; margin-top: 10px;">Testing: Not Started</div>
-        </div>
-
-        <!-- Manual Test -->
-        <div class="test-section">
-            <h3 class="subsection-title">Manual Test</h3>
-            <div class="button-grid three-column">
-                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ vfr_color }}">Test VFR</button>
-                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ mvfr_color }}">Test MVFR</button>
-                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ ifr_color }}">Test IFR</button>
-                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ lifr_color }}">Test LIFR</button>
-                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ lightening_color }}">Test Lightning</button>
-                <button type="button" class="btn btn-primary led-test-btn" data-color="{{ snowy_color }}">Test Snow</button>
-            </div>
-        </div>
-        
-        <!-- Custom Color Test -->
-        <div class="test-section">
-            <h3 class="subsection-title">Custom Color Test</h3>
-            <div class="input-group">
-                <label for="custom-led-color">Custom Color:</label>
-                <input type="color" id="custom-led-color" value="#ffffff">
-                <button type="button" class="btn btn-primary" id="test-custom-color">Test</button>
-            </div>
-        </div>
-
-        <!-- All Off Button -->
-        <div class="led-controls">
-            <button type="button" class="btn btn-primary" id="turn-off-leds">Turn Off LEDs</button>
         </div>
     </section>
 
@@ -647,7 +656,7 @@
                 Status: <span class="status-dot"></span> <span class="status-text">Checking...</span>
             </div>
             <div class="service-buttons">
-                <button class="btn btn-primary service-btn" onclick="controlService('metar', 'start')">Start</button>
+                <button type="button" class="btn btn-primary service-btn" onclick="event.preventDefault(); startMetarWithCleanup()">Start METAR</button>
                 <button class="btn btn-primary service-btn" onclick="controlService('metar', 'stop')">Stop</button>
                 <button class="btn btn-primary service-btn" onclick="controlService('metar', 'restart')">Restart</button>
                 <button type="button" class="btn btn-primary service-btn" onclick="toggleLogs('metar')">Logs</button>
