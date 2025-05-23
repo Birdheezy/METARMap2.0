@@ -126,10 +126,10 @@ def update_legend(pixels):
         MVFR_COLOR,
         IFR_COLOR,
         LIFR_COLOR,
-        MISSING_COLOR,
+        SNOWY_COLOR,
         LIGHTENING_COLOR,
         WINDY_COLOR,
-        SNOWY_COLOR
+        MISSING_COLOR
     ]
 
     # Start from the end of the strand
