@@ -832,7 +832,7 @@ def set_timezone():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/check_for_updates')
-def check_for_updates():
+def check_for_updates_route():
     """Check for available updates using the update manager."""
     try:
         result = check_for_updates()

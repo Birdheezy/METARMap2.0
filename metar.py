@@ -23,23 +23,12 @@ logger = logging.getLogger(__name__)
 last_wifi_check_time = 0
 last_wifi_status = False
 
-# Global variable to track weather file modification time
-last_weather_file_time = 0
-
 # Log startup with basic system info
 logger.info("METAR service starting up...")
 logger.info(f"Python version: {sys.version.split()[0]}")
 logger.info(f"Board: {board.board_id}")
 logger.info(f"Pixel count: {NUM_PIXELS}")
 logger.info(f"Daytime dimming: {'enabled' if DAYTIME_DIMMING else 'disabled'}")
-
-# Initialize weather file time tracking
-try:
-    last_weather_file_time = os.path.getmtime('weather.json')
-    logger.info("Weather file tracking initialized")
-except Exception as e:
-    logger.warning(f"Could not initialize weather file tracking: {e}")
-    last_weather_file_time = 0
 
 current_time = datetime.datetime.now().time()
 
@@ -246,21 +235,6 @@ def animate_snowy_airports(snowy_airports, weather_data):
 
 #from config import BRIGHTNESS  # Import BRIGHTNESS from config.py
 
-def check_weather_updates():
-    """Check if weather.json has been updated and reload if necessary."""
-    global last_weather_file_time
-    
-    try:
-        current_file_time = os.path.getmtime('weather.json')
-        if current_file_time != last_weather_file_time:
-            last_weather_file_time = current_file_time
-            logger.info("Weather data updated, reloading...")
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"Error checking weather file updates: {e}")
-        return False
-
 def is_weather_stale():
     try:
         weather_file_time = os.path.getmtime('weather.json')
@@ -457,9 +431,6 @@ while True:
         previous_lights_off = lights_off  # Update previous state
 
         if not lights_off:
-            # Check if weather data has been updated
-            weather_updated = check_weather_updates()
-            
             # Read the weather data and update the LEDs if lights are on
             weather_data = weather.read_weather_data()
             if weather_data is None:
