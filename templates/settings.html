@@ -47,7 +47,7 @@
         <div class="mb-3">
             <div class="dropdown-container">
                 <label for="brightness">Default Brightness (0.01 to 1.0)</label>
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                 <div class="dropdown-content" style="display: none;">
                     Adjusts the default LED brightness between 0.01 (minimum) and 1 (maximum)
                 </div>
@@ -58,7 +58,7 @@
         <div class="mb-3">
             <div class="dropdown-container">
                 <label for="daytime_dim_brightness">Night/Dimmed Brightness (0.01 to 1.0)</label>
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                 <div class="dropdown-content" style="display: none;">
                     The LED brightness between "Dim time Start" and "Bright time start". Between 0.01 (minimum) and 1 (maximum)
                 </div>
@@ -69,11 +69,11 @@
         <div class="mb-3">
             <div class="dropdown-container">
                 <label for="dim_brightness">Windy Dim Brightness (0.01 to 1.0)</label>
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                <div class="dropdown-content" style="display: none;">
-                    How dim the LED will get when executing the windy animation. Range is between 0.01 (minimum) 1 (maximum)
-                </div>
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+            <div class="dropdown-content" style="display: none;">
+                How dim the LED will get when executing the windy animation. Range is between 0.01 (minimum) 1 (maximum)
             </div>
+        </div>
             <input type="text" class="form-control input-small" name="dim_brightness" value="{{ config.DIM_BRIGHTNESS }}" placeholder="Default: 0.05">
         </div>
     </section>
@@ -233,7 +233,7 @@
         <div class="mb-3">
             <div class="dropdown-container">
                 <label for="weather_update_interval">Weather Update Interval (in minutes)</label>
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                 <div class="dropdown-content" style="display: none;">
                     Sets how often the weather data is updated automatically, in minutes. Default is 5 minutes.
                 </div>
@@ -244,7 +244,7 @@
         <div class="mb-3">
             <div class="dropdown-container">
                 <label for="animation_pause">Animation Pause Time (in seconds)</label>
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                 <div class="dropdown-content" style="display: none;">
                     Sets the duration of pause between each animation cycle, in seconds.
                 </div>
@@ -255,7 +255,7 @@
         <div class="mb-3">
             <div class="dropdown-container">
                 <label for="wind_threshold">Wind Threshold</label>
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                 <div class="dropdown-content" style="display: none;">
                     Steady state or gust over this value in knots will trigger the windy animation
                 </div>
@@ -266,7 +266,7 @@
         <div class="mb-3">
             <div class="dropdown-container">
                 <label for="wind_fade_time">Wind Fade Time (in seconds)</label>
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                 <div class="dropdown-content" style="display: none;">
                     How long it takes the LED to fade from bright to dim/dim to bright, in seconds
                 </div>
@@ -277,7 +277,7 @@
         <div class="mb-3">
             <div class="dropdown-container">
                 <label for="wind_pause">Wind Fade Pause Time (in seconds)</label>
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                 <div class="dropdown-content" style="display: none;">
                     How long the LED will be pause at the dim brigthness when executing the windy animation, in seconds
                 </div>
@@ -288,7 +288,7 @@
         <div class="mb-3">
             <div class="dropdown-container">
                 <label for="lightning_flash_count">Lightning Flash Count</label>
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                 <div class="dropdown-content" style="display: none;">
                     Sets the number of flashes that occur during the lightning animation.
                 </div>
@@ -299,7 +299,7 @@
         <div class="mb-3">
             <div class="dropdown-container">
                 <label for="snow_blink_count">Snow Blink Count</label>
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                 <div class="dropdown-content" style="display: none;">
                     Sets the number of blinks during the snowy animation.
                 </div>
@@ -310,7 +310,7 @@
         <div class="mb-3">
             <div class="dropdown-container">
                 <label for="snow_blink_pause">Snow Blink Pause (in seconds)</label>
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                 <div class="dropdown-content" style="display: none;">
                     Sets the pause duration between each blink during the snow animation, in seconds.
                 </div>
@@ -357,104 +357,104 @@
         </br>
             <!-- Manual Time Settings (only bright/dim time selects are greyed out when using sunrise/sunset) -->
             <div id="manual-time-settings">
-                <!-- Timezone Settings -->
-                <div class="dropdown-container">
+            <!-- Timezone Settings -->
+            <div class="dropdown-container">
                     <h3 style="margin: 0; display: inline-block;">Timezone Settings</h3>
                     <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                    <div class="dropdown-content" style="display: none;">
-                        Select your timezone to ensure all time-based features work correctly.<br>
-                        This will update the system timezone for accurate scheduling.
-                    </div>
+                <div class="dropdown-content" style="display: none;">
+                    Select your timezone to ensure all time-based features work correctly.<br>
+                    This will update the system timezone for accurate scheduling.
                 </div>
-                <div class="service-control-panel">
-                    <select id="timezone-select" class="form-control" style="max-width: 300px; margin: 0 auto;">
-                        <option value="">Loading timezones...</option>
-                    </select>
-                    <div id="timezone-status" style="margin-top: 10px;"></div>
-                </div>
+            </div>
+            <div class="service-control-panel">
+                <select id="timezone-select" class="form-control" style="max-width: 300px; margin: 0 auto;">
+                    <option value="">Loading timezones...</option>
+                </select>
+                <div id="timezone-status" style="margin-top: 10px;"></div>
+            </div>
 
-                <!-- Lights On Time -->
-                <div class="mb-3">
-                    <div class="dropdown-container">
+            <!-- Lights On Time -->
+            <div class="mb-3">
+                <div class="dropdown-container">
                         <label for="lights_on_time">Lights On Time (HH:MM)</label>
                         <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                        <div class="dropdown-content" style="display: none;">
-                            Set the time to turn on the LEDs
-                        </div>
+                    <div class="dropdown-content" style="display: none;">
+                        Set the time to turn on the LEDs
                     </div>
-                    <select name="lights_on_time_hour" class="form-select inline-input">
-                        {% for hour in range(0, 24) %}
-                            <option value="{{ hour }}" {% if config.LIGHTS_ON_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
-                        {% endfor %}
-                    </select> :
-                    <select name="lights_on_time_minute" class="form-select inline-input">
-                        {% for minute in range(0, 60, 5) %}
-                            <option value="{{ minute }}" {% if config.LIGHTS_ON_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
-                        {% endfor %}
-                    </select>
                 </div>
-                <!-- Lights Off Time -->
-                <div class="mb-3">
-                    <div class="dropdown-container">
+                <select name="lights_on_time_hour" class="form-select inline-input">
+                    {% for hour in range(0, 24) %}
+                        <option value="{{ hour }}" {% if config.LIGHTS_ON_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                    {% endfor %}
+                </select> :
+                <select name="lights_on_time_minute" class="form-select inline-input">
+                    {% for minute in range(0, 60, 5) %}
+                        <option value="{{ minute }}" {% if config.LIGHTS_ON_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <!-- Lights Off Time -->
+            <div class="mb-3">
+                <div class="dropdown-container">
                         <label for="lights_off_time">Lights Off Time (HH:MM)</label>
                         <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                        <div class="dropdown-content" style="display: none;">
-                            Set the time to turn off the LEDs
-                        </div>
+                    <div class="dropdown-content" style="display: none;">
+                        Set the time to turn off the LEDs
                     </div>
-                    <select name="lights_off_time_hour" class="form-select inline-input">
-                        {% for hour in range(0, 24) %}
-                            <option value="{{ hour }}" {% if config.LIGHTS_OFF_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
-                        {% endfor %}
-                    </select> :
-                    <select name="lights_off_time_minute" class="form-select inline-input">
-                        {% for minute in range(0, 60, 5) %}
-                            <option value="{{ minute }}" {% if config.LIGHTS_OFF_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
-                        {% endfor %}
-                    </select>
                 </div>
-                <!-- Bright Time Start -->
-                <div class="mb-3">
-                    <div class="dropdown-container">
+                <select name="lights_off_time_hour" class="form-select inline-input">
+                    {% for hour in range(0, 24) %}
+                        <option value="{{ hour }}" {% if config.LIGHTS_OFF_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                    {% endfor %}
+                </select> :
+                <select name="lights_off_time_minute" class="form-select inline-input">
+                    {% for minute in range(0, 60, 5) %}
+                        <option value="{{ minute }}" {% if config.LIGHTS_OFF_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <!-- Bright Time Start -->
+            <div class="mb-3">
+                <div class="dropdown-container">
                         <label for="bright_time_start">Bright Time Start (HH:MM)</label>
                         <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                        <div class="dropdown-content" style="display: none;">
-                            Set the time to return the LEDs to the default brightness
-                        </div>
+                    <div class="dropdown-content" style="display: none;">
+                        Set the time to return the LEDs to the default brightness
                     </div>
+                </div>
                     <span class="bright-dim-selects">
                         <select name="bright_time_start_hour" class="form-select inline-input bright-dim-select">
-                            {% for hour in range(0, 24) %}
-                                <option value="{{ hour }}" {% if config.BRIGHT_TIME_START.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
-                            {% endfor %}
-                        </select> :
+                    {% for hour in range(0, 24) %}
+                        <option value="{{ hour }}" {% if config.BRIGHT_TIME_START.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                    {% endfor %}
+                </select> :
                         <select name="bright_time_start_minute" class="form-select inline-input bright-dim-select">
-                            {% for minute in range(0, 60, 5) %}
-                                <option value="{{ minute }}" {% if config.BRIGHT_TIME_START.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
-                            {% endfor %}
-                        </select>
+                    {% for minute in range(0, 60, 5) %}
+                        <option value="{{ minute }}" {% if config.BRIGHT_TIME_START.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                    {% endfor %}
+                </select>
                     </span>
-                </div>
-                <!-- Dim Time Start -->
-                <div class="mb-3">
-                    <div class="dropdown-container">
+            </div>
+            <!-- Dim Time Start -->
+            <div class="mb-3">
+                <div class="dropdown-container">
                         <label for="dim_time_start">Dim Time Start (HH:MM)</label>
                         <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                        <div class="dropdown-content" style="display: none;">
-                            The time when the LEDs will change to night/dimmed brightness
-                        </div>
+                    <div class="dropdown-content" style="display: none;">
+                        The time when the LEDs will change to night/dimmed brightness
                     </div>
+                </div>
                     <span class="bright-dim-selects">
                         <select name="dim_time_start_hour" class="form-select inline-input bright-dim-select">
-                            {% for hour in range(0, 24) %}
-                                <option value="{{ hour }}" {% if config.DIM_TIME_START.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
-                            {% endfor %}
-                        </select> :
+                    {% for hour in range(0, 24) %}
+                        <option value="{{ hour }}" {% if config.DIM_TIME_START.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                    {% endfor %}
+                </select> :
                         <select name="dim_time_start_minute" class="form-select inline-input bright-dim-select">
-                            {% for minute in range(0, 60, 5) %}
-                                <option value="{{ minute }}" {% if config.DIM_TIME_START.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
-                            {% endfor %}
-                        </select>
+                    {% for minute in range(0, 60, 5) %}
+                        <option value="{{ minute }}" {% if config.DIM_TIME_START.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                    {% endfor %}
+                </select>
                     </span>
                 </div>
             </div>
@@ -468,7 +468,7 @@
             <div class="mb-3">
                 <div class="dropdown-container">
                     <label for="num_steps">Number of Windy Animation Steps</label>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                        <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                     <div class="dropdown-content" style="display: none;">
                         How smooth the windy animation is. Recommended, 100
                     </div>
@@ -478,7 +478,7 @@
             <div class="mb-3">
                 <div class="dropdown-container">
                     <label for="num_pixels">Pixel Count</label>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                        <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                     <div class="dropdown-content" style="display: none;">
                         Total number of pixels in your setup. (Should be at least as many lines in your airport file)
                     </div>
@@ -488,7 +488,7 @@
             <div class="mb-3">
                 <div class="dropdown-container">
                     <label for="pixel_pin">Pixel Pin</label>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                        <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                     <div class="dropdown-content" style="display: none;">
                         Enter the GPIO pin number only, e.g., "18".
                     </div>
@@ -498,7 +498,7 @@
             <div class="mb-3">
                 <div class="dropdown-container">
                     <label for="led_color_order">LED Color Order</label>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                        <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                     <div class="dropdown-content" style="display: none;">
                         Select the color order for your LED strip. Supported orders are:<br>
                         GRB: Standard for WS2811 Bullet style lights <br>
@@ -633,8 +633,8 @@
         <h2>System Updates</h2>
         <div class="mb-3">
             <div class="dropdown-container">
-                <button type="button" class="btn btn-primary" onclick="checkForUpdates()">Check for Updates</button>
-                <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                    <button type="button" class="btn btn-primary" onclick="checkForUpdates()">Check for Updates</button>
+                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                 <div class="dropdown-content" style="display: none;">
                     This will check for updates from the Git repository.<br>
                     Your local configuration files (config.py and airports.txt) will be preserved during updates.<br>
