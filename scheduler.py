@@ -95,7 +95,7 @@ def update_sun_times():
         if not getattr(config, 'USE_SUNRISE_SUNSET', False) or not getattr(config, 'SELECTED_CITY', None):
             return
             
-        from config import calculate_sun_times
+        from settings import calculate_sun_times
         city_name = config.SELECTED_CITY
         
         # Calculate times for today

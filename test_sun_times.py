@@ -7,7 +7,8 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from config import calculate_sun_times, CITIES
+from config import CITIES
+from settings import calculate_sun_times
 
 def test_sun_times():
     """Test sunrise/sunset calculations for a few cities"""
