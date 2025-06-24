@@ -17,6 +17,13 @@ It should be fun to change the settings, update the weather and see what is happ
 ## Community involvement
 I hope people find this project and collaborate on it. I'm not here to make money as this is a passion project. Please submit bug reports and feature requests! If you notice anything wonky in the code, let me know! 
 
+## Sunrise/Sunset Automation
+The system can automatically calculate and adjust LED brightness based on actual sunrise and sunset times for your location. Simply select your city from a dropdown list, and the system will:
+- Calculate sunrise and sunset times daily
+- Automatically adjust LED brightness at sunrise (bright) and sunset (dim)
+- Handle seasonal changes automatically
+- Support major US cities across all time zones
+
 # Software Install instructions
 ## Setup.sh
 
@@ -142,7 +149,7 @@ We will create 4 services. One for metar.py and one for scheduler.py one for wat
 
 When asked which editor you'd like to use, select nano (option 1) and hit enter. You should now be presented with a mostly blank screen. Copy over 
 
-When asked which editor you’d like to use, select nano (option 1) and hit enter. You should now be presented with a mostly blank screen. Copy over 
+When asked which editor you'd like to use, select nano (option 1) and hit enter. You should now be presented with a mostly blank screen. Copy over 
 
 ```
 [Unit]
@@ -282,79 +289,3 @@ To have the metar.py script start at boot, run
 `sudo systemctl enable metar.service`
 And 
 `sudo systemctl enable scheduler.service`
-and 
-`sudo systemctl enable settings.service`
-
-This will enable scheduler.py, settings.py and metar.py at boot as well which handles LED on and off times if enabled in the settings. 
-
-## CRON Setup - this is no longer needed as scheduler.py handles all of this.
-
-CRON is a very simple and powerful scheduling language that we'll use to trigger the weather update script. I have mine to run every 5 min. This will get the weather for your airports and parse the data every 5 min.
-
-1. `CRON tab -e` <— opens the CRONtab file to edit.
-2. Using the arrow keys, navigate to the bottom of the file. Paste in
-3. ```*/5 * * * * sudo /home/pi/metar/bin/python3 weather.py```
-4. This will fetch weather every 5 minutes.
-5. If you want to learn more about CRON (hint, you do) check out https://crontab.guru/
-
-## Advanced - Tailscale setup
-
-Tailscale is an extremely simple vpn type service that will allow you to ssh into your raspberry pi from anywhere using a website. 
-Go to Tailscale.com and create an account. 
-Enter the commands
-```
-sudo apt-get install apt-transport-https
-```
-
-```
-curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg > /dev/null
-```
-
-```
-curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list
-```
-
-```
-sudo apt update
-```
-
-```
-sudo apt install tailscale -y
-```
-
-```
-sudo tailscale set --auto-update
-```
-
-```
-sudo tailscale up --ssh
-```
-You should now see a url in the terminal window. Highlighting it will copy it to your clipboard. Do that and enter it into your web browser. Follow the instructions to add the pi to your "tailnet". In the 3 dot menu next to your pi, Set key expiry to never. You can also ssh to your pi from that menu. Just ensure you change the username to "pi"
-
-# Hardware Setup
-I use a Raspberry Pi Zero 2 W for my projects. A Pi Zero W also works. You can now find the Zero 2 W with the headers already soldered to the board or you can solder your own. The Zero family is capable of supporting up to 30 or so lit lights if you're using .5 for your default brightness. Anything more and I'd power inject. There are plenty of youtube videos on that. 
-
-I use GPIO pin 18 for data. A pinout can be found here: https://pinout.xyz/
-
-I use WS2811 5v bullet style lights. The code is set up so you can use 1 strand and skip lights so you don't have to cut and solder the strand.  
-
-Be sure the pi is not plugged into power when you plug in or unglug your lights from the Pi. You can use male to female jumper wires (search it on amazon) to make life easy, or you can solder. 
-
-LEDs
-https://tinyurl.com/yk879yje
-
-Pi Zero 2 W with headers
-https://www.adafruit.com/product/6008
-
-Pi Imaging software
-https://www.raspberrypi.com/software/
-
-Jumper Wires (Amazon)
-https://tinyurl.com/2ea5j4t9
-
-7mm Hole Punch
-https://tinyurl.com/46229c7f
-
-Power Injection
-https://youtu.be/2_saSAf8hgo?t=328
-This video is great for general LED practices and how-to, but I've linked right to the power injection portion. 

@@ -256,6 +256,8 @@ echo -e "  ${CYAN}• adafruit-circuitpython-neopixel${NC} - LED control"
 echo -e "  ${CYAN}• flask${NC} - web interface"
 echo -e "  ${CYAN}• requests${NC} - API communication"
 echo -e "  ${CYAN}• schedule${NC} - task automation"
+echo -e "  ${CYAN}• astral${NC} - sunrise/sunset calculations"
+echo -e "  ${CYAN}• pytz${NC} - time zone calculations"
 echo ""
 
 read -e -p "$(echo -e "${CYAN}Would you like to install the required packages? [Y/n]: ${NC}")" PACKAGES_CHOICE
@@ -284,6 +286,8 @@ install_packages() {
         "flask"
         "requests"
         "schedule"
+        "astral"
+        "pytz"
     )
 
     print_section_header "Installing Python Packages"

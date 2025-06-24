@@ -334,107 +334,142 @@
         <section id="time-settings">
             <h2>Time Settings</h2>
 
-            <!-- Timezone Settings -->
-            <div class="dropdown-container">
-                <label style="display: flex; align-items: center;">
-                    <h3 style="margin: 0;">Timezone Settings</h3>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                </label>
-                <div class="dropdown-content" style="display: none;">
-                    Select your timezone to ensure all time-based features work correctly.<br>
-                    This will update the system timezone for accurate scheduling.
-                </div>
-            </div>
-            <div class="service-control-panel">
-                <select id="timezone-select" class="form-control" style="max-width: 300px; margin: 0 auto;">
-                    <option value="">Loading timezones...</option>
-                </select>
-                <div id="timezone-status" style="margin-top: 10px;"></div>
+            <!-- Daytime Dimming Toggle -->
+            <div class="toggle-wrapper">
+                <input type="checkbox" id="daytime_dimming" name="daytime_dimming" class="toggle-input" {% if config.DAYTIME_DIMMING %}checked{% endif %}>
+                <label for="daytime_dimming" class="toggle-label">Enable Daytime Dimming</label>
             </div>
 
-            <!-- Lights On Time -->
-            <div class="mb-3">
-                <div class="dropdown-container">
-                    <label for="lights_on_time">Lights On Time (HH:MM)
-                        <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                    </label>
-                    <div class="dropdown-content" style="display: none;">
-                        Set the time to turn on the LEDs
+            <!-- Sunrise/Sunset Toggle (only visible when daytime dimming is enabled) -->
+            <div id="sunrise-sunset-section" class="sunrise-sunset-container" style="display: {% if config.DAYTIME_DIMMING %}block{% else %}none{% endif %}; margin-top: 15px; padding-left: 20px;">
+                <div class="toggle-wrapper">
+                    <input type="checkbox" id="use_sunrise_sunset" name="use_sunrise_sunset" class="toggle-input" {% if use_sunrise_sunset %}checked{% endif %}>
+                    <label for="use_sunrise_sunset" class="toggle-label">Use Sunrise/Sunset Times</label>
+                </div>
+
+                <!-- City Selection (only visible when sunrise/sunset is enabled) -->
+                <div id="city-selection" style="display: {% if use_sunrise_sunset %}block{% else %}none{% endif %}; margin-top: 15px;">
+                    <label for="city-select">Select your city:</label>
+                    <select id="city-select" name="selected_city" class="form-control" style="max-width: 300px; margin-top: 5px;">
+                        <option value="">Choose a city...</option>
+                        {% for city in cities %}
+                            <option value="{{ city.name }}" {% if selected_city == city.name %}selected{% endif %}>{{ city.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <div id="calculated-times" style="margin-top: 10px; font-size: 0.9em; color: #cccccc;">
+                        {% if selected_city and use_sunrise_sunset %}
+                            📍 Calculated times for {{ selected_city }}:<br>
+                            Bright time start: {{ config.BRIGHT_TIME_START.strftime('%I:%M %p') }} (sunrise)<br>
+                            Dim time start: {{ config.DIM_TIME_START.strftime('%I:%M %p') }} (sunset)
+                        {% endif %}
                     </div>
                 </div>
-                <select name="lights_on_time_hour" class="form-select inline-input">
-                    {% for hour in range(0, 24) %}
-                        <option value="{{ hour }}" {% if config.LIGHTS_ON_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
-                    {% endfor %}
-                </select> :
-                <select name="lights_on_time_minute" class="form-select inline-input">
-                    {% for minute in range(0, 60, 5) %}
-                        <option value="{{ minute }}" {% if config.LIGHTS_ON_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
-                    {% endfor %}
-                </select>
             </div>
-            <!-- Lights Off Time -->
-            <div class="mb-3">
+
+            <!-- Manual Time Settings (grayed out when using sunrise/sunset) -->
+            <div id="manual-time-settings" style="opacity: {% if use_sunrise_sunset %}0.5{% else %}1{% endif %}; pointer-events: {% if use_sunrise_sunset %}none{% else %}auto{% endif %};">
+                <!-- Timezone Settings -->
                 <div class="dropdown-container">
-                    <label for="lights_off_time">Lights Off Time (HH:MM)
+                    <label style="display: flex; align-items: center;">
+                        <h3 style="margin: 0;">Timezone Settings</h3>
                         <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
                     </label>
                     <div class="dropdown-content" style="display: none;">
-                        Set the time to turn off the LEDs
+                        Select your timezone to ensure all time-based features work correctly.<br>
+                        This will update the system timezone for accurate scheduling.
                     </div>
                 </div>
-                <select name="lights_off_time_hour" class="form-select inline-input">
-                    {% for hour in range(0, 24) %}
-                        <option value="{{ hour }}" {% if config.LIGHTS_OFF_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
-                    {% endfor %}
-                </select> :
-                <select name="lights_off_time_minute" class="form-select inline-input">
-                    {% for minute in range(0, 60, 5) %}
-                        <option value="{{ minute }}" {% if config.LIGHTS_OFF_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <!-- Bright Time Start -->
-            <div class="mb-3">
-                <div class="dropdown-container">
-                    <label for="bright_time_start">Bright Time Start (HH:MM)
-                        <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                    </label>
-                    <div class="dropdown-content" style="display: none;">
-                        Set the time to return the LEDs to the default brightness
-                    </div>
+                <div class="service-control-panel">
+                    <select id="timezone-select" class="form-control" style="max-width: 300px; margin: 0 auto;">
+                        <option value="">Loading timezones...</option>
+                    </select>
+                    <div id="timezone-status" style="margin-top: 10px;"></div>
                 </div>
-                <select name="bright_time_start_hour" class="form-select inline-input">
-                    {% for hour in range(0, 24) %}
-                        <option value="{{ hour }}" {% if config.BRIGHT_TIME_START.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
-                    {% endfor %}
-                </select> :
-                <select name="bright_time_start_minute" class="form-select inline-input">
-                    {% for minute in range(0, 60, 5) %}
-                        <option value="{{ minute }}" {% if config.BRIGHT_TIME_START.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <!-- Dim Time Start -->
-            <div class="mb-3">
-                <div class="dropdown-container">
-                    <label for="dim_time_start">Dim Time Start (HH:MM)
-                        <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                    </label>
-                    <div class="dropdown-content" style="display: none;">
-                        The time when the LEDs will change to night/dimmed brightness
+
+                <!-- Lights On Time -->
+                <div class="mb-3">
+                    <div class="dropdown-container">
+                        <label for="lights_on_time">Lights On Time (HH:MM)
+                            <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                        </label>
+                        <div class="dropdown-content" style="display: none;">
+                            Set the time to turn on the LEDs
+                        </div>
                     </div>
+                    <select name="lights_on_time_hour" class="form-select inline-input">
+                        {% for hour in range(0, 24) %}
+                            <option value="{{ hour }}" {% if config.LIGHTS_ON_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                        {% endfor %}
+                    </select> :
+                    <select name="lights_on_time_minute" class="form-select inline-input">
+                        {% for minute in range(0, 60, 5) %}
+                            <option value="{{ minute }}" {% if config.LIGHTS_ON_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
-                <select name="dim_time_start_hour" class="form-select inline-input">
-                    {% for hour in range(0, 24) %}
-                        <option value="{{ hour }}" {% if config.DIM_TIME_START.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
-                    {% endfor %}
-                </select> :
-                <select name="dim_time_start_minute" class="form-select inline-input">
-                    {% for minute in range(0, 60, 5) %}
-                        <option value="{{ minute }}" {% if config.DIM_TIME_START.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
-                    {% endfor %}
-                </select>
+                <!-- Lights Off Time -->
+                <div class="mb-3">
+                    <div class="dropdown-container">
+                        <label for="lights_off_time">Lights Off Time (HH:MM)
+                            <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                        </label>
+                        <div class="dropdown-content" style="display: none;">
+                            Set the time to turn off the LEDs
+                        </div>
+                    </div>
+                    <select name="lights_off_time_hour" class="form-select inline-input">
+                        {% for hour in range(0, 24) %}
+                            <option value="{{ hour }}" {% if config.LIGHTS_OFF_TIME.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                        {% endfor %}
+                    </select> :
+                    <select name="lights_off_time_minute" class="form-select inline-input">
+                        {% for minute in range(0, 60, 5) %}
+                            <option value="{{ minute }}" {% if config.LIGHTS_OFF_TIME.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <!-- Bright Time Start -->
+                <div class="mb-3">
+                    <div class="dropdown-container">
+                        <label for="bright_time_start">Bright Time Start (HH:MM)
+                            <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                        </label>
+                        <div class="dropdown-content" style="display: none;">
+                            Set the time to return the LEDs to the default brightness
+                        </div>
+                    </div>
+                    <select name="bright_time_start_hour" class="form-select inline-input">
+                        {% for hour in range(0, 24) %}
+                            <option value="{{ hour }}" {% if config.BRIGHT_TIME_START.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                        {% endfor %}
+                    </select> :
+                    <select name="bright_time_start_minute" class="form-select inline-input">
+                        {% for minute in range(0, 60, 5) %}
+                            <option value="{{ minute }}" {% if config.BRIGHT_TIME_START.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <!-- Dim Time Start -->
+                <div class="mb-3">
+                    <div class="dropdown-container">
+                        <label for="dim_time_start">Dim Time Start (HH:MM)
+                            <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                        </label>
+                        <div class="dropdown-content" style="display: none;">
+                            The time when the LEDs will change to night/dimmed brightness
+                        </div>
+                    </div>
+                    <select name="dim_time_start_hour" class="form-select inline-input">
+                        {% for hour in range(0, 24) %}
+                            <option value="{{ hour }}" {% if config.DIM_TIME_START.hour == hour %}selected{% endif %}>{{ "%02d" % hour }}</option>
+                        {% endfor %}
+                    </select> :
+                    <select name="dim_time_start_minute" class="form-select inline-input">
+                        {% for minute in range(0, 60, 5) %}
+                            <option value="{{ minute }}" {% if config.DIM_TIME_START.minute == minute %}selected{% endif %}>{{ "%02d" % minute }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
         </section>
 
@@ -499,22 +534,14 @@
                     <input type="checkbox" id="enable_lights_off" name="enable_lights_off" class="toggle-input" {% if enable_lights_off %}checked{% endif %}>
                     <label for="enable_lights_off" class="toggle-label">Enable Lights On/Off Time</label>
                 </div>
-                <!-- Daytime Dimming Toggle -->
-                <div class="toggle-wrapper">
-                    <input type="checkbox" id="daytime_dimming" name="daytime_dimming" class="toggle-input" {% if config.DAYTIME_DIMMING %}checked{% endif %}>
-                    <label for="daytime_dimming" class="toggle-label">Enable Daytime Dimming</label>
-                </div>
-                <!-- Wind Animation Toggle -->
                 <div class="toggle-wrapper">
                     <input type="checkbox" id="wind_animation" name="wind_animation" class="toggle-input" {% if config.WIND_ANIMATION %}checked{% endif %}>
                     <label for="wind_animation" class="toggle-label">Enable Wind Animation</label>
                 </div>
-                <!-- Lightning Animation Toggle -->
                 <div class="toggle-wrapper">
                     <input type="checkbox" id="lightening_animation" name="lightening_animation" class="toggle-input" {% if config.LIGHTENING_ANIMATION %}checked{% endif %}>
                     <label for="lightening_animation" class="toggle-label">Enable Lightning Animation</label>
                 </div>
-                <!-- Snowy Animation Toggle -->
                 <div class="toggle-wrapper">
                     <input type="checkbox" id="snowy_animation" name="snowy_animation" class="toggle-input" {% if config.SNOWY_ANIMATION %}checked{% endif %}>
                     <label for="snowy_animation" class="toggle-label">Enable Snowy Animation</label>

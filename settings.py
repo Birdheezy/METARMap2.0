@@ -272,6 +272,22 @@ def edit_settings():
             config_updates["ENABLE_HTTPS"] = 'enable_https' in request.form
             config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form
             config_updates["STALE_INDICATION"] = 'stale_indication' in request.form
+            
+            # Sunrise/sunset settings
+            config_updates["USE_SUNRISE_SUNSET"] = 'use_sunrise_sunset' in request.form
+            if 'selected_city' in request.form and request.form['selected_city']:
+                config_updates["SELECTED_CITY"] = f"'{request.form['selected_city']}'"
+                
+                # If using sunrise/sunset, calculate and update the times
+                if 'use_sunrise_sunset' in request.form:
+                    try:
+                        from config import calculate_sun_times
+                        sunrise, sunset = calculate_sun_times(request.form['selected_city'])
+                        if sunrise and sunset:
+                            config_updates["BRIGHT_TIME_START"] = f"datetime.time({sunrise.hour}, {sunrise.minute})"
+                            config_updates["DIM_TIME_START"] = f"datetime.time({sunset.hour}, {sunset.minute})"
+                    except Exception as e:
+                        flash(f'Error calculating sun times: {str(e)}', 'warning')
 
             # Update the config.py file
             with open('/home/pi/config.py', 'r') as f:
@@ -428,7 +444,11 @@ def edit_settings():
         stale_indication=config.STALE_INDICATION,
         wifi_disconnected_color=wifi_disconnected_color,
         map_styles=map_styles,
-        show_save_button=True
+        show_save_button=True,
+        # Sunrise/sunset settings
+        use_sunrise_sunset=getattr(config, 'USE_SUNRISE_SUNSET', False),
+        selected_city=getattr(config, 'SELECTED_CITY', None),
+        cities=getattr(config, 'CITIES', [])
     )
 
 
@@ -1625,6 +1645,41 @@ def shutdown_system():
     except Exception as e:
         app.logger.error(f"Unexpected error during shutdown: {e}")
         return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/calculate-sun-times', methods=['POST'])
+def calculate_sun_times_endpoint():
+    """Calculate sunrise and sunset times for a selected city."""
+    try:
+        city_name = request.json.get('city')
+        if not city_name:
+            return jsonify({'error': 'City name is required'}), 400
+            
+        from config import calculate_sun_times
+        sunrise, sunset = calculate_sun_times(city_name)
+        
+        if sunrise and sunset:
+            return jsonify({
+                'success': True,
+                'sunrise': f"{sunrise.hour:02d}:{sunrise.minute:02d}",
+                'sunset': f"{sunset.hour:02d}:{sunset.minute:02d}",
+                'bright_time_start': f"{sunrise.hour:02d}:{sunrise.minute:02d}",
+                'dim_time_start': f"{sunset.hour:02d}:{sunset.minute:02d}"
+            })
+        else:
+            return jsonify({'error': 'Could not calculate sun times for this city'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': f'Error calculating sun times: {str(e)}'}), 500
+
+@app.route('/get-cities', methods=['GET'])
+def get_cities():
+    """Get the list of available cities."""
+    try:
+        from config import CITIES
+        cities = [city['name'] for city in CITIES]
+        return jsonify({'cities': cities})
+    except Exception as e:
+        return jsonify({'error': f'Error getting cities: {str(e)}'}), 500
 
 if __name__ == '__main__':
     if ENABLE_HTTPS:

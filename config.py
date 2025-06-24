@@ -1,4 +1,7 @@
 import datetime
+import pytz
+from astral import LocationInfo
+from astral.sun import sun
 
 AIRPORTS_FILE = 'airports.txt'
 PIXEL_PIN = 18
@@ -51,7 +54,88 @@ UPDATE_WEATHER = True
 STALE_INDICATION = True
 WIFI_INDICATION = True
 
-#Map Settings. Center of the map on the USA.
+#Map Settings. 
 MAP_CENTER_LAT = 38.6168
 MAP_CENTER_LON = -99.4042
 MAP_ZOOM = 4
+
+# City and sunrise/sunset settings
+SELECTED_CITY = None  # Store selected city name
+USE_SUNRISE_SUNSET = False  # Toggle for automatic calculation
+
+# City database - Major US cities covering all time zones
+CITIES = [
+    # Eastern Time Zone
+    {"name": "New York, NY", "lat": 40.7128, "lon": -74.0060, "timezone": "America/New_York"},
+    {"name": "Miami, FL", "lat": 25.7617, "lon": -80.1918, "timezone": "America/New_York"},
+    {"name": "Atlanta, GA", "lat": 33.7490, "lon": -84.3880, "timezone": "America/New_York"},
+    {"name": "Boston, MA", "lat": 42.3601, "lon": -71.0589, "timezone": "America/New_York"},
+    {"name": "Philadelphia, PA", "lat": 39.9526, "lon": -75.1652, "timezone": "America/New_York"},
+    {"name": "Washington, DC", "lat": 38.9072, "lon": -77.0369, "timezone": "America/New_York"},
+    
+    # Central Time Zone
+    {"name": "Chicago, IL", "lat": 41.8781, "lon": -87.6298, "timezone": "America/Chicago"},
+    {"name": "Houston, TX", "lat": 29.7604, "lon": -95.3698, "timezone": "America/Chicago"},
+    {"name": "Dallas, TX", "lat": 32.7767, "lon": -96.7970, "timezone": "America/Chicago"},
+    {"name": "New Orleans, LA", "lat": 29.9511, "lon": -90.0715, "timezone": "America/Chicago"},
+    {"name": "Minneapolis, MN", "lat": 44.9778, "lon": -93.2650, "timezone": "America/Chicago"},
+    
+    # Mountain Time Zone
+    {"name": "Denver, CO", "lat": 39.7392, "lon": -104.9903, "timezone": "America/Denver"},
+    {"name": "Phoenix, AZ", "lat": 33.4484, "lon": -112.0740, "timezone": "America/Phoenix"},
+    {"name": "Salt Lake City, UT", "lat": 40.7608, "lon": -111.8910, "timezone": "America/Denver"},
+    {"name": "Albuquerque, NM", "lat": 35.0844, "lon": -106.6504, "timezone": "America/Denver"},
+    
+    # Pacific Time Zone
+    {"name": "Los Angeles, CA", "lat": 34.0522, "lon": -118.2437, "timezone": "America/Los_Angeles"},
+    {"name": "San Francisco, CA", "lat": 37.7749, "lon": -122.4194, "timezone": "America/Los_Angeles"},
+    {"name": "Seattle, WA", "lat": 47.6062, "lon": -122.3321, "timezone": "America/Los_Angeles"},
+    {"name": "Portland, OR", "lat": 45.5152, "lon": -122.6784, "timezone": "America/Los_Angeles"},
+    {"name": "San Diego, CA", "lat": 32.7157, "lon": -117.1611, "timezone": "America/Los_Angeles"},
+    {"name": "Las Vegas, NV", "lat": 36.1699, "lon": -115.1398, "timezone": "America/Los_Angeles"},
+    
+    # Alaska Time Zone
+    {"name": "Anchorage, AK", "lat": 61.2181, "lon": -149.9003, "timezone": "America/Anchorage"},
+    {"name": "Fairbanks, AK", "lat": 64.8378, "lon": -147.7164, "timezone": "America/Anchorage"},
+    
+    # Hawaii Time Zone
+    {"name": "Honolulu, HI", "lat": 21.3099, "lon": -157.8581, "timezone": "Pacific/Honolulu"},
+]
+
+def calculate_sun_times(city_name, date=None):
+    """Calculate sunrise and sunset times for a given city and date"""
+    if date is None:
+        date = datetime.date.today()
+    
+    # Find the city in our database
+    city_data = None
+    for city in CITIES:
+        if city["name"] == city_name:
+            city_data = city
+            break
+    
+    if not city_data:
+        return None, None
+    
+    try:
+        # Create location info for astral calculations
+        location = LocationInfo(
+            name=city_data["name"],
+            region="USA",
+            latitude=city_data["lat"],
+            longitude=city_data["lon"],
+            timezone=city_data["timezone"]
+        )
+        
+        # Calculate sun times
+        s = sun(location.observer, date=date, tzinfo=pytz.timezone(city_data["timezone"]))
+        
+        # Extract sunrise and sunset times
+        sunrise = s["sunrise"].time()
+        sunset = s["sunset"].time()
+        
+        return sunrise, sunset
+        
+    except Exception as e:
+        print(f"Error calculating sun times for {city_name}: {e}")
+        return None, None

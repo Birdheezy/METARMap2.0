@@ -88,6 +88,42 @@ def update_weather(force=False):
     finally:
         weather_update_lock.release()
 
+def update_sun_times():
+    """Calculate and update sunrise/sunset times for the selected city."""
+    try:
+        # Only update if sunrise/sunset is enabled and a city is selected
+        if not getattr(config, 'USE_SUNRISE_SUNSET', False) or not getattr(config, 'SELECTED_CITY', None):
+            return
+            
+        from config import calculate_sun_times
+        city_name = config.SELECTED_CITY
+        
+        # Calculate times for today
+        sunrise, sunset = calculate_sun_times(city_name)
+        
+        if sunrise and sunset:
+            # Update the config file with new times
+            with open('/home/pi/config.py', 'r') as f:
+                config_lines = f.readlines()
+            
+            with open('/home/pi/config.py', 'w') as f:
+                for line in config_lines:
+                    if line.startswith('BRIGHT_TIME_START'):
+                        f.write(f"BRIGHT_TIME_START = datetime.time({sunrise.hour}, {sunrise.minute})\n")
+                    elif line.startswith('DIM_TIME_START'):
+                        f.write(f"DIM_TIME_START = datetime.time({sunset.hour}, {sunset.minute})\n")
+                    else:
+                        f.write(line)
+            
+            # Reload the config module
+            importlib.reload(config)
+            logger.info(f"Updated sun times for {city_name}: Bright at {sunrise.hour:02d}:{sunrise.minute:02d}, Dim at {sunset.hour:02d}:{sunset.minute:02d}")
+        else:
+            logger.error(f"Failed to calculate sun times for {city_name}")
+            
+    except Exception as e:
+        logger.error(f"Error updating sun times: {e}")
+
 def schedule_lights():
     """Schedule lights on/off and weather updates based on the current configuration."""
     # Clear all existing schedules
@@ -102,6 +138,13 @@ def schedule_lights():
         update_weather()
     else:
         logger.info("Weather updates are disabled in settings")
+
+    # Schedule daily sun time updates if enabled
+    if getattr(config, 'USE_SUNRISE_SUNSET', False) and getattr(config, 'SELECTED_CITY', None):
+        schedule.every().day.at("00:01").do(update_sun_times)  # Update at 12:01 AM daily
+        logger.info("Scheduled daily sun time updates")
+        # Run an immediate update
+        update_sun_times()
 
     # Schedule lights on/off if enabled
     if config.ENABLE_LIGHTS_OFF:

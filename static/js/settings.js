@@ -1136,3 +1136,92 @@ async function startMetarWithCleanup() {
     // Now start the METAR service
     controlService('metar', 'start');
 }
+
+// Sunrise/Sunset functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const daytimeDimmingToggle = document.getElementById('daytime_dimming');
+    const sunriseSunsetToggle = document.getElementById('use_sunrise_sunset');
+    const sunriseSunsetSection = document.getElementById('sunrise-sunset-section');
+    const citySelection = document.getElementById('city-selection');
+    const manualTimeSettings = document.getElementById('manual-time-settings');
+    const citySelect = document.getElementById('city-select');
+    const calculatedTimes = document.getElementById('calculated-times');
+
+    // Handle daytime dimming toggle
+    if (daytimeDimmingToggle) {
+        daytimeDimmingToggle.addEventListener('change', function() {
+            if (this.checked) {
+                sunriseSunsetSection.style.display = 'block';
+            } else {
+                sunriseSunsetSection.style.display = 'none';
+                // Uncheck sunrise/sunset toggle when daytime dimming is disabled
+                if (sunriseSunsetToggle) {
+                    sunriseSunsetToggle.checked = false;
+                    citySelection.style.display = 'none';
+                    manualTimeSettings.style.opacity = '1';
+                    manualTimeSettings.style.pointerEvents = 'auto';
+                }
+            }
+        });
+    }
+
+    // Handle sunrise/sunset toggle
+    if (sunriseSunsetToggle) {
+        sunriseSunsetToggle.addEventListener('change', function() {
+            if (this.checked) {
+                citySelection.style.display = 'block';
+                manualTimeSettings.style.opacity = '0.5';
+                manualTimeSettings.style.pointerEvents = 'none';
+            } else {
+                citySelection.style.display = 'none';
+                manualTimeSettings.style.opacity = '1';
+                manualTimeSettings.style.pointerEvents = 'auto';
+                calculatedTimes.innerHTML = '';
+            }
+        });
+    }
+
+    // Handle city selection
+    if (citySelect) {
+        citySelect.addEventListener('change', function() {
+            const selectedCity = this.value;
+            if (selectedCity && sunriseSunsetToggle && sunriseSunsetToggle.checked) {
+                calculateSunTimes(selectedCity);
+            } else {
+                calculatedTimes.innerHTML = '';
+            }
+        });
+    }
+});
+
+// Function to calculate sun times for a selected city
+async function calculateSunTimes(cityName) {
+    const calculatedTimes = document.getElementById('calculated-times');
+    
+    try {
+        calculatedTimes.innerHTML = 'Calculating times...';
+        
+        const response = await fetch('/calculate-sun-times', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ city: cityName })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            calculatedTimes.innerHTML = `
+                📍 Calculated times for ${cityName}:<br>
+                Bright time start: ${data.bright_time_start} (sunrise)<br>
+                Dim time start: ${data.dim_time_start} (sunset)
+            `;
+        } else {
+            calculatedTimes.innerHTML = `Error: ${data.error}`;
+        }
+    } catch (error) {
+        console.error('Error calculating sun times:', error);
+        calculatedTimes.innerHTML = 'Error calculating times. Please try again.';
+    }
+}
