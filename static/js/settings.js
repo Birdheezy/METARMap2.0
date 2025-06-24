@@ -1225,3 +1225,41 @@ async function calculateSunTimes(cityName) {
         calculatedTimes.innerHTML = 'Error calculating times. Please try again.';
     }
 }
+
+// Function to toggle tooltip visibility
+function toggleTooltip(element) {
+    const dropdownContent = element.nextElementSibling;
+    if (dropdownContent && dropdownContent.classList.contains('dropdown-content')) {
+        const isVisible = dropdownContent.style.display === 'block';
+        dropdownContent.style.display = isVisible ? 'none' : 'block';
+        
+        // Update aria-expanded attribute for accessibility
+        element.setAttribute('aria-expanded', !isVisible);
+        
+        // Close other tooltips when opening a new one
+        if (!isVisible) {
+            document.querySelectorAll('.dropdown-content').forEach(content => {
+                if (content !== dropdownContent) {
+                    content.style.display = 'none';
+                }
+            });
+            document.querySelectorAll('.tooltip-icon').forEach(icon => {
+                if (icon !== element) {
+                    icon.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+    }
+}
+
+// Function to close all tooltips when clicking outside
+document.addEventListener('click', function(event) {
+    if (!event.target.classList.contains('tooltip-icon')) {
+        document.querySelectorAll('.dropdown-content').forEach(content => {
+            content.style.display = 'none';
+        });
+        document.querySelectorAll('.tooltip-icon').forEach(icon => {
+            icon.setAttribute('aria-expanded', 'false');
+        });
+    }
+});
