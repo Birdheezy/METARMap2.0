@@ -240,23 +240,23 @@ textarea {
 
 /* Container for toggle switches (2 columns, 2 rows) */
 .toggle-container {
-    display: flex;  /* Change from grid to flex for centering */
-    flex-direction: column;  /* Arrange items in a column */
-    align-items: left ;  /* Center items horizontally */
-    max-width: 300px;  /* Set a max-width to prevent toggles from drifting too far apart */
-    margin: 0 auto;  /* Center the grid container within the page */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;  /* left-align toggles with each other */
+    max-width: 300px;
+    margin: 0 auto;           /* center the group in the parent */
     margin-top: 20px;
-    gap: 20px;  /* Space between each row */
+    gap: 15px;
 }
 
 /* Individual toggle wrapper */
 .toggle-wrapper {
     position: relative;
-    padding: 0 40px;  /* Add horizontal padding to prevent overlap */
+    padding: 0 40px;
     cursor: pointer;
     display: flex;
-    align-items: center; /* Space between the toggle and the text */
-    justify-content: flex-start; /* Align elements within the toggle wrapper */
+    align-items: center;
+    justify-content: center;
 }
 
 /* Adjust label to ensure proper spacing from the toggle switch */
@@ -1444,4 +1444,16 @@ input[type="color"]::-webkit-color-swatch {
     background-color: #2a2a2a;
     border-radius: 0 0 5px 5px;
     margin-top: 2px;
+}
+
+.label-with-tooltip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dropdown-container label,
+.dropdown-container .tooltip-icon {
+  display: inline-block;
+  vertical-align: middle;
 }

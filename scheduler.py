@@ -9,6 +9,9 @@ import logging
 import threading
 import weather  # Import weather module directly
 import json
+import pytz
+from astral import LocationInfo
+from astral.sun import sun
 
 # Configure logging
 logging.basicConfig(
@@ -20,6 +23,48 @@ logger = logging.getLogger(__name__)
 
 # Create a lock for weather updates
 weather_update_lock = threading.Lock()
+
+# Add a flag to prevent infinite loops during sun time updates
+sun_time_update_in_progress = False
+
+def calculate_sun_times(city_name, date=None):
+    """Calculate sunrise and sunset times for a given city and date"""
+    if date is None:
+        import datetime as dt
+        date = dt.date.today()
+    
+    # Find the city in our database
+    city_data = None
+    for city in config.CITIES:
+        if city["name"] == city_name:
+            city_data = city
+            break
+    
+    if not city_data:
+        return None, None
+    
+    try:
+        # Create location info for astral calculations
+        location = LocationInfo(
+            name=city_data["name"],
+            region="USA",
+            latitude=city_data["lat"],
+            longitude=city_data["lon"],
+            timezone=city_data["timezone"]
+        )
+        
+        # Calculate sun times
+        s = sun(location.observer, date=date, tzinfo=pytz.timezone(city_data["timezone"]))
+        
+        # Extract sunrise and sunset times
+        sunrise = s["sunrise"].time()
+        sunset = s["sunset"].time()
+        
+        return sunrise, sunset
+        
+    except Exception as e:
+        logger.error(f"Error calculating sun times for {city_name}: {e}")
+        return None, None
 
 def turn_on_lights():
     """Restart the metar.service to turn on the lights."""
@@ -90,18 +135,22 @@ def update_weather(force=False):
 
 def update_sun_times():
     """Calculate and update sunrise/sunset times for the selected city."""
+    global sun_time_update_in_progress
+    
     try:
         # Only update if sunrise/sunset is enabled and a city is selected
         if not getattr(config, 'USE_SUNRISE_SUNSET', False) or not getattr(config, 'SELECTED_CITY', None):
             return
             
-        from settings import calculate_sun_times
         city_name = config.SELECTED_CITY
         
         # Calculate times for today
         sunrise, sunset = calculate_sun_times(city_name)
         
         if sunrise and sunset:
+            # Set flag to prevent config change detection during update
+            sun_time_update_in_progress = True
+            
             # Update the config file with new times
             with open('/home/pi/config.py', 'r') as f:
                 config_lines = f.readlines()
@@ -118,11 +167,18 @@ def update_sun_times():
             # Reload the config module
             importlib.reload(config)
             logger.info(f"Updated sun times for {city_name}: Bright at {sunrise.hour:02d}:{sunrise.minute:02d}, Dim at {sunset.hour:02d}:{sunset.minute:02d}")
+            
+            # Clear flag after update
+            sun_time_update_in_progress = False
+            
+            # Add a small delay to ensure file system settles
+            time.sleep(2)
         else:
             logger.error(f"Failed to calculate sun times for {city_name}")
             
     except Exception as e:
         logger.error(f"Error updating sun times: {e}")
+        sun_time_update_in_progress = False
 
 def schedule_lights():
     """Schedule lights on/off and weather updates based on the current configuration."""
@@ -184,7 +240,7 @@ def monitor_config_changes(config_file):
         # Check for config changes every few seconds
         if current_time - last_check >= 5:
             current_modified = os.path.getmtime(config_file)
-            if current_modified != last_modified:
+            if current_modified != last_modified and not sun_time_update_in_progress:
                 logger.info("Detected config.py changes. Reloading schedules and restarting METAR service...")
                 last_modified = current_modified
                 

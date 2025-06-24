@@ -1170,13 +1170,31 @@ document.addEventListener('DOMContentLoaded', function() {
         sunriseSunsetToggle.addEventListener('change', function() {
             if (this.checked) {
                 citySelection.style.display = 'block';
-                manualTimeSettings.style.opacity = '0.5';
-                manualTimeSettings.style.pointerEvents = 'none';
+                // Only grey out bright/dim time selects
+                document.querySelectorAll('.bright-dim-select').forEach(function(el) {
+                    el.style.opacity = '0.5';
+                    el.style.pointerEvents = 'none';
+                });
             } else {
                 citySelection.style.display = 'none';
-                manualTimeSettings.style.opacity = '1';
-                manualTimeSettings.style.pointerEvents = 'auto';
+                // Restore bright/dim time selects
+                document.querySelectorAll('.bright-dim-select').forEach(function(el) {
+                    el.style.opacity = '1';
+                    el.style.pointerEvents = 'auto';
+                });
                 calculatedTimes.innerHTML = '';
+            }
+            // On page load, set correct state
+            if (sunriseSunsetToggle.checked) {
+                document.querySelectorAll('.bright-dim-select').forEach(function(el) {
+                    el.style.opacity = '0.5';
+                    el.style.pointerEvents = 'none';
+                });
+            } else {
+                document.querySelectorAll('.bright-dim-select').forEach(function(el) {
+                    el.style.opacity = '1';
+                    el.style.pointerEvents = 'auto';
+                });
             }
         });
     }

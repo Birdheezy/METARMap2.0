@@ -17,11 +17,8 @@ import schedule
 import weather
 import functools
 import socket
-from scheduler import weather_update_lock, update_weather as scheduler_update_weather
+from scheduler import weather_update_lock, update_weather as scheduler_update_weather, calculate_sun_times
 from led_test import test_leds, turn_off_leds, update_brightness
-import pytz
-from astral import LocationInfo
-from astral.sun import sun
 
 def after_this_response(func):
     @functools.wraps(func)
@@ -1681,44 +1678,6 @@ def get_cities():
         return jsonify({'cities': cities})
     except Exception as e:
         return jsonify({'error': f'Error getting cities: {str(e)}'}), 500
-
-def calculate_sun_times(city_name, date=None):
-    """Calculate sunrise and sunset times for a given city and date"""
-    if date is None:
-        date = datetime.date.today()
-    
-    # Find the city in our database
-    city_data = None
-    for city in config.CITIES:
-        if city["name"] == city_name:
-            city_data = city
-            break
-    
-    if not city_data:
-        return None, None
-    
-    try:
-        # Create location info for astral calculations
-        location = LocationInfo(
-            name=city_data["name"],
-            region="USA",
-            latitude=city_data["lat"],
-            longitude=city_data["lon"],
-            timezone=city_data["timezone"]
-        )
-        
-        # Calculate sun times
-        s = sun(location.observer, date=date, tzinfo=pytz.timezone(city_data["timezone"]))
-        
-        # Extract sunrise and sunset times
-        sunrise = s["sunrise"].time()
-        sunset = s["sunset"].time()
-        
-        return sunrise, sunset
-        
-    except Exception as e:
-        print(f"Error calculating sun times for {city_name}: {e}")
-        return None, None
 
 if __name__ == '__main__':
     if ENABLE_HTTPS:

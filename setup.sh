@@ -156,6 +156,46 @@ create_venv() {
     fi
 }
 
+# Function to install Python packages
+install_packages() {
+    local venv_name=$1
+    local packages=(
+        "adafruit-circuitpython-neopixel"
+        "flask"
+        "requests"
+        "schedule"
+        "astral"
+        "pytz"
+    )
+
+    print_section_header "Installing Python Packages"
+    echo -e "${CYAN}Installing Python packages in ${YELLOW}${venv_name}${CYAN} environment...${NC}"
+    
+    # Activate virtual environment
+    source "${venv_name}/bin/activate"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}✗ Failed to activate virtual environment${NC}"
+        return 1
+    fi
+
+    # Install each package
+    for package in "${packages[@]}"; do
+        echo -ne "${CYAN}Installing ${YELLOW}$package${CYAN}... ${NC}"
+        if pip3 install "$package" > /dev/null 2>&1; then
+            echo -e "${GREEN}✓${NC}"
+        else
+            echo -e "${RED}✗ Failed${NC}"
+            deactivate
+            return 1
+        fi
+    done
+
+    # Deactivate virtual environment
+    deactivate
+    echo -e "\n${GREEN}✓ All packages installed successfully${NC}"
+    return 0
+}
+
 # Function to print welcome banner
 print_welcome_banner() {
     clear
@@ -277,46 +317,6 @@ case ${PACKAGES_CHOICE,,} in
         echo -e "${RED}✗ Invalid input${NC}"
         ;;
 esac
-
-# Function to install Python packages
-install_packages() {
-    local venv_name=$1
-    local packages=(
-        "adafruit-circuitpython-neopixel"
-        "flask"
-        "requests"
-        "schedule"
-        "astral"
-        "pytz"
-    )
-
-    print_section_header "Installing Python Packages"
-    echo -e "${CYAN}Installing Python packages in ${YELLOW}${venv_name}${CYAN} environment...${NC}"
-    
-    # Activate virtual environment
-    source "${venv_name}/bin/activate"
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}✗ Failed to activate virtual environment${NC}"
-        return 1
-    fi
-
-    # Install each package
-    for package in "${packages[@]}"; do
-        echo -ne "${CYAN}Installing ${YELLOW}$package${CYAN}... ${NC}"
-        if pip3 install "$package" > /dev/null 2>&1; then
-            echo -e "${GREEN}✓${NC}"
-        else
-            echo -e "${RED}✗ Failed${NC}"
-            deactivate
-            return 1
-        fi
-    done
-
-    # Deactivate virtual environment
-    deactivate
-    echo -e "\n${GREEN}✓ All packages installed successfully${NC}"
-    return 0
-}
 
 # Function to setup WiFi broadcasting
 setup_wifi_broadcast() {
