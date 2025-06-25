@@ -852,10 +852,10 @@ def apply_update():
         result = perform_update()
         
         if result['success']:
-            # Schedule service restart after response is sent
+            # Schedule service restart to happen after the response is sent
             def restart_services():
                 time.sleep(2)  # Wait a moment for the response to be sent
-        try:
+                try:
                     # Restart the METAR service to apply config changes
                     subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
                     app.logger.info("METAR service restarted after update")
@@ -863,19 +863,15 @@ def apply_update():
                     # Restart the scheduler service
                     subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
                     app.logger.info("Scheduler service restarted after update")
-
+                    
                     # Restart the settings service
-                subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
+                    subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
                     app.logger.info("Settings service restarted after update")
                     
                 except subprocess.CalledProcessError as e:
                     app.logger.error(f"Error restarting services after update: {e}")
 
-        @after_this_response
-        def do_restart():
-            restart_services()
-
-            do_restart()
+            threading.Thread(target=restart_services).start()
             
             return jsonify(result)
         else:

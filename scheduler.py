@@ -137,6 +137,12 @@ def update_sun_times():
     """Calculate and update sunrise/sunset times for the selected city."""
     global sun_time_update_in_progress
     
+    # Check if an update is already in progress to avoid re-entry
+    if sun_time_update_in_progress:
+        logger.debug("Sun time update already in progress, skipping this call.")
+        return
+
+    sun_time_update_in_progress = True # Set flag at the very beginning
     try:
         # Only update if sunrise/sunset is enabled and a city is selected
         if not getattr(config, 'USE_SUNRISE_SUNSET', False) or not getattr(config, 'SELECTED_CITY', None):
@@ -148,14 +154,12 @@ def update_sun_times():
         sunrise, sunset = calculate_sun_times(city_name)
         
         if sunrise and sunset:
-            # Set flag to prevent config change detection during update
-            sun_time_update_in_progress = True
-            
-            # Update the config file with new times
             with open('/home/pi/config.py', 'r') as f:
                 config_lines = f.readlines()
-            
-            with open('/home/pi/config.py', 'w') as f:
+                        
+            # Use a temporary file for atomic write to prevent corruption
+            temp_config_path = '/home/pi/config.py.tmp'
+            with open(temp_config_path, 'w') as f:
                 for line in config_lines:
                     if line.startswith('BRIGHT_TIME_START'):
                         f.write(f"BRIGHT_TIME_START = datetime.time({sunrise.hour}, {sunrise.minute})\n")
@@ -164,23 +168,27 @@ def update_sun_times():
                     else:
                         f.write(line)
             
+            # Atomically replace the old config file with the new one
+            os.replace(temp_config_path, '/home/pi/config.py')
+            logger.info("config.py updated with new sun times.")
+
             # Reload the config module
             importlib.reload(config)
             logger.info(f"Updated sun times for {city_name}: Bright at {sunrise.hour:02d}:{sunrise.minute:02d}, Dim at {sunset.hour:02d}:{sunset.minute:02d}")
             
-            # Clear flag after update
-            sun_time_update_in_progress = False
-            
-            # Add a small delay to ensure file system settles
-            time.sleep(2)
         else:
             logger.error(f"Failed to calculate sun times for {city_name}")
             
     except Exception as e:
         logger.error(f"Error updating sun times: {e}")
+    finally:
+        # Add a small delay to ensure file system settles and monitor has a chance to see the change
+        # while the flag is still True.
+        time.sleep(2)
+        # Clear flag in finally block to ensure it's always reset
         sun_time_update_in_progress = False
 
-def schedule_lights():
+def schedule_lights(initial_run=False):
     """Schedule lights on/off and weather updates based on the current configuration."""
     # Clear all existing schedules
     schedule.clear()
@@ -199,8 +207,9 @@ def schedule_lights():
     if getattr(config, 'USE_SUNRISE_SUNSET', False) and getattr(config, 'SELECTED_CITY', None):
         schedule.every().day.at("00:01").do(update_sun_times)  # Update at 12:01 AM daily
         logger.info("Scheduled daily sun time updates")
-        # Run an immediate update
-        update_sun_times()
+        # Run an immediate update only on the very first startup
+        if initial_run:
+            update_sun_times()
 
     # Schedule lights on/off if enabled
     if config.ENABLE_LIGHTS_OFF:
@@ -233,7 +242,7 @@ def monitor_config_changes(config_file):
             last_service_status = current_status
             if current_status:
                 logger.info("METAR service is now running, rescheduling updates...")
-                schedule_lights()  # This will schedule weather updates if enabled
+                schedule_lights(initial_run=False)  # This will schedule weather updates if enabled
             else:
                 logger.info("METAR service has stopped, weather updates will be skipped.")
         
@@ -255,7 +264,7 @@ def monitor_config_changes(config_file):
                     logger.error(f"Error restarting METAR service: {e}")
                 
                 # Reschedule with the updated values
-                schedule_lights()
+                schedule_lights(initial_run=False)
 
                 # Handle lights state after config change
                 if config.ENABLE_LIGHTS_OFF:
@@ -268,6 +277,9 @@ def monitor_config_changes(config_file):
                         turn_off_lights()
                     else:
                         turn_on_lights()
+
+            elif current_modified != last_modified and sun_time_update_in_progress:
+               logger.debug("Config file changed, but sun time update in progress. Skipping reload.")
             
             last_check = current_time  # Update last check timestamp
         
@@ -277,5 +289,5 @@ def monitor_config_changes(config_file):
 if __name__ == "__main__":
     # Monitor config changes and run scheduler
     config_file = "/home/pi/config.py"
-    schedule_lights()  # Initial scheduling
+    schedule_lights(initial_run=True)  # Initial scheduling, run all initial tasks
     monitor_config_changes(config_file)
