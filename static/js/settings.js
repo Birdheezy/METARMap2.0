@@ -1,4 +1,6 @@
 // Save scroll position on form submission
+// Global flag to prevent multiple simultaneous weather update calls
+let isUpdatingWeather = false;
 function saveScrollPosition() {
     sessionStorage.setItem('scrollPosition', window.scrollY);
 }
@@ -280,6 +282,11 @@ function formatDate(dateStr) {
 
 // Function to update weather status
 function updateWeatherStatus() {
+    // Prevent multiple simultaneous calls
+    if (isUpdatingWeather) {
+        return;
+    }
+    isUpdatingWeather = true;
     fetch('/weather-status')
         .then(response => response.json())
         .then(data => {
@@ -380,6 +387,9 @@ function updateWeatherStatus() {
             statusDots.forEach(dot => {
                 dot.style.backgroundColor = 'red';
             });
+        })
+        .finally(() => {
+            isUpdatingWeather = false;
         });
 }
 

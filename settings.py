@@ -25,7 +25,9 @@ from update_manager import (
     check_for_updates, 
     perform_update, 
     get_config_validation_status,
-    validate_config_file
+    validate_config_file,
+    parse_config_file, # Added for robust config handling
+    write_config_file  # Added for robust config handling
 )
 
 def after_this_response(func):
@@ -925,26 +927,16 @@ def map_settings():
             if not data or 'center' not in data or 'zoom' not in data:
                 return jsonify({'error': 'Invalid request data'}), 400
 
-            # Create a dictionary for updates
-            config_updates = {}
-            config_updates["MAP_CENTER_LAT"] = data['center'][0]
-            config_updates["MAP_CENTER_LON"] = data['center'][1]
-            config_updates["MAP_ZOOM"] = data['zoom']
+            # Parse the current config.py
+            current_config_dict = parse_config_file('/home/pi/config.py')
 
-            # Update the config.py file
-            with open('config.py', 'r') as f:
-                config_lines = f.readlines()
+            # Update the values
+            current_config_dict["MAP_CENTER_LAT"] = data['center'][0]
+            current_config_dict["MAP_CENTER_LON"] = data['center'][1]
+            current_config_dict["MAP_ZOOM"] = data['zoom']
 
-            with open('config.py', 'w') as f:
-                for line in config_lines:
-                    # Skip lines we're updating
-                    if any(key in line for key in config_updates.keys()):
-                        continue
-                    f.write(line)
-
-                # Add the updated values
-                for key, value in config_updates.items():
-                    f.write(f"{key} = {value}\n")
+            # Write the updated dictionary back to config.py
+            write_config_file(current_config_dict, '/home/pi/config.py')
 
             # Reload the config module to get the new values
             reload_config()
