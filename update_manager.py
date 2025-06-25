@@ -145,16 +145,25 @@ def create_backup() -> Tuple[str, int]:
     os.makedirs(backup_dir, exist_ok=True)
     
     # Get list of tracked files
+    # Use ls-tree for a more reliable list of committed files, falling back to ls-files
     try:
         tracked_files_output = subprocess.check_output(
-            ['/usr/bin/git', 'ls-files'], 
+            ['/usr/bin/git', 'ls-tree', '-r', 'HEAD', '--name-only'], 
             text=True, 
             cwd='/home/pi'
         ).strip()
         
         tracked_files = tracked_files_output.split('\n') if tracked_files_output else []
-    except subprocess.CalledProcessError as e:
-        raise Exception(f"Failed to get tracked files: {e}")
+        print(f"Found {len(tracked_files)} files to backup using 'git ls-tree'.")
+    except subprocess.CalledProcessError:
+        print("Warning: 'git ls-tree' failed, falling back to 'git ls-files'.")
+        tracked_files_output = subprocess.check_output(
+            ['/usr/bin/git', 'ls-files'], 
+            text=True, 
+            cwd='/home/pi'
+        ).strip()
+        tracked_files = tracked_files_output.split('\n') if tracked_files_output else []
+        print(f"Found {len(tracked_files)} files to backup using 'git ls-files'.")
     
     # Also backup important files even if they're not tracked
     important_files = ['config.py', 'airports.txt']
@@ -367,7 +376,28 @@ def perform_update() -> Dict:
         except subprocess.CalledProcessError:
             print("No local changes to stash")
         
-        # Removed git clean -fd to preserve untracked files like venv and dotfiles
+        # Explicitly backup user dotfiles and venv before destructive git operations
+        print("Backing up user dotfiles and venv...")
+        dotfiles_to_preserve = ['.bash_aliases', '.bashrc']
+        for dotfile in dotfiles_to_preserve:
+            src_path = os.path.join('/home/pi', dotfile)
+            # Use a unique temporary name to avoid conflicts
+            tmp_path = os.path.join('/tmp', f'metarmap_backup_{dotfile.replace(".", "")}_{os.getpid()}')
+            if os.path.exists(src_path):
+                subprocess.run(['cp', src_path, tmp_path], check=True)
+                print(f"Backed up {dotfile} to {tmp_path}")
+            else:
+                print(f"Warning: {dotfile} not found, skipping backup")
+
+        venv_path = '/home/pi/metar' # Assuming 'metar' is the venv name
+        tmp_venv_path = f'/tmp/metarmap_backup_metar_venv_{os.getpid()}'
+        if os.path.exists(venv_path) and os.path.isdir(venv_path):
+            subprocess.run(['cp', '-r', venv_path, tmp_venv_path], check=True)
+            print(f"Backed up virtual environment: {venv_path} to {tmp_venv_path}")
+        else:
+            print(f"Warning: Virtual environment {venv_path} not found, skipping backup")
+
+        # Removed git clean -fd to preserve untracked files like venv and dotfiles (this was the previous fix)
         
         # Fetch and reset to get new files
         subprocess.run(['/usr/bin/git', 'fetch', 'origin', branch], check=True, cwd='/home/pi')
@@ -401,6 +431,28 @@ def perform_update() -> Dict:
         else:
             print("Warning: airports.txt backup not found")
         
+        # Restore user dotfiles and venv
+        print("Restoring user dotfiles and venv...")
+        for dotfile in dotfiles_to_preserve:
+            src_path = os.path.join('/tmp', f'metarmap_backup_{dotfile.replace(".", "")}_{os.getpid()}')
+            dest_path = os.path.join('/home/pi', dotfile)
+            if os.path.exists(src_path):
+                # Use mv to move the backup back, overwriting if necessary
+                subprocess.run(['mv', src_path, dest_path], check=True)
+                print(f"Restored {dotfile}")
+            else:
+                print(f"Warning: Backup for {dotfile} not found, skipping restore")
+
+        if os.path.exists(tmp_venv_path) and os.path.isdir(tmp_venv_path):
+            # Remove existing (potentially empty) venv directory before moving
+            if os.path.exists(venv_path):
+                shutil.rmtree(venv_path) # Ensure it's empty or removed before moving
+            subprocess.run(['mv', tmp_venv_path, venv_path], check=True)
+            print(f"Restored virtual environment: {venv_path}")
+        else:
+            print(f"Warning: Virtual environment backup not found, skipping restore")
+
+
         # Step 7: Validate the result
         print("Validating final configuration...")
         is_valid, validation_msg = validate_config_file('/home/pi/config.py')
@@ -417,7 +469,7 @@ def perform_update() -> Dict:
         cleanup_old_backups()
         
         # Set ownership of all files to pi:pi recursively
-        print("Setting file ownership...")
+        print("Setting file ownership for /home/pi...")
         subprocess.run(['chown', '-R', 'pi:pi', '.'], check=True, cwd='/home/pi')
         
         print("Update completed successfully")
