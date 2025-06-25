@@ -304,21 +304,15 @@ def write_config_file(config_dict: Dict, config_path: str):
         
         # Add variables in the order they appear in the new config
         for key, value in config_dict.items():
-            if isinstance(value, str) and not value.startswith(('"', "'")):
-                # It's a complex expression, write as-is
+            # Heuristic to differentiate between a code snippet (like 'datetime.time(...)')
+            # and a literal string value (like 'airports.txt').
+            if isinstance(value, str) and '(' in value and ')' in value:
+                # Assume it's a complex expression that should not be quoted.
                 new_lines.append(f"{key} = {value}")
             else:
-                # It's a simple value, format it properly
-                if isinstance(value, str):
-                    new_lines.append(f'{key} = "{value}"')
-                elif isinstance(value, tuple):
-                    new_lines.append(f'{key} = {value}')
-                elif isinstance(value, list):
-                    new_lines.append(f'{key} = {value}')
-                elif isinstance(value, dict):
-                    new_lines.append(f'{key} = {value}')
-                else:
-                    new_lines.append(f'{key} = {value}')
+                # It's a simple value (int, bool, tuple, or a literal string).
+                # Use repr() to get the correct Python representation (e.g., adds quotes to strings).
+                new_lines.append(f"{key} = {repr(value)}")
         
         # Write the new config file
         with open(config_path, 'w') as f:
