@@ -132,6 +132,11 @@ setup_git() {
     sudo chown -R pi:pi /home/pi > /dev/null 2>&1
     echo -e "${GREEN}✓${NC}"
 
+    # Add /home/pi to Git's safe.directory for the root user (as services run as root)
+    echo -ne "${CYAN}Configuring Git safe directory for root... ${NC}"
+    git config --global --add safe.directory /home/pi > /dev/null 2>&1
+    echo -e "${GREEN}✓${NC}"
+
     echo -e "\n${GREEN}✓ Git repository setup completed successfully${NC}"
     echo -e "Installed branch: ${GREEN}$BRANCH${NC}"
     return 0

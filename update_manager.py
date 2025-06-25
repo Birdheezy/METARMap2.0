@@ -367,12 +367,7 @@ def perform_update() -> Dict:
         except subprocess.CalledProcessError:
             print("No local changes to stash")
         
-        # Clean untracked files
-        try:
-            subprocess.run(['/usr/bin/git', 'clean', '-fd'], check=True, cwd='/home/pi')
-            print("Untracked files cleaned successfully")
-        except subprocess.CalledProcessError as e:
-            print(f"Warning: Clean failed: {e}")
+        # Removed git clean -fd to preserve untracked files like venv and dotfiles
         
         # Fetch and reset to get new files
         subprocess.run(['/usr/bin/git', 'fetch', 'origin', branch], check=True, cwd='/home/pi')
