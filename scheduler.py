@@ -205,7 +205,7 @@ def schedule_lights(initial_run=False):
 
     # Schedule daily sun time updates if enabled
     if getattr(config, 'USE_SUNRISE_SUNSET', False) and getattr(config, 'SELECTED_CITY', None):
-        schedule.every().day.at("10:15").do(update_sun_times)  # Update at 10:15 AM daily
+        schedule.every().day.at("00:01").do(update_sun_times)  # Update at 12:01 AM daily
         logger.info("Scheduled daily sun time updates")
         # Run an immediate update only on the very first startup
         if initial_run:
