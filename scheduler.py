@@ -250,24 +250,30 @@ def monitor_config_changes(config_file):
         if current_time - last_check >= 5:
             current_modified = os.path.getmtime(config_file)
             if current_modified != last_modified and not sun_time_update_in_progress:
-                logger.info("Detected config.py changes. Reloading schedules and restarting METAR service...")
+                logger.info("Detected config.py changes. Reloading schedules...")
                 last_modified = current_modified
+                
+                # Check if METAR service was running before config change
+                was_running = is_metar_running()
                 
                 # Reload the config module to get updated values
                 importlib.reload(config)
                 
-                # Restart the METAR service to apply all config changes
-                try:
-                    subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
-                    logger.info("METAR service restarted successfully")
-                except subprocess.CalledProcessError as e:
-                    logger.error(f"Error restarting METAR service: {e}")
+                # Only restart the METAR service if it was already running
+                if was_running:
+                    try:
+                        subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
+                        logger.info("METAR service restarted successfully")
+                    except subprocess.CalledProcessError as e:
+                        logger.error(f"Error restarting METAR service: {e}")
+                else:
+                    logger.info("METAR service was not running, skipping restart")
                 
                 # Reschedule with the updated values
                 schedule_lights(initial_run=False)
 
-                # Handle lights state after config change
-                if config.ENABLE_LIGHTS_OFF:
+                # Only handle lights state if the service was running AND lights scheduling is enabled
+                if was_running and config.ENABLE_LIGHTS_OFF:
                     now = datetime.now().time()  # Get current time for comparison
                     lights_off = (
                         (config.LIGHTS_OFF_TIME > config.LIGHTS_ON_TIME and (now >= config.LIGHTS_OFF_TIME or now < config.LIGHTS_ON_TIME)) or
