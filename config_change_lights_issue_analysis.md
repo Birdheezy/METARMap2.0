@@ -55,12 +55,27 @@ Only restart the METAR service when necessary config changes occur (not for all 
 ### Option 4: User Control Override
 When `ENABLE_LIGHTS_OFF = True` but user wants external control (like Home Assistant), provide a way to disable the automatic light state management.
 
+## Key Discovery: METAR Service Restart is Actually Necessary
+
+After examining `metar.py`, it **does NOT** monitor config changes:
+- Imports config once at startup: `from config import *`
+- No file watching or config reloading logic
+- No dynamic config updates during runtime
+- The systemd service (`services/metar.service`) is a simple service with no file watching
+
+**Therefore, restarting the METAR service IS necessary for config changes to take effect.**
+
 ## Recommended Implementation
 
-The cleanest solution is **Option 1** combined with **Option 2**:
+The cleanest solution is **Option 1** - Add a configuration flag:
 
-1. Add a config flag to control automatic light management
-2. Improve the logic to distinguish between user config changes and automatic system updates
-3. Allow users to disable automatic light state management while still getting config reloads
+1. **Add new config variable**: `AUTO_MANAGE_LIGHTS_ON_CONFIG_CHANGE = False`
+2. **Modify scheduler.py** to respect this flag when handling config changes
+3. **Keep the service restart** (necessary for config to take effect)
+4. **Skip the automatic light management** when flag is disabled
 
-This preserves the existing functionality for users who want it while giving users like you the control to manage lights externally through Home Assistant.
+This allows:
+- Config changes to still take effect (via service restart)
+- Users to disable automatic light state management
+- External control via Home Assistant
+- Existing functionality preserved for users who want it
