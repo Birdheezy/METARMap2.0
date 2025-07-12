@@ -1311,11 +1311,16 @@ input[type="color"]::-webkit-color-swatch {
 
 .btn-danger {
     background-color: #ff4444;
-    color: white;
+    color: black;
 }
 
 .btn-danger:hover {
     background-color: #cc0000;
+}
+
+.btn-warning {
+    background-color: #ffc107;
+    color: black;
 }
 
 .led-mode-selection {

@@ -441,7 +441,7 @@ while True:
             # Update LEDs - this will handle WiFi and stale data states
             update_leds(weather_data)
             update_led_brightness(pixels)
-
+        pixes.show()  # Ensure LEDs are updated
             if LEGEND:
                 update_legend(pixels)
 

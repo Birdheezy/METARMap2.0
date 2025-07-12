@@ -1397,6 +1397,50 @@ def shutdown_system():
         app.logger.error(f"Unexpected error during shutdown: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/restart', methods=['POST'])
+def restart_system():
+    """Restart the Raspberry Pi with a delayed response for countdown."""
+    try:
+        # First, send a response to the client
+        response = jsonify({'success': True, 'message': 'System is restarting'})
+        response.headers['Connection'] = 'close'  # Force the connection to close after sending
+
+        # Schedule the restart to happen after the response is sent
+        def restart_after_response():
+            try:
+                # Stop the METAR service
+                subprocess.run(['sudo', 'systemctl', 'stop', 'metar.service'], check=True)
+                app.logger.info("METAR service stopped for restart")
+
+                # Try to run blank.py to turn off all LEDs, but continue even if it fails
+                try:
+                    subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/blank.py'], check=True)
+                    app.logger.info("LEDs blanked for restart")
+                except subprocess.CalledProcessError as e:
+                    app.logger.warning(f"Failed to blank LEDs: {e}. Continuing with restart.")
+
+                # Stop the scheduler service
+                subprocess.run(['sudo', 'systemctl', 'stop', 'scheduler.service'], check=True)
+                app.logger.info("Scheduler service stopped for restart")
+
+                # Wait for countdown (20 seconds recommended)
+                app.logger.info("Waiting 1 second before restarting...")
+                time.sleep(1)
+
+                # Restart the Raspberry Pi
+                subprocess.run(['sudo', 'reboot'], check=True)
+                app.logger.info("Reboot command executed")
+            except Exception as e:
+                app.logger.error(f"Error during restart process: {e}")
+
+        # Start the restart process in a separate thread
+        threading.Thread(target=restart_after_response).start()
+
+        return response
+    except Exception as e:
+        app.logger.error(f"Unexpected error during restart: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/calculate-sun-times', methods=['POST'])
 def calculate_sun_times_endpoint():
     """Calculate sunrise and sunset times for a selected city."""

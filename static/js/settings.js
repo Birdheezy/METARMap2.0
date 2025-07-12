@@ -1059,7 +1059,7 @@ function confirmShutdown() {
         shutdownButton.disabled = true;
         
         // Start the countdown
-        let secondsLeft = 20;
+        let secondsLeft = 30;
         const countdownInterval = setInterval(() => {
             secondsLeft--;
             countdownTimer.textContent = secondsLeft;
@@ -1102,6 +1102,68 @@ function confirmShutdown() {
             showToast('Error during shutdown: ' + error.message, 'danger');
             // Re-enable the button if there was an error
             shutdownButton.disabled = false;
+            countdownDiv.style.display = 'none';
+        });
+    }
+}
+
+function confirmRestart() {
+    if (confirm("This will restart your Raspberry Pi. All services will stop and the device will reboot.\n\nAre you sure you want to restart?")) {
+        const countdownDiv = document.getElementById('shutdown-countdown');
+        const countdownTimer = document.getElementById('countdown-timer');
+        countdownDiv.style.display = 'block';
+
+        // Disable the restart button to prevent multiple clicks
+        const restartButton = document.querySelector('.shutdown-panel .btn-warning');
+        restartButton.disabled = true;
+
+        // Update overlay text for restart
+        const overlayParagraphs = countdownDiv.querySelectorAll('.shutdown-countdown p');
+        if (overlayParagraphs.length >= 4) {
+            overlayParagraphs[0].textContent = "System is restarting....";
+            overlayParagraphs[3].textContent = "Do NOT remove power during restart. The system will reboot automatically.";
+        }
+
+        // Start the countdown
+        let secondsLeft = 60;
+        countdownTimer.textContent = secondsLeft;
+        const countdownInterval = setInterval(() => {
+            secondsLeft--;
+            countdownTimer.textContent = secondsLeft;
+            if (secondsLeft <= 0) {
+                clearInterval(countdownInterval);
+                // The actual restart will happen on the server side
+            }
+        }, 1000);
+
+        // Send the restart request to the server
+        fetch('/restart', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                throw new Error('Server returned non-JSON response');
+            }
+        })
+        .then(data => {
+            if (data.success) {
+                showToast('System is restarting...', 'info');
+            } else {
+                showToast('Error initiating restart: ' + (data.error || 'Unknown error'), 'danger');
+                restartButton.disabled = false;
+                countdownDiv.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error during restart:', error);
+            showToast('Error during restart: ' + error.message, 'danger');
+            restartButton.disabled = false;
             countdownDiv.style.display = 'none';
         });
     }
