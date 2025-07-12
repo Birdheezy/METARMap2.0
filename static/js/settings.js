@@ -775,7 +775,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (data.status === 'running') {
                             // Stop METAR service first
                             return fetch('/service/control/metar/stop', {
-                                method: 'POST'
+                                method: 'POST',
                             }).then(() => {
                                 showToast('METAR service stopped', 'info');
                             });
@@ -1048,29 +1048,30 @@ async function updateWeatherManually() {
 
 // Function to confirm and execute system shutdown
 function confirmShutdown() {
-    if (confirm("WARNING: This will stop all services, turn off the LEDs, and shut down the Raspberry Pi.\n\nAre you sure you want to proceed with the shutdown?")) {
-        // Show the countdown
+    if (confirm("WARNING: This will stop all services, turn off the LEDs, and shut down the controller.\n\nA manual power cycle will be required to restart the map. \n\nAre you sure you want to proceed with the shutdown?")) {
         const countdownDiv = document.getElementById('shutdown-countdown');
         const countdownTimer = document.getElementById('countdown-timer');
         countdownDiv.style.display = 'block';
-        
         // Disable the shutdown button to prevent multiple clicks
         const shutdownButton = document.querySelector('.shutdown-panel .btn-danger');
         shutdownButton.disabled = true;
-        
-        // Start the countdown
+        // Set shutdown-specific overlay text
+        countdownDiv.innerHTML = `
+            <div class="shutdown-countdown">
+                <p>System will shut down in <span id="countdown-timer">30</span> seconds...</p>
+                <p>It is safe to remove power when the countdown reaches zero.</p>
+                <p style="font-size: 1.2em; color: #f44336;">Shutting down...</p>
+            </div>
+        `;
+        const countdownTimerElem = document.getElementById('countdown-timer');
         let secondsLeft = 30;
         const countdownInterval = setInterval(() => {
             secondsLeft--;
-            countdownTimer.textContent = secondsLeft;
-            
+            if (countdownTimerElem) countdownTimerElem.textContent = secondsLeft;
             if (secondsLeft <= 0) {
                 clearInterval(countdownInterval);
-                // The actual shutdown will happen on the server side
             }
         }, 1000);
-        
-        // Send the shutdown request to the server
         fetch('/shutdown', {
             method: 'POST',
             headers: {
@@ -1078,12 +1079,10 @@ function confirmShutdown() {
             }
         })
         .then(response => {
-            // Check if the response is JSON
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
                 return response.json();
             } else {
-                // If not JSON, throw an error
                 throw new Error('Server returned non-JSON response');
             }
         })
@@ -1092,7 +1091,6 @@ function confirmShutdown() {
                 showToast('System is shutting down...', 'info');
             } else {
                 showToast('Error initiating shutdown: ' + (data.error || 'Unknown error'), 'danger');
-                // Re-enable the button if there was an error
                 shutdownButton.disabled = false;
                 countdownDiv.style.display = 'none';
             }
@@ -1100,7 +1098,6 @@ function confirmShutdown() {
         .catch(error => {
             console.error('Error during shutdown:', error);
             showToast('Error during shutdown: ' + error.message, 'danger');
-            // Re-enable the button if there was an error
             shutdownButton.disabled = false;
             countdownDiv.style.display = 'none';
         });
@@ -1112,31 +1109,26 @@ function confirmRestart() {
         const countdownDiv = document.getElementById('shutdown-countdown');
         const countdownTimer = document.getElementById('countdown-timer');
         countdownDiv.style.display = 'block';
-
         // Disable the restart button to prevent multiple clicks
         const restartButton = document.querySelector('.shutdown-panel .btn-warning');
         restartButton.disabled = true;
-
-        // Update overlay text for restart
-        const overlayParagraphs = countdownDiv.querySelectorAll('.shutdown-countdown p');
-        if (overlayParagraphs.length >= 4) {
-            overlayParagraphs[0].textContent = "System is restarting....";
-            overlayParagraphs[3].textContent = "Do NOT remove power during restart. The system will reboot automatically.";
-        }
-
-        // Start the countdown
+        // Set restart-specific overlay text
+        countdownDiv.innerHTML = `
+            <div class="shutdown-countdown">
+                <p>System will restart in <span id="countdown-timer">60</span> seconds...</p>
+                <p>Do NOT remove power during restart</p>
+                <p>When the lights come back on, you can refresh this page</p>
+            </div>
+        `;
+        const countdownTimerElem = document.getElementById('countdown-timer');
         let secondsLeft = 60;
-        countdownTimer.textContent = secondsLeft;
         const countdownInterval = setInterval(() => {
             secondsLeft--;
-            countdownTimer.textContent = secondsLeft;
+            if (countdownTimerElem) countdownTimerElem.textContent = secondsLeft;
             if (secondsLeft <= 0) {
                 clearInterval(countdownInterval);
-                // The actual restart will happen on the server side
             }
         }, 1000);
-
-        // Send the restart request to the server
         fetch('/restart', {
             method: 'POST',
             headers: {

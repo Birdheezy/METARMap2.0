@@ -441,23 +441,23 @@ while True:
             # Update LEDs - this will handle WiFi and stale data states
             update_leds(weather_data)
             update_led_brightness(pixels)
-        pixes.show()  # Ensure LEDs are updated
+            pixels.show()  # Ensure LEDs are updated
             if LEGEND:
                 update_legend(pixels)
 
             time.sleep(ANIMATION_PAUSE)
 
-            # Only run animations if we have good data
+            # Only run animations if we have good data and at least one airport needs animation
             if not (STALE_INDICATION and is_weather_stale()) and not (WIFI_INDICATION and not check_wifi_status()):
-                if WIND_ANIMATION and weather.get_windy_airports(weather_data):
-                    animate_windy_airports(weather.get_windy_airports(weather_data), weather_data)
-
-                if LIGHTENING_ANIMATION and weather.get_lightning_airports(weather_data):
-                    animate_lightning_airports(weather.get_lightning_airports(weather_data), weather_data)
-
-                if SNOWY_ANIMATION and weather.get_snowy_airports(weather_data):
-                    animate_snowy_airports(weather.get_snowy_airports(weather_data), weather_data)
-
+                windy = weather.get_windy_airports(weather_data)
+                lightning = weather.get_lightning_airports(weather_data)
+                snowy = weather.get_snowy_airports(weather_data)
+                if WIND_ANIMATION and windy:
+                    animate_windy_airports(windy, weather_data)
+                if LIGHTENING_ANIMATION and lightning:
+                    animate_lightning_airports(lightning, weather_data)
+                if SNOWY_ANIMATION and snowy:
+                    animate_snowy_airports(snowy, weather_data)
         else:
             # If lights should be off, ensure LEDs are off and sleep
             pixels.fill((0, 0, 0))

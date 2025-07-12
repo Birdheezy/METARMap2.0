@@ -1312,6 +1312,7 @@ input[type="color"]::-webkit-color-swatch {
 .btn-danger {
     background-color: #ff4444;
     color: black;
+    font-weight: bold;
 }
 
 .btn-danger:hover {
@@ -1321,6 +1322,7 @@ input[type="color"]::-webkit-color-swatch {
 .btn-warning {
     background-color: #ffc107;
     color: black;
+    font-weight: bold;
 }
 
 .led-mode-selection {
