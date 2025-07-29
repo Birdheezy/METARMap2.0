@@ -27,80 +27,6 @@ body {
 .legend-dot.lightning { background-color: var(--lightening-color); }
 .legend-dot.snow { background-color: var(--snowy-color); }
 
-/* Floating Save Button */
-.floating-save-btn {
-    position: fixed;
-    top: 100px; /* Below the navbar */
-    right: 30%; /* Closer to content, not at the very edge */
-    background: linear-gradient(135deg, #007bff, #0056b3);
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
-    transition: all 0.5s ease;
-    opacity: 0;
-    transform: translateY(-10px);
-    z-index: 1000;
-    pointer-events: none;
-}
-
-.floating-save-btn.show {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-}
-
-.floating-save-btn:hover {
-    background: linear-gradient(135deg, #0056b3, #004085);
-    box-shadow: 0 6px 16px rgba(0, 123, 255, 0.4);
-    transform: translateY(-2px);
-}
-
-.floating-save-btn:active {
-    transform: translateY(0);
-}
-
-/* Mobile responsive positioning */
-@media (max-width: 768px) {
-    .floating-save-btn {
-        right: 20px; /* Closer to edge on mobile */
-        top: 100px; /* Adjusted for mobile navbar height */
-        padding: 10px 18px; /* Slightly larger for touch */
-        font-size: 16px;
-    }
-}
-
-/* Ensure sections have relative positioning for absolute positioned save buttons */
-section {
-    position: relative;
-}
-
-/* Legend Items Section Collapsing */
-.legend-items-section {
-    margin-left: 20px;
-    margin-top: 10px;
-    padding: 10px;
-    border-left: 2px solid #444;
-    background: rgba(0,0,0,0.1);
-    transition: all 0.5s ease; /* Change this value to control speed */
-    overflow: hidden;
-    max-height: 500px; /* Large enough to accommodate all items */
-    opacity: 1;
-}
-
-.legend-items-section.collapsed {
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    margin-top: 0;
-    opacity: 0;
-    border-left-color: transparent;
-}
-
 /* Container styling to center the form */
 .container {
     position: relative;
@@ -225,7 +151,7 @@ form label {
     margin: 0 auto;
     display: block;
     text-align: center;
-    transition: all 0.5s ease-in-out;
+    transition: all 0.3s ease-in-out;
 }
 
 .input-small:focus {
@@ -1143,40 +1069,26 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 .info-header {
-    cursor: pointer;
-    padding: 10px;
-    border-radius: 6px;
-    transition: background-color 0.2s ease;
-    position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
-}
-
-.info-header:hover {
-    background-color: rgba(0, 123, 255, 0.1);
+    cursor: pointer;
+    position: relative;
 }
 
 .info-toggle {
     position: absolute;
-    right: 15px;
+    right: 10px;
     font-size: 1.2em;
-    transition: transform 0.3s ease;
-    color: #007bff;
 }
 
 .info-content {
     margin-top: 10px;
-    overflow: hidden;
-    max-height: 2000px; /* Large enough to accommodate content */
-    opacity: 1;
-    transition: all 0.3s ease;
+    display: none;
 }
 
-.info-content.collapsed {
-    max-height: 0;
-    margin-top: 0;
-    opacity: 0;
+.info-content.show {
+    display: block;
 }
 
 .kiosk-legend {

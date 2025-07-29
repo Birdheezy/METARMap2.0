@@ -155,6 +155,16 @@ def edit_settings():
                 config_updates["ENABLE_HTTPS"] = 'enable_https' in request.form
                 config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form
                 config_updates["STALE_INDICATION"] = 'stale_indication' in request.form
+                
+                # Legend item visibility settings
+                config_updates["LEGEND_VFR"] = 'legend_vfr' in request.form
+                config_updates["LEGEND_MVFR"] = 'legend_mvfr' in request.form
+                config_updates["LEGEND_IFR"] = 'legend_ifr' in request.form
+                config_updates["LEGEND_LIFR"] = 'legend_lifr' in request.form
+                config_updates["LEGEND_SNOWY"] = 'legend_snowy' in request.form
+                config_updates["LEGEND_LIGHTNING"] = 'legend_lightning' in request.form
+                config_updates["LEGEND_WINDY"] = 'legend_windy' in request.form
+                config_updates["LEGEND_MISSING"] = 'legend_missing' in request.form
             # Float or Integer Settings
                 config_updates["BRIGHTNESS"] = float(request.form.get('brightness', 0))
                 config_updates["DIM_BRIGHTNESS"] = float(request.form.get('dim_brightness', 0))
@@ -306,7 +316,8 @@ def edit_settings():
                 for line in config_lines:
                     updated = False
                     for key, value in config_updates.items():
-                        if line.startswith(key):
+                        # Use exact matching to prevent LEGEND from matching LEGEND_VFR
+                        if line.strip().startswith(f"{key} =") or line.strip().startswith(f"{key}="):
                             if isinstance(value, float) and value.is_integer():
                                 value = int(value)
                             # Only add quotes for specific string values

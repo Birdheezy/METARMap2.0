@@ -5,6 +5,95 @@ function saveScrollPosition() {
     sessionStorage.setItem('scrollPosition', window.scrollY);
 }
 
+// Floating Save Button and Form Change Detection
+let formChanged = false;
+let floatingSaveBtn = null;
+let saveButtonTimeout = null;
+
+// Initialize floating save button functionality
+function initializeFloatingSaveButton() {
+    // Create single floating save button
+    floatingSaveBtn = document.createElement('button');
+    floatingSaveBtn.className = 'floating-save-btn';
+    floatingSaveBtn.textContent = 'Save';
+    floatingSaveBtn.onclick = function() {
+        document.querySelector('form').submit();
+    };
+    document.body.appendChild(floatingSaveBtn);
+    
+    // Add change listeners to all form elements
+    const formElements = document.querySelectorAll('input, select, textarea');
+    formElements.forEach(element => {
+        element.addEventListener('change', function() {
+            formChanged = true;
+            showFloatingSaveButton();
+        });
+        
+        // For text inputs, also listen for input events
+        if (element.type === 'text' || element.type === 'number' || element.tagName === 'TEXTAREA') {
+            element.addEventListener('input', function() {
+                formChanged = true;
+                showFloatingSaveButton();
+            });
+        }
+    });
+
+    // Hide floating save button when form is submitted
+    document.querySelector('form').addEventListener('submit', function() {
+        hideFloatingSaveButton();
+        formChanged = false;
+    });
+}
+
+function showFloatingSaveButton() {
+    // Clear existing timeout
+    if (saveButtonTimeout) {
+        clearTimeout(saveButtonTimeout);
+    }
+    
+    // Set a small delay before showing the button
+    saveButtonTimeout = setTimeout(() => {
+        if (floatingSaveBtn) {
+            floatingSaveBtn.classList.add('show');
+        }
+    }, 300); // 300ms delay
+}
+
+function hideFloatingSaveButton() {
+    // Clear timeout
+    if (saveButtonTimeout) {
+        clearTimeout(saveButtonTimeout);
+        saveButtonTimeout = null;
+    }
+    
+    // Hide button
+    if (floatingSaveBtn) {
+        floatingSaveBtn.classList.remove('show');
+    }
+}
+
+// Legend Items Collapsing Functionality
+function initializeLegendCollapsing() {
+    const legendToggle = document.getElementById('legend');
+    const legendItemsSection = document.querySelector('.legend-items-section');
+    
+    if (legendToggle && legendItemsSection) {
+        // Set initial state
+        if (!legendToggle.checked) {
+            legendItemsSection.classList.add('collapsed');
+        }
+        
+        // Add change listener
+        legendToggle.addEventListener('change', function() {
+            if (this.checked) {
+                legendItemsSection.classList.remove('collapsed');
+            } else {
+                legendItemsSection.classList.add('collapsed');
+            }
+        });
+    }
+}
+
     // Restore scroll position on page reload
     document.addEventListener('DOMContentLoaded', function () {
         const scrollPosition = sessionStorage.getItem('scrollPosition');
@@ -959,10 +1048,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const ledTestToggle = document.getElementById('led-test-toggle');
     const ledTestContent = document.getElementById('led-test-content');
     if (ledTestToggle && ledTestContent) {
+        // Set initial state - collapsed by default
+        ledTestContent.classList.add('collapsed');
+        ledTestToggle.querySelector('.info-toggle').textContent = '▼';
+        
         ledTestToggle.addEventListener('click', function() {
-            const isVisible = ledTestContent.classList.contains('show');
-            ledTestContent.classList.toggle('show');
-            this.querySelector('.info-toggle').textContent = isVisible ? '▼' : '▲';
+            const isCollapsed = ledTestContent.classList.contains('collapsed');
+            if (isCollapsed) {
+                ledTestContent.classList.remove('collapsed');
+                this.querySelector('.info-toggle').textContent = '▲';
+            } else {
+                ledTestContent.classList.add('collapsed');
+                this.querySelector('.info-toggle').textContent = '▼';
+            }
         });
     }
 
@@ -1006,6 +1104,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Initialize floating save button
+    initializeFloatingSaveButton();
+
+    // Initialize legend collapsing
+    initializeLegendCollapsing();
 });
 
 // Function to update line numbers
@@ -1344,4 +1448,99 @@ document.addEventListener('click', function(event) {
             icon.setAttribute('aria-expanded', 'false');
         });
     }
+});
+
+// Legend Configuration Drag and Drop Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const legendList = document.getElementById('legend-items-list');
+    const legendOrderInput = document.getElementById('legend_order_input');
+    
+    if (!legendList) return;
+    
+    let draggedItem = null;
+    
+    // Initialize drag and drop
+    function initializeDragAndDrop() {
+        const items = legendList.querySelectorAll('.legend-item');
+        
+        items.forEach(item => {
+            item.addEventListener('dragstart', handleDragStart);
+            item.addEventListener('dragend', handleDragEnd);
+            item.addEventListener('dragover', handleDragOver);
+            item.addEventListener('drop', handleDrop);
+            item.addEventListener('dragenter', handleDragEnter);
+            item.addEventListener('dragleave', handleDragLeave);
+        });
+    }
+    
+    function handleDragStart(e) {
+        draggedItem = this;
+        this.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', this.outerHTML);
+    }
+    
+    function handleDragEnd(e) {
+        this.classList.remove('dragging');
+        draggedItem = null;
+    }
+    
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    }
+    
+    function handleDrop(e) {
+        e.preventDefault();
+        
+        if (draggedItem !== this) {
+            const allItems = [...legendList.querySelectorAll('.legend-item')];
+            const draggedIndex = allItems.indexOf(draggedItem);
+            const droppedIndex = allItems.indexOf(this);
+            
+            if (draggedIndex < droppedIndex) {
+                this.parentNode.insertBefore(draggedItem, this.nextSibling);
+            } else {
+                this.parentNode.insertBefore(draggedItem, this);
+            }
+            
+            updateLegendOrder();
+        }
+    }
+    
+    function handleDragEnter(e) {
+        e.preventDefault();
+        this.classList.add('drag-over');
+    }
+    
+    function handleDragLeave(e) {
+        this.classList.remove('drag-over');
+    }
+    
+    function updateLegendOrder() {
+        const items = legendList.querySelectorAll('.legend-item');
+        const order = Array.from(items).map(item => item.dataset.key);
+        legendOrderInput.value = order.join(',');
+    }
+    
+    // Handle checkbox changes
+    legendList.addEventListener('change', function(e) {
+        if (e.target.classList.contains('legend-checkbox')) {
+            updateLegendOrder();
+        }
+    });
+    
+    // Initialize on page load
+    initializeDragAndDrop();
+    
+    // Re-initialize after any dynamic content changes
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList') {
+                initializeDragAndDrop();
+            }
+        });
+    });
+    
+    observer.observe(legendList, { childList: true });
 });

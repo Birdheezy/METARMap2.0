@@ -544,8 +544,48 @@
                         <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false" onclick="event.stopPropagation()">i</span>
                         <div class="dropdown-content" style="display: none;">
                             When enabled, LEDs at the end of the strand will show what each color means.<br>
-                            Starting from the end of the strand the colors are:<br>
-                            Snowy, Windy, Lightning, Missing, LIFR, IFR, MVFR, VFR
+                            Legend items can be individually enabled/disabled using the checkboxes below.<br>
+                            Legend positions (from end of strand): VFR, MVFR, IFR, LIFR, Snow, Lightning, Windy, Missing
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Legend Item Settings -->
+                <div class="legend-items-section" style="margin-left: 20px; margin-top: 10px; padding: 10px; border-left: 2px solid #444; background: rgba(0,0,0,0.1);">
+                    <h4 style="margin-top: 0; color: #fff;">Legend Items</h4>
+                    
+                    <div class="legend-item-checkboxes">
+                        <div class="toggle-wrapper">
+                            <input type="checkbox" id="legend_vfr" name="legend_vfr" class="toggle-input" {% if config.LEGEND_VFR %}checked{% endif %}>
+                            <label for="legend_vfr" class="toggle-label">Show VFR</label>
+                        </div>
+                        <div class="toggle-wrapper">
+                            <input type="checkbox" id="legend_mvfr" name="legend_mvfr" class="toggle-input" {% if config.LEGEND_MVFR %}checked{% endif %}>
+                            <label for="legend_mvfr" class="toggle-label">Show MVFR</label>
+                        </div>
+                        <div class="toggle-wrapper">
+                            <input type="checkbox" id="legend_ifr" name="legend_ifr" class="toggle-input" {% if config.LEGEND_IFR %}checked{% endif %}>
+                            <label for="legend_ifr" class="toggle-label">Show IFR</label>
+                        </div>
+                        <div class="toggle-wrapper">
+                            <input type="checkbox" id="legend_lifr" name="legend_lifr" class="toggle-input" {% if config.LEGEND_LIFR %}checked{% endif %}>
+                            <label for="legend_lifr" class="toggle-label">Show LIFR</label>
+                        </div>
+                        <div class="toggle-wrapper">
+                            <input type="checkbox" id="legend_snowy" name="legend_snowy" class="toggle-input" {% if config.LEGEND_SNOWY %}checked{% endif %}>
+                            <label for="legend_snowy" class="toggle-label">Show Snow</label>
+                        </div>
+                        <div class="toggle-wrapper">
+                            <input type="checkbox" id="legend_lightning" name="legend_lightning" class="toggle-input" {% if config.LEGEND_LIGHTNING %}checked{% endif %}>
+                            <label for="legend_lightning" class="toggle-label">Show Lightning</label>
+                        </div>
+                        <div class="toggle-wrapper">
+                            <input type="checkbox" id="legend_windy" name="legend_windy" class="toggle-input" {% if config.LEGEND_WINDY %}checked{% endif %}>
+                            <label for="legend_windy" class="toggle-label">Show Windy</label>
+                        </div>
+                        <div class="toggle-wrapper">
+                            <input type="checkbox" id="legend_missing" name="legend_missing" class="toggle-input" {% if config.LEGEND_MISSING %}checked{% endif %}>
+                            <label for="legend_missing" class="toggle-label">Show Missing</label>
                         </div>
                     </div>
                 </div>
@@ -566,7 +606,7 @@
     <!-- Airports Section with Line Numbers -->
     <section id="airports" class="airports">
         <h2>Airports</h2>
-        <label for="airportsText">ICAO Identifiers (one per line)</label>
+        <label for="airportsText">ICAO Identifiers (one per line. SKIP for unused/blank LEDs)</label>
 
         <div class="textarea-wrapper">
             <div class="line-numbers" id="line-numbers"></div>
