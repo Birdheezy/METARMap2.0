@@ -1043,6 +1043,19 @@ document.addEventListener('DOMContentLoaded', function() {
             toggleTooltip(this);
         });
     });
+    // Initialize sunrise/sunset toggle
+    const sunriseSunsetToggle = document.getElementById('use_sunrise_sunset');
+    if (sunriseSunsetToggle && sunriseSunsetToggle.checked) {
+        document.querySelectorAll('.bright-dim-select').forEach(function(el) {
+            el.style.opacity = '0.5';
+            el.style.pointerEvents = 'none';
+        });
+    } else {
+        document.querySelectorAll('.bright-dim-select').forEach(function(el) {
+            el.style.opacity = '1';
+            el.style.pointerEvents = 'auto';
+        });
+    }
 
     // Initialize LED test section toggle
     const ledTestToggle = document.getElementById('led-test-toggle');
