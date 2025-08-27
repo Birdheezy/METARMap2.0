@@ -39,7 +39,7 @@
         {% include 'map.html' with context %}
     </section>
 
-    <form method="POST" action="/" onsubmit="saveScrollPosition()">
+    <form method="POST" action="/">
     <section id="brightness">
 
         <h2>Brightness Settings</h2>
@@ -545,7 +545,8 @@
                         <div class="dropdown-content" style="display: none;">
                             When enabled, LEDs at the end of the strand will show what each color means.<br>
                             Legend items can be individually enabled/disabled using the checkboxes below.<br>
-                            Legend positions (from end of strand): VFR, MVFR, IFR, LIFR, Snow, Lightning, Windy, Missing
+                            Legend positions (from end of strand): VFR, MVFR, IFR, LIFR, Snow, Lightning, Windy, Missing<br>
+                            Be sure that you "LED Count" is set correctly in the main settings.
                         </div>
                     </div>
                 </div>

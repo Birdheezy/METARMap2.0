@@ -42,7 +42,7 @@ update_system() {
     if apt update; then
         echo -e "${GREEN}✓ Package lists updated successfully${NC}"
         echo -e "${CYAN}Upgrading packages...${NC}"
-        if apt upgrade -y; then
+        if apt-get -o Dpkg::Options::="--force-confold" upgrade -y; then
             echo -e "${GREEN}✓ System upgrade completed successfully${NC}"
             return 0
         else
