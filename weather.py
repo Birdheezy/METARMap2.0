@@ -12,6 +12,27 @@ logging.basicConfig(
     format='%(message)s'  # Only include the message, let journald handle the timestamp
 )
 
+def parse_visibility(visibility_str):
+    """Parse visibility string from API (e.g., '10+', '1.5', etc.) to numeric value."""
+    if not visibility_str:
+        return 0
+    
+    # Handle string format
+    if isinstance(visibility_str, str):
+        # Remove '+' and convert to float
+        visibility_clean = visibility_str.replace('+', '')
+        try:
+            return float(visibility_clean)
+        except ValueError:
+            logging.warning(f"Could not parse visibility: {visibility_str}")
+            return 0
+    
+    # Handle numeric format (in case API sometimes returns numbers)
+    if isinstance(visibility_str, (int, float)):
+        return float(visibility_str)
+    
+    return 0
+
 def get_valid_airports(file_path):
     """Read airport IDs from a file and return a list of valid airport codes."""
     try:
@@ -205,9 +226,9 @@ def parse_weather(metar_data):
             "wind_speed": feature['properties'].get('wspd', 0) or 0,
             "wind_gust": feature['properties'].get('wgst', 0) or 0,
             "flt_cat": feature['properties'].get('fltcat', 'MISSING') or 'MISSING',
-            "visibility": feature['properties'].get('visib', 0) or 0,
+            "visibility": parse_visibility(feature['properties'].get('visib', '0')),
             "altimeter": feature['properties'].get('altim', 0) or 0,
-            "cloud_coverage": [],  # Process cloud layers later
+            "cloud_coverage": feature['properties'].get('clouds', []),
             "ceiling": feature['properties'].get('ceil', 0) or 0,
             "precip": feature['properties'].get('wx', 'MISSING') or 'MISSING',
             "raw_observation": raw_observation,
