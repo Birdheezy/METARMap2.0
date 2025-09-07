@@ -105,6 +105,10 @@ def get_windy_airports(weather_data):
         wind_speed = weather_info.get('wind_speed', 0)
         wind_gust = weather_info.get('wind_gust', 0)
         flt_cat = weather_info.get('flt_cat', 'MISSING')
+        
+        # Ensure wind values are not None before comparison
+        wind_speed = wind_speed if wind_speed is not None else 0
+        wind_gust = wind_gust if wind_gust is not None else 0
 
         # Check if wind speed or wind gust exceeds the threshold
         if wind_speed > WIND_THRESHOLD or wind_gust > WIND_THRESHOLD:
@@ -191,7 +195,8 @@ def parse_weather(metar_data):
 
     parsed_data = {}
     for feature in metar_data['features']:
-        airport_id = feature['properties'].get('id', 'UNKNOWN')
+        # API changed: id property removed from GeoJSON, use icaoId instead
+        airport_id = feature['properties'].get('icaoId', feature['properties'].get('id', 'UNKNOWN'))
         raw_observation = feature['properties'].get('rawOb', 'N/A')
 
         # Get coordinates from geometry
@@ -202,18 +207,23 @@ def parse_weather(metar_data):
         # Check for lightning indicators in raw observation
         lightning = any(keyword in raw_observation for keyword in LIGHTNING_KEYWORDS)
 
+        # Handle None values from API - convert to 0 for numeric fields
+        def safe_get_numeric(properties, key, default=0):
+            value = properties.get(key, default)
+            return value if value is not None else default
+        
         airport_weather = {
             "observation_time": feature['properties'].get('obsTime', None),
-            "temperature": feature['properties'].get('temp', 0),
-            "dew_point": feature['properties'].get('dewp', 0),
-            "wind_direction": feature['properties'].get('wdir', 0),
-            "wind_speed": feature['properties'].get('wspd', 0),
-            "wind_gust": feature['properties'].get('wgst', 0),
+            "temperature": safe_get_numeric(feature['properties'], 'temp', 0),
+            "dew_point": safe_get_numeric(feature['properties'], 'dewp', 0),
+            "wind_direction": safe_get_numeric(feature['properties'], 'wdir', 0),
+            "wind_speed": safe_get_numeric(feature['properties'], 'wspd', 0),
+            "wind_gust": safe_get_numeric(feature['properties'], 'wgst', 0),
             "flt_cat": feature['properties'].get('fltCat', 'MISSING'),
-            "visibility": feature['properties'].get('visib', 0),
-            "altimeter": feature['properties'].get('altim', 0),
+            "visibility": safe_get_numeric(feature['properties'], 'visib', 0),
+            "altimeter": safe_get_numeric(feature['properties'], 'altim', 0),
             "cloud_coverage": [],  # Process cloud layers later
-            "ceiling": feature['properties'].get('ceil', 0),
+            "ceiling": safe_get_numeric(feature['properties'], 'ceil', 0),
             "precip": feature['properties'].get('wx', 'MISSING'),
             "raw_observation": raw_observation,
             "lightning": lightning,  # Add the lightning indicator
