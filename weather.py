@@ -44,7 +44,10 @@ def fetch_metar():
     }
 
     try:
+        # Construct the full URL for debugging
+        full_url = f"{base_url}?ids={','.join(airport_ids)}&format=geojson"
         logging.info(f"Making API request to {base_url} with {len(airport_ids)} airports")
+        logging.info(f"Full URL: {full_url}")
         logging.info(f"Request parameters: {params}")
         
         start_time = datetime.datetime.now()
@@ -57,6 +60,11 @@ def fetch_metar():
         important_headers = ['content-type', 'content-length', 'date', 'x-rate-limit', 'retry-after']
         header_info = {k: v for k, v in response.headers.items() if k.lower() in important_headers}
         logging.info(f"Response headers: {header_info}")
+        
+        # Handle new API response codes
+        if response.status_code == 204:
+            logging.warning("API returned 204 No Content - no data available for requested airports")
+            return None
         
         response.raise_for_status()
         
@@ -88,7 +96,8 @@ def read_weather_data():
     try:
         # Use absolute path to ensure consistency
         with open('/home/pi/weather.json', 'r') as json_file:
-            return json.load(json_file)
+            data = json.load(json_file)
+            return data
     except Exception as e:
         logging.error(f"Failed to read weather.json: {e}")
         return {}
@@ -100,6 +109,10 @@ def get_windy_airports(weather_data):
         wind_speed = weather_info.get('wind_speed', 0)
         wind_gust = weather_info.get('wind_gust', 0)
         flt_cat = weather_info.get('flt_cat', 'MISSING')
+        
+        # Ensure wind values are not None before comparison
+        wind_speed = wind_speed if wind_speed is not None else 0
+        wind_gust = wind_gust if wind_gust is not None else 0
 
         # Check if wind speed or wind gust exceeds the threshold
         if wind_speed > WIND_THRESHOLD or wind_gust > WIND_THRESHOLD:
@@ -186,7 +199,8 @@ def parse_weather(metar_data):
 
     parsed_data = {}
     for feature in metar_data['features']:
-        airport_id = feature['properties'].get('id', 'UNKNOWN')
+        # API changed: id property removed from GeoJSON, use icaoId instead
+        airport_id = feature['properties'].get('icaoId', feature['properties'].get('id', 'UNKNOWN'))
         raw_observation = feature['properties'].get('rawOb', 'N/A')
 
         # Get coordinates from geometry
@@ -197,19 +211,43 @@ def parse_weather(metar_data):
         # Check for lightning indicators in raw observation
         lightning = any(keyword in raw_observation for keyword in LIGHTNING_KEYWORDS)
 
+        # Handle None values from API - convert to 0 for numeric fields
+        def safe_get_numeric(properties, key, default=0):
+            value = properties.get(key, default)
+            return value if value is not None else default
+        
+        # Handle visibility field that can be string (like "10+") or number
+        def safe_get_visibility(properties, key, default=0):
+            value = properties.get(key, default)
+            if value is None:
+                return default
+            if isinstance(value, str):
+                # Handle string values like "10+" - extract the number part
+                import re
+                match = re.search(r'\d+', str(value))
+                return int(match.group()) if match else default
+            return value if isinstance(value, (int, float)) else default
+        
+        # Handle precip field that can be null
+        def safe_get_precip(properties, key, default='MISSING'):
+            value = properties.get(key, default)
+            return value if value is not None else default
+        
+        
         airport_weather = {
             "observation_time": feature['properties'].get('obsTime', None),
-            "temperature": feature['properties'].get('temp', 0),
-            "dew_point": feature['properties'].get('dewp', 0),
-            "wind_direction": feature['properties'].get('wdir', 0),
-            "wind_speed": feature['properties'].get('wspd', 0),
-            "wind_gust": feature['properties'].get('wgst', 0),
+            "temperature": safe_get_numeric(feature['properties'], 'temp', 0),
+            "dew_point": safe_get_numeric(feature['properties'], 'dewp', 0),
+            "wind_direction": safe_get_numeric(feature['properties'], 'wdir', 0),
+            "wind_speed": safe_get_numeric(feature['properties'], 'wspd', 0),
+            "wind_gust": safe_get_numeric(feature['properties'], 'wgst', 0),
             "flt_cat": feature['properties'].get('fltcat', 'MISSING'),
-            "visibility": feature['properties'].get('visib', 0),
-            "altimeter": feature['properties'].get('altim', 0),
-            "cloud_coverage": [],  # Process cloud layers later
-            "ceiling": feature['properties'].get('ceil', 0),
-            "precip": feature['properties'].get('wx', 'MISSING'),
+            "visibility": safe_get_visibility(feature['properties'], 'visib', 0),
+            "altimeter": safe_get_numeric(feature['properties'], 'altim', 0),
+            "cloud_coverage": feature['properties'].get('clouds', []),  # Use the clouds array from API
+            "cover": feature['properties'].get('cover', 'MISSING'),  # Overall cloud cover
+            "ceiling": safe_get_numeric(feature['properties'], 'ceil', 0),
+            "precip": safe_get_precip(feature['properties'], 'wx', 'MISSING'),
             "raw_observation": raw_observation,
             "lightning": lightning,  # Add the lightning indicator
             "latitude": lat,  # Add latitude
