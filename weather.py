@@ -96,7 +96,8 @@ def read_weather_data():
     try:
         # Use absolute path to ensure consistency
         with open('/home/pi/weather.json', 'r') as json_file:
-            return json.load(json_file)
+            data = json.load(json_file)
+            return data
     except Exception as e:
         logging.error(f"Failed to read weather.json: {e}")
         return {}
@@ -232,12 +233,6 @@ def parse_weather(metar_data):
             value = properties.get(key, default)
             return value if value is not None else default
         
-        # Debug: Log all available properties to see what's actually in the response
-        if airport_id == 'KEIK':  # Only log for first airport to avoid spam
-            logging.info(f"Available properties for {airport_id}: {list(feature['properties'].keys())}")
-            logging.info(f"fltCat value: {feature['properties'].get('fltCat', 'NOT_FOUND')}")
-            logging.info(f"fltcat value: {feature['properties'].get('fltcat', 'NOT_FOUND')}")
-            logging.info(f"flightCategory value: {feature['properties'].get('flightCategory', 'NOT_FOUND')}")
         
         airport_weather = {
             "observation_time": feature['properties'].get('obsTime', None),
@@ -246,10 +241,11 @@ def parse_weather(metar_data):
             "wind_direction": safe_get_numeric(feature['properties'], 'wdir', 0),
             "wind_speed": safe_get_numeric(feature['properties'], 'wspd', 0),
             "wind_gust": safe_get_numeric(feature['properties'], 'wgst', 0),
-            "flt_cat": feature['properties'].get('fltCat', 'MISSING'),
+            "flt_cat": feature['properties'].get('fltcat', 'MISSING'),
             "visibility": safe_get_visibility(feature['properties'], 'visib', 0),
             "altimeter": safe_get_numeric(feature['properties'], 'altim', 0),
-            "cloud_coverage": [],  # Process cloud layers later
+            "cloud_coverage": feature['properties'].get('clouds', []),  # Use the clouds array from API
+            "cover": feature['properties'].get('cover', 'MISSING'),  # Overall cloud cover
             "ceiling": safe_get_numeric(feature['properties'], 'ceil', 0),
             "precip": safe_get_precip(feature['properties'], 'wx', 'MISSING'),
             "raw_observation": raw_observation,
