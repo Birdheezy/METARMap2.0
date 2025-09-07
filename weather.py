@@ -44,7 +44,10 @@ def fetch_metar():
     }
 
     try:
+        # Construct the full URL for debugging
+        full_url = f"{base_url}?ids={','.join(airport_ids)}&format=geojson"
         logging.info(f"Making API request to {base_url} with {len(airport_ids)} airports")
+        logging.info(f"Full URL: {full_url}")
         logging.info(f"Request parameters: {params}")
         
         start_time = datetime.datetime.now()
@@ -212,6 +215,30 @@ def parse_weather(metar_data):
             value = properties.get(key, default)
             return value if value is not None else default
         
+        # Handle visibility field that can be string (like "10+") or number
+        def safe_get_visibility(properties, key, default=0):
+            value = properties.get(key, default)
+            if value is None:
+                return default
+            if isinstance(value, str):
+                # Handle string values like "10+" - extract the number part
+                import re
+                match = re.search(r'\d+', str(value))
+                return int(match.group()) if match else default
+            return value if isinstance(value, (int, float)) else default
+        
+        # Handle precip field that can be null
+        def safe_get_precip(properties, key, default='MISSING'):
+            value = properties.get(key, default)
+            return value if value is not None else default
+        
+        # Debug: Log all available properties to see what's actually in the response
+        if airport_id == 'KEIK':  # Only log for first airport to avoid spam
+            logging.info(f"Available properties for {airport_id}: {list(feature['properties'].keys())}")
+            logging.info(f"fltCat value: {feature['properties'].get('fltCat', 'NOT_FOUND')}")
+            logging.info(f"fltcat value: {feature['properties'].get('fltcat', 'NOT_FOUND')}")
+            logging.info(f"flightCategory value: {feature['properties'].get('flightCategory', 'NOT_FOUND')}")
+        
         airport_weather = {
             "observation_time": feature['properties'].get('obsTime', None),
             "temperature": safe_get_numeric(feature['properties'], 'temp', 0),
@@ -220,11 +247,11 @@ def parse_weather(metar_data):
             "wind_speed": safe_get_numeric(feature['properties'], 'wspd', 0),
             "wind_gust": safe_get_numeric(feature['properties'], 'wgst', 0),
             "flt_cat": feature['properties'].get('fltCat', 'MISSING'),
-            "visibility": safe_get_numeric(feature['properties'], 'visib', 0),
+            "visibility": safe_get_visibility(feature['properties'], 'visib', 0),
             "altimeter": safe_get_numeric(feature['properties'], 'altim', 0),
             "cloud_coverage": [],  # Process cloud layers later
             "ceiling": safe_get_numeric(feature['properties'], 'ceil', 0),
-            "precip": feature['properties'].get('wx', 'MISSING'),
+            "precip": safe_get_precip(feature['properties'], 'wx', 'MISSING'),
             "raw_observation": raw_observation,
             "lightning": lightning,  # Add the lightning indicator
             "latitude": lat,  # Add latitude
