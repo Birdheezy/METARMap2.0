@@ -558,7 +558,7 @@ function testLEDs(color, startPixel = null, endPixel = null) {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
             color: adjustedColor,
             color_order: colorOrder,
             brightness: 0.3,  // Fixed brightness at 0.3
@@ -1332,6 +1332,58 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize legend collapsing
     initializeLegendCollapsing();
 
+    // Initialize animation editor
+    initializeAnimationEditor();
+    
+    // Test initialization after a delay to see if it's a timing issue
+    setTimeout(() => {
+        console.log('Delayed test - trying to find elements...');
+        const testList = document.getElementById('animation-sequence-list');
+        const testInput = document.getElementById('animation-sequence-input');
+        console.log('Delayed test results:');
+        console.log('sequenceList found:', !!testList);
+        console.log('sequenceInput found:', !!testInput);
+        
+        if (testList && testInput) {
+            console.log('Elements found in delayed test, trying to initialize...');
+            initializeAnimationSequence();
+        }
+    }, 2000);
+    
+    // Add preview button functionality
+    const previewButton = document.getElementById('preview-animations');
+    if (previewButton) {
+        previewButton.addEventListener('click', function() {
+            try {
+                const sequenceInput = document.getElementById('animation-sequence-input');
+                if (sequenceInput && sequenceInput.value) {
+                    const order = sequenceInput.value.split(',');
+                    updateAnimationPreview(order);
+                }
+            } catch (error) {
+                console.error('Error updating animation preview:', error);
+            }
+        });
+    }
+
+    // Add change listeners for animation toggles to update sequence
+    ['wind_animation', 'lightening_animation', 'snowy_animation'].forEach(id => {
+        const toggle = document.getElementById(id);
+        if (toggle) {
+            toggle.addEventListener('change', function() {
+                try {
+                    // Reinitialize sequence to update status indicators
+                    const editorContent = document.getElementById('animation-editor-content');
+                    if (editorContent && !editorContent.classList.contains('collapsed')) {
+                        initializeAnimationSequence();
+                    }
+                } catch (error) {
+                    console.error('Error updating animation sequence:', error);
+                }
+            });
+        }
+    });
+
     // Add input validation for LED range
     const startPixelInput = document.getElementById('start-pixel');
     const endPixelInput = document.getElementById('end-pixel');
@@ -1539,3 +1591,253 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(legendList, { childList: true });
     }
 });
+
+// Animation Editor Functionality
+function initializeAnimationEditor() {
+    const animationEditorToggle = document.getElementById('animation-editor-toggle');
+    const animationEditorContent = document.getElementById('animation-editor-content');
+    
+    if (!animationEditorToggle || !animationEditorContent) {
+        console.warn('Animation editor elements not found');
+        return;
+    }
+    
+    try {
+        // Set initial state - collapsed by default
+        animationEditorContent.classList.add('collapsed');
+        const toggleIcon = animationEditorToggle.querySelector('.info-toggle');
+        if (toggleIcon) {
+            toggleIcon.textContent = '▼';
+        }
+        
+        animationEditorToggle.addEventListener('click', function() {
+            console.log('Animation editor toggle clicked');
+            const isCollapsed = animationEditorContent.classList.contains('collapsed');
+            console.log('Is collapsed:', isCollapsed);
+            if (isCollapsed) {
+                animationEditorContent.classList.remove('collapsed');
+                if (toggleIcon) {
+                    toggleIcon.textContent = '▲';
+                }
+                // Initialize animation sequence when expanding
+                console.log('Expanding, calling initializeAnimationSequence...');
+                initializeAnimationSequence();
+            } else {
+                animationEditorContent.classList.add('collapsed');
+                if (toggleIcon) {
+                    toggleIcon.textContent = '▼';
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error initializing animation editor:', error);
+    }
+}
+
+function initializeAnimationSequence() {
+    console.log('initializeAnimationSequence called');
+    const sequenceList = document.getElementById('animation-sequence-list');
+    const sequenceInput = document.getElementById('animation-sequence-input');
+    
+    console.log('sequenceList found:', !!sequenceList);
+    console.log('sequenceInput found:', !!sequenceInput);
+    
+    if (!sequenceList || !sequenceInput) {
+        console.warn('Animation sequence elements not found');
+        console.log('Available elements with similar IDs:');
+        console.log('animation-sequence-list:', document.getElementById('animation-sequence-list'));
+        console.log('animation-sequence-input:', document.getElementById('animation-sequence-input'));
+        return;
+    }
+    
+    try {
+        // Get current animation order and enabled states
+        const currentOrder = (typeof ANIMATION_ORDER !== 'undefined' && Array.isArray(ANIMATION_ORDER)) ? ANIMATION_ORDER : ['WINDY', 'LIGHTNING', 'SNOWY'];
+        
+        const enabledStates = {
+            'WINDY': document.getElementById('wind_animation')?.checked || false,
+            'LIGHTNING': document.getElementById('lightening_animation')?.checked || false,
+            'SNOWY': document.getElementById('snowy_animation')?.checked || false
+        };
+        
+        // Populate the sequence list
+        sequenceList.innerHTML = '';
+        currentOrder.forEach(animation => {
+            const item = createAnimationSequenceItem(animation, enabledStates[animation]);
+            sequenceList.appendChild(item);
+        });
+        
+        // Initialize drag and drop
+        initializeAnimationDragAndDrop();
+        
+        // Update the hidden input
+        updateAnimationSequenceInput();
+    } catch (error) {
+        console.error('Error initializing animation sequence:', error);
+        // Fallback to default order
+        sequenceList.innerHTML = '<div class="error-message">Error loading animation sequence</div>';
+    }
+}
+
+function createAnimationSequenceItem(animation, isEnabled) {
+    const item = document.createElement('div');
+    item.className = 'animation-sequence-item';
+    item.draggable = true;
+    item.dataset.animation = animation;
+    
+    const statusClass = isEnabled ? 'enabled' : 'disabled';
+    const statusText = isEnabled ? 'Enabled' : 'Disabled';
+    
+    item.innerHTML = `
+        <span class="animation-name">${animation}</span>
+        <span class="animation-status ${statusClass}">${statusText}</span>
+    `;
+    
+    return item;
+}
+
+function initializeAnimationDragAndDrop() {
+    const sequenceList = document.getElementById('animation-sequence-list');
+    let draggedItem = null;
+    
+    sequenceList.addEventListener('dragstart', function(e) {
+        draggedItem = e.target;
+        e.target.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    });
+    
+    sequenceList.addEventListener('dragend', function(e) {
+        e.target.classList.remove('dragging');
+        draggedItem = null;
+    });
+    
+    sequenceList.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    });
+    
+    sequenceList.addEventListener('drop', function(e) {
+        e.preventDefault();
+        if (draggedItem && draggedItem !== e.target) {
+            const allItems = [...sequenceList.querySelectorAll('.animation-sequence-item')];
+            const draggedIndex = allItems.indexOf(draggedItem);
+            const droppedIndex = allItems.indexOf(e.target);
+            
+            if (draggedIndex < droppedIndex) {
+                e.target.parentNode.insertBefore(draggedItem, e.target.nextSibling);
+            } else {
+                e.target.parentNode.insertBefore(draggedItem, e.target);
+            }
+            
+            updateAnimationSequenceInput();
+        }
+    });
+}
+
+function updateAnimationSequenceInput() {
+    const sequenceList = document.getElementById('animation-sequence-list');
+    const sequenceInput = document.getElementById('animation-sequence-input');
+    
+    if (sequenceList && sequenceInput) {
+        const items = sequenceList.querySelectorAll('.animation-sequence-item');
+        const order = Array.from(items).map(item => item.dataset.animation);
+        sequenceInput.value = order.join(',');
+        
+        // Update preview
+        updateAnimationPreview(order);
+    }
+}
+
+function updateAnimationPreview(order) {
+    try {
+        const previewElement = document.getElementById('preview-sequence');
+        if (!previewElement) {
+            console.warn('Preview element not found');
+            return;
+        }
+        
+        if (!Array.isArray(order) || order.length === 0) {
+            previewElement.innerHTML = 'No animations configured';
+            return;
+        }
+        
+        const enabledStates = {
+            'WINDY': document.getElementById('wind_animation')?.checked || false,
+            'LIGHTNING': document.getElementById('lightening_animation')?.checked || false,
+            'SNOWY': document.getElementById('snowy_animation')?.checked || false
+        };
+        
+        const enabledOrder = order.filter(animation => enabledStates[animation]);
+        if (enabledOrder.length > 0) {
+            previewElement.innerHTML = enabledOrder.map(animation => 
+                `<span class="preview-animation">${animation}</span>`
+            ).join(' → ');
+        } else {
+            previewElement.innerHTML = 'No animations enabled';
+        }
+    } catch (error) {
+        console.error('Error updating animation preview:', error);
+        const previewElement = document.getElementById('preview-sequence');
+        if (previewElement) {
+            previewElement.innerHTML = 'Error updating preview';
+        }
+    }
+}
+
+// Test function for debugging
+function testElementFinding() {
+    console.log('=== Testing Element Finding ===');
+    
+    // Test basic element finding
+    const sequenceList = document.getElementById('animation-sequence-list');
+    const sequenceInput = document.getElementById('animation-sequence-input');
+    
+    console.log('sequenceList:', sequenceList);
+    console.log('sequenceInput:', sequenceInput);
+    
+    // Test if elements exist in DOM
+    if (sequenceList) {
+        console.log('sequenceList HTML:', sequenceList.outerHTML);
+        console.log('sequenceList parent:', sequenceList.parentElement);
+        
+        // Try to manually populate the list to test if display works
+        console.log('Testing manual population...');
+        sequenceList.innerHTML = '';
+        
+        const testItems = [
+            { name: 'WINDY', enabled: true },
+            { name: 'LIGHTNING', enabled: false },
+            { name: 'SNOWY', enabled: true }
+        ];
+        
+        testItems.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'animation-sequence-item';
+            div.innerHTML = `
+                <span class="animation-name">${item.name}</span>
+                <span class="animation-status ${item.enabled ? 'enabled' : 'disabled'}">${item.enabled ? 'Enabled' : 'Disabled'}</span>
+            `;
+            sequenceList.appendChild(div);
+        });
+        
+        console.log('Manual population complete, list now has', sequenceList.children.length, 'children');
+    }
+    
+    if (sequenceInput) {
+        console.log('sequenceInput HTML:', sequenceInput.outerHTML);
+    }
+    
+    // Test querySelector as alternative
+    const sequenceListAlt = document.querySelector('#animation-sequence-list');
+    const sequenceInputAlt = document.querySelector('#animation-sequence-input');
+    
+    console.log('querySelector results:');
+    console.log('sequenceListAlt:', sequenceListAlt);
+    console.log('sequenceInputAlt:', sequenceInputAlt);
+    
+    // Test if we can find any elements with similar names
+    const allElements = document.querySelectorAll('*[id*="animation"]');
+    console.log('All elements with "animation" in ID:', allElements);
+    
+    console.log('=== End Test ===');
+}

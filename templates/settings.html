@@ -17,7 +17,7 @@
 <nav class="navbar">
     <a href="#brightness">Brightness</a>
     <a href="#color">Color</a>
-    <a href="#animation">Animation</a>
+    <a href="#animation-editor">Animation</a>
     <a href="#time-settings">Time</a>
     <a href="#advanced-settings">Advanced</a>
     <a href="#airports">Airports</a>
@@ -224,100 +224,128 @@
         </div>
     </section>
 
-    <!-- Animation Settings -->
-
-    <section id="animation">
-
-        <h2>Animation Settings</h2>
-
-        <div class="mb-3">
-            <div class="dropdown-container">
-                <label for="weather_update_interval">Weather Update Interval (in minutes)</label>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                <div class="dropdown-content" style="display: none;">
-                    Sets how often the weather data is updated automatically, in minutes. Default is 5 minutes.
-                </div>
-            </div>
-            <input type="text" class="form-control input-small" name="weather_update_interval" value="{{ config.WEATHER_UPDATE_INTERVAL // 60 }}" placeholder="Default: 5">
+    <!-- Animation Editor Section -->
+    <section id="animation-editor" class="dark-section">
+        <div class="info-header" id="animation-editor-toggle">
+            <h2 style="margin: 0;">Animation Editor</h2>
+            <span class="info-toggle">▼</span>
         </div>
+        <div class="info-content" id="animation-editor-content">
+            
+            <!-- Animation Order Section -->
+            <div class="test-section">
+                <h3 class="subsection-title">Animation Sequence</h3>
+                <p>Drag and drop to reorder animations. Only enabled animations will be included.</p>
+                <div id="animation-sequence-list" class="draggable-list">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+                <button type="button" class="btn btn-primary" onclick="testElementFinding()" style="margin-top: 10px;">Test Element Finding</button>
+                <input type="hidden" name="animation_sequence" id="animation_sequence_input">
+            </div>
 
-        <div class="mb-3">
-            <div class="dropdown-container">
-                <label for="animation_pause">Animation Pause Time (in seconds)</label>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                <div class="dropdown-content" style="display: none;">
-                    Sets the duration of pause between each animation cycle, in seconds.
+            <!-- Wind Animation Settings -->
+            <div class="test-section">
+                <h3 class="subsection-title">Wind Animation</h3>
+                <div class="animation-toggle-row">
+                    <div class="toggle-wrapper">
+                        <input type="checkbox" id="wind_animation" name="wind_animation" class="toggle-input" {% if config.WIND_ANIMATION %}checked{% endif %}>
+                        <label for="wind_animation" class="toggle-label">Enable Wind Animation</label>
+                    </div>
+                </div>
+                <div class="animation-settings-grid">
+                    <div class="setting-group">
+                        <label for="wind_threshold">Wind Threshold (knots)</label>
+                        <input type="number" class="form-control input-small" name="wind_threshold" value="{{ config.WIND_THRESHOLD }}" min="0" max="100">
+                        <small>Triggers animation when wind exceeds this value</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="wind_fade_time">Fade Time (seconds)</label>
+                        <input type="number" class="form-control input-small" name="wind_fade_time" value="{{ config.WIND_FADE_TIME }}" min="0.1" max="10" step="0.1">
+                        <small>Time to fade between bright and dim</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="wind_pause">Pause Time (seconds)</label>
+                        <input type="number" class="form-control input-small" name="wind_pause" value="{{ config.WIND_PAUSE }}" min="0.1" max="10" step="0.1">
+                        <small>Time spent at dim brightness</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="num_steps">Animation Smoothness</label>
+                        <input type="number" class="form-control input-small" name="num_steps" value="{{ config.NUM_STEPS }}" min="10" max="200">
+                        <small>Higher values = smoother animation (recommended: 100)</small>
+                    </div>
                 </div>
             </div>
-            <input type="text" class="form-control input-small" name="animation_pause" value="{{ config.ANIMATION_PAUSE }}" placeholder="Default: 15">
-        </div>
 
-        <div class="mb-3">
-            <div class="dropdown-container">
-                <label for="wind_threshold">Wind Threshold</label>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                <div class="dropdown-content" style="display: none;">
-                    Steady state or gust over this value in knots will trigger the windy animation
+            <!-- Lightning Animation Settings -->
+            <div class="test-section">
+                <h3 class="subsection-title">Lightning Animation</h3>
+                <div class="animation-toggle-row">
+                    <div class="toggle-wrapper">
+                        <input type="checkbox" id="lightening_animation" name="lightening_animation" class="toggle-input" {% if config.LIGHTENING_ANIMATION %}checked{% endif %}>
+                        <label for="lightening_animation" class="toggle-label">Enable Lightning Animation</label>
+                    </div>
+                </div>
+                <div class="animation-settings-grid">
+                    <div class="setting-group">
+                        <label for="lightning_flash_count">Flash Count</label>
+                        <input type="number" class="form-control input-small" name="lightning_flash_count" value="{{ config.LIGHTNING_FLASH_COUNT }}" min="1" max="10">
+                        <small>Number of lightning flashes per cycle</small>
+                    </div>
                 </div>
             </div>
-            <input type="text" class="form-control input-small" name="wind_threshold" value="{{ config.WIND_THRESHOLD }}" placeholder="Default: 15">
-        </div>
 
-        <div class="mb-3">
-            <div class="dropdown-container">
-                <label for="wind_fade_time">Wind Fade Time (in seconds)</label>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                <div class="dropdown-content" style="display: none;">
-                    How long it takes the LED to fade from bright to dim/dim to bright, in seconds
+            <!-- Snow Animation Settings -->
+            <div class="test-section">
+                <h3 class="subsection-title">Snow Animation</h3>
+                <div class="animation-toggle-row">
+                    <div class="toggle-wrapper">
+                        <input type="checkbox" id="snowy_animation" name="snowy_animation" class="toggle-input" {% if config.SNOWY_ANIMATION %}checked{% endif %}>
+                        <label for="snowy_animation" class="toggle-label">Enable Snow Animation</label>
+                    </div>
+                </div>
+                <div class="animation-settings-grid">
+                    <div class="setting-group">
+                        <label for="snow_blink_count">Blink Count</label>
+                        <input type="number" class="form-control input-small" name="snow_blink_count" value="{{ config.SNOW_BLINK_COUNT }}" min="1" max="10">
+                        <small>Number of snow blinks per cycle</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="snow_blink_pause">Blink Pause (seconds)</label>
+                        <input type="number" class="form-control input-small" name="snow_blink_pause" value="{{ config.SNOW_BLINK_PAUSE }}" min="0.1" max="2" step="0.1">
+                        <small>Pause between snow blinks</small>
+                    </div>
                 </div>
             </div>
-            <input type="text" class="form-control input-small" name="wind_fade_time" value="{{ config.WIND_FADE_TIME }}" placeholder="Default: 0.5">
-        </div>
 
-        <div class="mb-3">
-            <div class="dropdown-container">
-                <label for="wind_pause">Wind Fade Pause Time (in seconds)</label>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                <div class="dropdown-content" style="display: none;">
-                    How long the LED will be pause at the dim brigthness when executing the windy animation, in seconds
+            <!-- Global Animation Settings -->
+            <div class="test-section">
+                <h3 class="subsection-title">Global Animation Settings</h3>
+                <div class="animation-settings-grid">
+                    <div class="setting-group">
+                        <label for="weather_update_interval">Weather Update Interval (minutes)</label>
+                        <input type="number" class="form-control input-small" name="weather_update_interval" value="{{ config.WEATHER_UPDATE_INTERVAL // 60 }}" min="1" max="60">
+                        <small>How often weather data is updated automatically</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="animation_pause">Cycle Pause (seconds)</label>
+                        <input type="number" class="form-control input-small" name="animation_pause" value="{{ config.ANIMATION_PAUSE }}" min="1" max="60">
+                        <small>Pause between animation cycles</small>
+                    </div>
                 </div>
             </div>
-            <input type="text" class="form-control input-small" name="wind_pause" value="{{ config.WIND_PAUSE }}" placeholder="Default: 1.0">
-        </div>
 
-        <div class="mb-3">
-            <div class="dropdown-container">
-                <label for="lightning_flash_count">Lightning Flash Count</label>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                <div class="dropdown-content" style="display: none;">
-                    Sets the number of flashes that occur during the lightning animation.
+            <!-- Animation Preview -->
+            <div class="test-section">
+                <h3 class="subsection-title">Animation Preview</h3>
+                <div class="animation-preview">
+                    <div id="preview-sequence"></div>
+                    <button type="button" class="btn btn-primary" id="preview-animations">Preview Sequence</button>
                 </div>
             </div>
-            <input type="text" class="form-control input-small" name="lightning_flash_count" value="{{ config.LIGHTNING_FLASH_COUNT }}" placeholder="Default: 2">
-        </div>
-
-        <div class="mb-3">
-            <div class="dropdown-container">
-                <label for="snow_blink_count">Snow Blink Count</label>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                <div class="dropdown-content" style="display: none;">
-                    Sets the number of blinks during the snowy animation.
-                </div>
-            </div>
-            <input type="text" class="form-control input-small" name="snow_blink_count" value="{{ config.SNOW_BLINK_COUNT }}" placeholder="Default: 2">
-        </div>
-
-        <div class="mb-3">
-            <div class="dropdown-container">
-                <label for="snow_blink_pause">Snow Blink Pause (in seconds)</label>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                <div class="dropdown-content" style="display: none;">
-                    Sets the pause duration between each blink during the snow animation, in seconds.
-                </div>
-            </div>
-            <input type="text" class="form-control input-small" name="snow_blink_pause" value="{{ config.SNOW_BLINK_PAUSE }}" placeholder="Default: 0.4">
         </div>
     </section>
+
+
     
     <!-- Time Settings Section -->
         <section id="time-settings">
@@ -517,18 +545,7 @@
                     <input type="checkbox" id="enable_lights_off" name="enable_lights_off" class="toggle-input" {% if enable_lights_off %}checked{% endif %}>
                     <label for="enable_lights_off" class="toggle-label">Enable Lights On/Off Time</label>
                 </div>
-                <div class="toggle-wrapper">
-                    <input type="checkbox" id="wind_animation" name="wind_animation" class="toggle-input" {% if config.WIND_ANIMATION %}checked{% endif %}>
-                    <label for="wind_animation" class="toggle-label">Enable Wind Animation</label>
-                </div>
-                <div class="toggle-wrapper">
-                    <input type="checkbox" id="lightening_animation" name="lightening_animation" class="toggle-input" {% if config.LIGHTENING_ANIMATION %}checked{% endif %}>
-                    <label for="lightening_animation" class="toggle-label">Enable Lightning Animation</label>
-                </div>
-                <div class="toggle-wrapper">
-                    <input type="checkbox" id="snowy_animation" name="snowy_animation" class="toggle-input" {% if config.SNOWY_ANIMATION %}checked{% endif %}>
-                    <label for="snowy_animation" class="toggle-label">Enable Snowy Animation</label>
-                </div>
+
                 <div class="toggle-wrapper">
                     <input type="checkbox" id="enable_https" name="enable_https" class="toggle-input" {% if enable_https %}checked{% endif %}>
                     <label for="enable_https" class="toggle-label">Enable HTTPS</label>
@@ -822,6 +839,7 @@
     // Add constants
     const WEATHER_UPDATE_THRESHOLD = {{ weather_update_threshold }};
     const NUM_PIXELS = {{ config.NUM_PIXELS }};
+    const ANIMATION_ORDER = {{ animation_order | tojson }};
     
     // Call initially and set interval
     updateWeatherStatus();

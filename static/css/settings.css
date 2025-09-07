@@ -126,7 +126,7 @@ section {
     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
 }
 
-#brightness, #time-settings, #animation, #airports, #wifi-settings, #color {
+#brightness, #time-settings, #animation-editor, #airports, #wifi-settings, #color {
     scroll-margin-top: 70px;  /* Adjust to match or exceed your navbar height */
 }
 
@@ -1551,4 +1551,159 @@ input[type="color"]::-webkit-color-swatch {
 .dropdown-container .tooltip-icon {
   display: inline-block;
   vertical-align: middle;
+}
+
+.draggable-list {
+    padding: 10px;
+    border: 1px solid #555;
+    border-radius: 5px;
+    background-color: #333;
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.draggable-item {
+    padding: 10px;
+    margin: 5px 0;
+    background-color: #444;
+    border: 1px solid #666;
+    border-radius: 4px;
+    cursor: move;
+    color: #fff;
+    font-weight: bold;
+}
+
+.draggable-item.dragging {
+    opacity: 0.5;
+}
+
+/* Animation Editor Styles */
+.animation-toggle-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.animation-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 15px;
+}
+
+.setting-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.setting-group label {
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #fff;
+}
+
+.setting-group small {
+    margin-top: 5px;
+    color: #999;
+    font-size: 0.85em;
+    line-height: 1.3;
+}
+
+.animation-preview {
+    text-align: center;
+    padding: 20px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+}
+
+#preview-sequence {
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ccc;
+}
+
+/* Enhanced draggable list for animation sequence */
+#animation-sequence-list {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.animation-sequence-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 15px;
+    margin: 8px 0;
+    background-color: #444;
+    border: 1px solid #666;
+    border-radius: 6px;
+    cursor: move;
+    color: #fff;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.animation-sequence-item:hover {
+    background-color: #555;
+    border-color: #007bff;
+}
+
+.animation-sequence-item.dragging {
+    opacity: 0.6;
+    transform: scale(1.02);
+}
+
+.animation-sequence-item .animation-name {
+    flex: 1;
+}
+
+.animation-sequence-item .animation-status {
+    margin-left: 10px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: normal;
+}
+
+.animation-sequence-item .animation-status.enabled {
+    background-color: #28a745;
+    color: white;
+}
+
+.animation-sequence-item .animation-status.disabled {
+    background-color: #6c757d;
+    color: white;
+}
+
+.preview-animation {
+    display: inline-block;
+    padding: 4px 8px;
+    margin: 0 2px;
+    background-color: #007bff;
+    color: white;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.error-message {
+    color: #dc3545;
+    text-align: center;
+    padding: 10px;
+    background-color: rgba(220, 53, 69, 0.1);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    border-radius: 4px;
+    font-style: italic;
 }

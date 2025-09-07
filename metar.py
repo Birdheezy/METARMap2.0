@@ -555,12 +555,14 @@ while True:
                 windy = weather.get_windy_airports(weather_data)
                 lightning = weather.get_lightning_airports(weather_data)
                 snowy = weather.get_snowy_airports(weather_data)
-                if WIND_ANIMATION and windy:
-                    animate_windy_airports(windy, weather_data)
-                if LIGHTENING_ANIMATION and lightning:
-                    animate_lightning_airports(lightning, weather_data)
-                if SNOWY_ANIMATION and snowy:
-                    animate_snowy_airports(snowy, weather_data)
+
+                for animation_name in ANIMATION_ORDER:
+                    if animation_name == "WINDY" and WIND_ANIMATION and windy:
+                        animate_windy_airports(windy, weather_data)
+                    elif animation_name == "LIGHTNING" and LIGHTENING_ANIMATION and lightning:
+                        animate_lightning_airports(lightning, weather_data)
+                    elif animation_name == "SNOWY" and SNOWY_ANIMATION and snowy:
+                        animate_snowy_airports(snowy, weather_data)
         else:
             # If lights should be off, ensure LEDs are off and sleep
             pixels.fill((0, 0, 0))

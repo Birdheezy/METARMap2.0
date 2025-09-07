@@ -293,6 +293,16 @@ def edit_settings():
             config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form
             config_updates["STALE_INDICATION"] = 'stale_indication' in request.form
             
+            # Animation sequence settings
+            if 'animation_sequence' in request.form:
+                animation_sequence = request.form['animation_sequence']
+                if animation_sequence:
+                    # Convert comma-separated string to list format for config.py
+                    # Convert comma-separated string to list format for config.py
+                    sequence_list = animation_sequence.split(',')
+                    formatted_sequence = "', '".join(sequence_list)
+                    config_updates["ANIMATION_ORDER"] = f"['{formatted_sequence}']"
+
             # Sunrise/sunset settings
             config_updates["USE_SUNRISE_SUNSET"] = 'use_sunrise_sunset' in request.form
             if 'selected_city' in request.form and request.form['selected_city']:
@@ -468,7 +478,9 @@ def edit_settings():
         # Sunrise/sunset settings
         use_sunrise_sunset=getattr(config, 'USE_SUNRISE_SUNSET', False),
         selected_city=getattr(config, 'SELECTED_CITY', None),
-        cities=getattr(config, 'CITIES', [])
+        cities=getattr(config, 'CITIES', []),
+        # Animation settings
+        animation_order=getattr(config, 'ANIMATION_ORDER', ['WINDY', 'LIGHTNING', 'SNOWY'])
     )
 
 

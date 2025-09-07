@@ -58,6 +58,11 @@ def fetch_metar():
         header_info = {k: v for k, v in response.headers.items() if k.lower() in important_headers}
         logging.info(f"Response headers: {header_info}")
         
+        # Handle new API response codes
+        if response.status_code == 204:
+            logging.warning("API returned 204 No Content - no data available for requested airports")
+            return None
+        
         response.raise_for_status()
         
         # Check if we got valid JSON
@@ -204,7 +209,7 @@ def parse_weather(metar_data):
             "wind_direction": feature['properties'].get('wdir', 0),
             "wind_speed": feature['properties'].get('wspd', 0),
             "wind_gust": feature['properties'].get('wgst', 0),
-            "flt_cat": feature['properties'].get('fltcat', 'MISSING'),
+            "flt_cat": feature['properties'].get('fltCat', 'MISSING'),
             "visibility": feature['properties'].get('visib', 0),
             "altimeter": feature['properties'].get('altim', 0),
             "cloud_coverage": [],  # Process cloud layers later
