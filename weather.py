@@ -12,6 +12,27 @@ logging.basicConfig(
     format='%(message)s'  # Only include the message, let journald handle the timestamp
 )
 
+def parse_visibility(visibility_str):
+    """Parse visibility string from API (e.g., '10+', '1.5', etc.) to numeric value."""
+    if not visibility_str:
+        return 0
+    
+    # Handle string format
+    if isinstance(visibility_str, str):
+        # Remove '+' and convert to float
+        visibility_clean = visibility_str.replace('+', '')
+        try:
+            return float(visibility_clean)
+        except ValueError:
+            logging.warning(f"Could not parse visibility: {visibility_str}")
+            return 0
+    
+    # Handle numeric format (in case API sometimes returns numbers)
+    if isinstance(visibility_str, (int, float)):
+        return float(visibility_str)
+    
+    return 0
+
 def get_valid_airports(file_path):
     """Read airport IDs from a file and return a list of valid airport codes."""
     try:
@@ -168,9 +189,9 @@ def get_flt_cat_color(flt_cat):
 def get_airport_weather(airport_code, weather_data):
     """Retrieve and format weather data for a given airport."""
     airport_weather = weather_data.get(airport_code, {})
-    flt_cat = airport_weather.get('flt_cat', 'MISSING')
-    wind_speed = airport_weather.get('wind_speed', 0)  # Default to 0 if missing
-    wind_gust = airport_weather.get('wind_gust', 0)    # Default to 0 if missing
+    flt_cat = airport_weather.get('flt_cat', 'MISSING') or 'MISSING'
+    wind_speed = airport_weather.get('wind_speed', 0) or 0  # Default to 0 if missing or None
+    wind_gust = airport_weather.get('wind_gust', 0) or 0    # Default to 0 if missing or None
 
     # Use raw_observation as the standard key name
     raw_observation = airport_weather.get('raw_observation', '')
@@ -199,22 +220,22 @@ def parse_weather(metar_data):
 
         airport_weather = {
             "observation_time": feature['properties'].get('obsTime', None),
-            "temperature": feature['properties'].get('temp', 0),
-            "dew_point": feature['properties'].get('dewp', 0),
-            "wind_direction": feature['properties'].get('wdir', 0),
-            "wind_speed": feature['properties'].get('wspd', 0),
-            "wind_gust": feature['properties'].get('wgst', 0),
-            "flt_cat": feature['properties'].get('fltcat', 'MISSING'),
-            "visibility": feature['properties'].get('visib', 0),
-            "altimeter": feature['properties'].get('altim', 0),
-            "cloud_coverage": [],  # Process cloud layers later
-            "ceiling": feature['properties'].get('ceil', 0),
-            "precip": feature['properties'].get('wx', 'MISSING'),
+            "temperature": feature['properties'].get('temp', 0) or 0,
+            "dew_point": feature['properties'].get('dewp', 0) or 0,
+            "wind_direction": feature['properties'].get('wdir', 0) or 0,
+            "wind_speed": feature['properties'].get('wspd', 0) or 0,
+            "wind_gust": feature['properties'].get('wgst', 0) or 0,
+            "flt_cat": feature['properties'].get('fltcat', 'MISSING') or 'MISSING',
+            "visibility": parse_visibility(feature['properties'].get('visib', '0')),
+            "altimeter": feature['properties'].get('altim', 0) or 0,
+            "cloud_coverage": feature['properties'].get('clouds', []),
+            "ceiling": feature['properties'].get('ceil', 0) or 0,
+            "precip": feature['properties'].get('wx', 'MISSING') or 'MISSING',
             "raw_observation": raw_observation,
             "lightning": lightning,  # Add the lightning indicator
             "latitude": lat,  # Add latitude
             "longitude": lon,  # Add longitude
-            "site": feature['properties'].get('site', airport_id)  # Add site name
+            "site": feature['properties'].get('site', airport_id) or airport_id  # Add site name
         }
         # Append parsed data for the airport
         parsed_data[airport_id] = airport_weather
