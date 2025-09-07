@@ -17,8 +17,18 @@ import schedule
 import weather
 import functools
 import socket
-from scheduler import weather_update_lock, update_weather as scheduler_update_weather
+from scheduler import weather_update_lock, update_weather as scheduler_update_weather, calculate_sun_times
 from led_test import test_leds, turn_off_leds, update_brightness
+
+# Import the update manager
+from update_manager import (
+    check_for_updates, 
+    perform_update, 
+    get_config_validation_status,
+    validate_config_file,
+    parse_config_file, # Added for robust config handling
+    write_config_file  # Added for robust config handling
+)
 
 def after_this_response(func):
     @functools.wraps(func)
@@ -145,6 +155,16 @@ def edit_settings():
                 config_updates["ENABLE_HTTPS"] = 'enable_https' in request.form
                 config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form
                 config_updates["STALE_INDICATION"] = 'stale_indication' in request.form
+                
+                # Legend item visibility settings
+                config_updates["LEGEND_VFR"] = 'legend_vfr' in request.form
+                config_updates["LEGEND_MVFR"] = 'legend_mvfr' in request.form
+                config_updates["LEGEND_IFR"] = 'legend_ifr' in request.form
+                config_updates["LEGEND_LIFR"] = 'legend_lifr' in request.form
+                config_updates["LEGEND_SNOWY"] = 'legend_snowy' in request.form
+                config_updates["LEGEND_LIGHTNING"] = 'legend_lightning' in request.form
+                config_updates["LEGEND_WINDY"] = 'legend_windy' in request.form
+                config_updates["LEGEND_MISSING"] = 'legend_missing' in request.form
             # Float or Integer Settings
                 config_updates["BRIGHTNESS"] = float(request.form.get('brightness', 0))
                 config_updates["DIM_BRIGHTNESS"] = float(request.form.get('dim_brightness', 0))
@@ -272,6 +292,31 @@ def edit_settings():
             config_updates["ENABLE_HTTPS"] = 'enable_https' in request.form
             config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form
             config_updates["STALE_INDICATION"] = 'stale_indication' in request.form
+            
+            # Animation sequence settings
+            if 'animation_sequence' in request.form:
+                animation_sequence = request.form['animation_sequence']
+                if animation_sequence:
+                    # Convert comma-separated string to list format for config.py
+                    # Convert comma-separated string to list format for config.py
+                    sequence_list = animation_sequence.split(',')
+                    formatted_sequence = "', '".join(sequence_list)
+                    config_updates["ANIMATION_ORDER"] = f"['{formatted_sequence}']"
+
+            # Sunrise/sunset settings
+            config_updates["USE_SUNRISE_SUNSET"] = 'use_sunrise_sunset' in request.form
+            if 'selected_city' in request.form and request.form['selected_city']:
+                config_updates["SELECTED_CITY"] = f"'{request.form['selected_city']}'"
+                
+                # If using sunrise/sunset, calculate and update the times
+                if 'use_sunrise_sunset' in request.form:
+                    try:
+                        sunrise, sunset = calculate_sun_times(request.form['selected_city'])
+                        if sunrise and sunset:
+                            config_updates["BRIGHT_TIME_START"] = f"datetime.time({sunrise.hour}, {sunrise.minute})"
+                            config_updates["DIM_TIME_START"] = f"datetime.time({sunset.hour}, {sunset.minute})"
+                    except Exception as e:
+                        flash(f'Error calculating sun times: {str(e)}', 'warning')
 
             # Update the config.py file
             with open('/home/pi/config.py', 'r') as f:
@@ -281,7 +326,8 @@ def edit_settings():
                 for line in config_lines:
                     updated = False
                     for key, value in config_updates.items():
-                        if line.startswith(key):
+                        # Use exact matching to prevent LEGEND from matching LEGEND_VFR
+                        if line.strip().startswith(f"{key} =") or line.strip().startswith(f"{key}="):
                             if isinstance(value, float) and value.is_integer():
                                 value = int(value)
                             # Only add quotes for specific string values
@@ -428,7 +474,13 @@ def edit_settings():
         stale_indication=config.STALE_INDICATION,
         wifi_disconnected_color=wifi_disconnected_color,
         map_styles=map_styles,
-        show_save_button=True
+        show_save_button=True,
+        # Sunrise/sunset settings
+        use_sunrise_sunset=getattr(config, 'USE_SUNRISE_SUNSET', False),
+        selected_city=getattr(config, 'SELECTED_CITY', None),
+        cities=getattr(config, 'CITIES', []),
+        # Animation settings
+        animation_order=getattr(config, 'ANIMATION_ORDER', ['WINDY', 'LIGHTNING', 'SNOWY'])
     )
 
 
@@ -805,66 +857,11 @@ def set_timezone():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/check_for_updates')
-def check_for_updates():
+def check_for_updates_route():
+    """Check for available updates using the update manager."""
     try:
-        # Get current branch
-        branch_cmd = subprocess.run(['/usr/bin/git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-                                  capture_output=True, text=True, check=True,
-                                  cwd='/home/pi')
-        current_branch = branch_cmd.stdout.strip()
-        print(f"Current branch: {current_branch}")
-
-        # Log the repository root directory
-        repo_root = subprocess.run(['/usr/bin/git', 'rev-parse', '--show-toplevel'],
-                                 capture_output=True, text=True, check=True,
-                                 cwd='/home/pi')
-        print(f"Repository root: {repo_root.stdout.strip()}")
-
-        # List tracked files for debugging
-        files_list = subprocess.run(['/usr/bin/git', 'ls-files'],
-                                  capture_output=True, text=True, check=True,
-                                  cwd='/home/pi')
-        tracked_files = files_list.stdout.strip().split('\n')
-        print(f"Found {len(tracked_files)} tracked files in repository")
-        print(f"First 10 tracked files: {tracked_files[:10]}")
-
-        # Fetch updates from remote
-        fetch_cmd = subprocess.run(['/usr/bin/git', 'fetch', 'origin', current_branch],
-                                 capture_output=True, text=True, check=True,
-                                 cwd='/home/pi')
-
-        # Compare local HEAD with remote HEAD
-        diff_cmd = subprocess.run(['/usr/bin/git', 'rev-list', 'HEAD...origin/' + current_branch, '--count'],
-                                capture_output=True, text=True, check=True,
-                                cwd='/home/pi')
-        commits_behind = int(diff_cmd.stdout.strip())
-
-        if commits_behind > 0:
-            # Get changed files
-            files_cmd = subprocess.run(['/usr/bin/git', 'diff', '--name-only', 'HEAD..origin/' + current_branch],
-                                   capture_output=True, text=True, check=True,
-                                   cwd='/home/pi')
-            changed_files = files_cmd.stdout.strip().split('\n')
-
-            return jsonify({
-                'has_updates': True,
-                'branch': current_branch,
-                'commits_behind': commits_behind,
-                'files': changed_files
-            })
-        else:
-            return jsonify({
-                'has_updates': False,
-                'branch': current_branch,
-                'message': 'Your system is up to date!'
-            })
-
-    except subprocess.CalledProcessError as e:
-        error_msg = f"Git command failed: {e.stderr.strip() if e.stderr else 'No error output'}"
-        app.logger.error(error_msg)
-        return jsonify({
-            'error': error_msg
-        }), 500
+        result = check_for_updates()
+        return jsonify(result)
     except Exception as e:
         error_msg = f"Error checking for updates: {str(e)}"
         app.logger.error(error_msg)
@@ -874,235 +871,42 @@ def check_for_updates():
 
 @app.route('/apply_update', methods=['POST'])
 def apply_update():
+    """Apply system updates using the update manager."""
     try:
-        print("Starting update process...")
+        # Perform the update using the update manager
+        result = perform_update()
         
-        # Get current branch
-        branch = subprocess.check_output(['/usr/bin/git', 'rev-parse', '--abbrev-ref', 'HEAD'], 
-                                        text=True, 
-                                        cwd='/home/pi').strip()
-        print(f"Current branch: {branch}")
-
-        # Create timestamped backup directory
-        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_dir = f'/home/pi/BACKUP/{timestamp}'
-        os.makedirs(backup_dir, exist_ok=True)
-        print(f"Created backup directory: {backup_dir}")
-
-        # Get list of tracked files in the repository
-        print("Getting list of tracked files...")
-        tracked_files_output = subprocess.check_output(
-            ['/usr/bin/git', 'ls-files'], 
-            text=True, 
-            cwd='/home/pi'
-        ).strip()
-        
-        tracked_files = tracked_files_output.split('\n') if tracked_files_output else []
-        print(f"Found {len(tracked_files)} tracked files")
-        
-        # Log some of the tracked files for debugging
-        if tracked_files:
-            print(f"Sample of tracked files: {tracked_files[:5]}")
-        else:
-            print("WARNING: No tracked files found!")
-        
-        # Also backup config.py and airports.txt even if they're not tracked
-        important_files = ['config.py', 'airports.txt']
-        for file in important_files:
-            file_path = f'/home/pi/{file}'
-            if file not in tracked_files and os.path.exists(file_path):
-                tracked_files.append(file)
-                print(f"Added important file to backup list: {file}")
-        
-        # Copy each tracked file to the backup directory, preserving directory structure
-        files_backed_up = 0
-        for file in tracked_files:
-            if not file:  # Skip empty entries
-                continue
-                
-            if file.startswith('BACKUP/'):
-                print(f"Skipping backup folder file: {file}")
-                continue
-                
-            source_path = f'/home/pi/{file}'
-            dest_path = f'{backup_dir}/{file}'
-            
-            if not os.path.exists(source_path):
-                print(f"Source file does not exist, skipping: {source_path}")
-                continue
-                
-            # Create destination directory if it doesn't exist
-            dest_dir = os.path.dirname(dest_path)
-            if not os.path.exists(dest_dir):
-                os.makedirs(dest_dir, exist_ok=True)
-                print(f"Created directory: {dest_dir}")
-            
-            # Copy the file
-            try:
-                shutil.copy2(source_path, dest_path)
-                files_backed_up += 1
-                if files_backed_up <= 10 or files_backed_up % 50 == 0:  # Log first 10 files and then every 50th
-                    print(f"Backed up file {files_backed_up}: {file}")
-            except Exception as copy_error:
-                print(f"Error copying file {file}: {copy_error}")
-        
-        print(f"Total files backed up: {files_backed_up}")
-
-        # Create temporary copy of user files
-        print("Creating temporary copies of user files...")
-        subprocess.run(['cp', '/home/pi/config.py', '/tmp/config.py.tmp'], check=True)
-        subprocess.run(['cp', '/home/pi/airports.txt', '/tmp/airports.txt.tmp'], check=True)
-
-        # Force pull from repository
-        print(f"Pulling updates from origin/{branch}...")
-        subprocess.run(['/usr/bin/git', 'fetch', 'origin', branch], check=True, cwd='/home/pi')
-        subprocess.run(['/usr/bin/git', 'reset', '--hard', f'origin/{branch}'], check=True, cwd='/home/pi')
-
-        # Preserve user's config.py while maintaining GitHub's structure
-        print("Preserving user's config.py structure...")
-        try:
-            # Read the user's config.py
-            with open('/tmp/config.py.tmp', 'r') as f:
-                user_config_content = f.read()
-            
-            # Read the repository's config.py
-            with open('/home/pi/config.py', 'r') as f:
-                repo_config_content = f.read()
-            
-            # Extract variables and their values from both files
-            def extract_variables(content):
-                variables = {}
-                imports = []
-                comments = {}
-                current_comment = []
-                last_var = None
-
-                for line in content.split('\n'):
-                    stripped = line.strip()
-                    
-                    # Handle imports
-                    if stripped.startswith('import ') or stripped.startswith('from '):
-                        imports.append(line)
-                        continue
-                    
-                    # Handle comments
-                    if stripped.startswith('#'):
-                        current_comment.append(line)
-                        continue
-                    
-                    # Handle variable assignments
-                    if '=' in line and not stripped.startswith('#'):
-                        var_name = line.split('=')[0].strip()
-                        variables[var_name] = line
-                        if current_comment:
-                            comments[var_name] = current_comment
-                            current_comment = []
-                        last_var = var_name
-                    elif not stripped and last_var:
-                        # Associate blank lines with the last variable
-                        if last_var in comments:
-                            comments[last_var].append('')
-                        else:
-                            comments[last_var] = ['']
-                
-                return imports, variables, comments
-
-            # Extract information from both files
-            user_imports, user_vars, user_comments = extract_variables(user_config_content)
-            repo_imports, repo_vars, repo_comments = extract_variables(repo_config_content)
-
-            # Create the new config file
-            with open('/home/pi/config.py', 'w') as f:
-                # Write imports (use repo's imports as they might have new ones)
-                for imp in repo_imports:
-                    f.write(imp + '\n')
-                if repo_imports:
-                    f.write('\n')
-
-                # Process each variable from the repo's config in order
-                for var_name, repo_line in repo_vars.items():
-                    # Write associated comments from repo
-                    if var_name in repo_comments:
-                        for comment in repo_comments[var_name]:
-                            f.write(comment + '\n')
-                    
-                    # Write the variable line, using user's value if it exists
-                    if var_name in user_vars:
-                        f.write(user_vars[var_name] + '\n')
-                    else:
-                        f.write(repo_line + '\n')
-
-            print("Configuration preservation completed successfully")
-        except Exception as merge_error:
-            print(f"Error preserving configuration: {merge_error}")
-            # If preserving fails, restore the user's config.py
-            subprocess.run(['mv', '/tmp/config.py.tmp', '/home/pi/config.py'], check=True)
-            print("Restored original config.py due to preservation error")
-
-        # Restore airports.txt
-        print("Restoring airports.txt...")
-        subprocess.run(['mv', '/tmp/airports.txt.tmp', '/home/pi/airports.txt'], check=True)
-
-        # Clean up old backups (keep last 5)
-        backup_base = '/home/pi/BACKUP'
-        if os.path.exists(backup_base):
-            backups = sorted([d for d in os.listdir(backup_base) if os.path.isdir(os.path.join(backup_base, d))])
-            print(f"Found {len(backups)} backup directories")
-            while len(backups) > 5:
-                oldest = os.path.join(backup_base, backups[0])
-                print(f"Removing old backup: {oldest}")
-                shutil.rmtree(oldest)
-                backups.pop(0)
-
-        # Set ownership of all files to pi:pi recursively
-        print("Setting file ownership...")
-        subprocess.run(['chown', '-R', 'pi:pi', '.'], check=True, cwd='/home/pi')
-
-        # Prepare success response
-        print("Update completed successfully")
-        response = jsonify({
-            'success': True,
-            'message': f'Update applied successfully. {files_backed_up} files backed up to {backup_dir}. Services will restart momentarily.'
-        })
-
-        # Use Flask's after_this_response to restart services after the response is sent
-        def restart_services():
-            time.sleep(2)  # Brief delay to ensure response is sent
-            try:
-                print("Restarting services...")
-                subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
-                time.sleep(2)
-                subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
-                
-                # Trigger a weather update before restarting the metar service
-                print("Triggering weather update...")
+        if result['success']:
+            # Schedule service restart to happen after the response is sent
+            def restart_services():
+                time.sleep(2)  # Wait a moment for the response to be sent
                 try:
-                    # Use the scheduler's update_weather function directly
-                    scheduler_update_weather()
-                    print("Weather update completed successfully")
-                except Exception as weather_error:
-                    print(f"Error updating weather: {weather_error}")
-                
-                # Finally restart the metar service
-                subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
-                print("All services restarted")
-            except Exception as e:
-                print(f"Error restarting services: {e}")
+                    # Restart the METAR service to apply config changes
+                    subprocess.run(['sudo', 'systemctl', 'restart', 'metar.service'], check=True)
+                    app.logger.info("METAR service restarted after update")
+                    
+                    # Restart the scheduler service
+                    subprocess.run(['sudo', 'systemctl', 'restart', 'scheduler.service'], check=True)
+                    app.logger.info("Scheduler service restarted after update")
+                    
+                    # Restart the settings service
+                    subprocess.run(['sudo', 'systemctl', 'restart', 'settings.service'], check=True)
+                    app.logger.info("Settings service restarted after update")
+                    
+                except subprocess.CalledProcessError as e:
+                    app.logger.error(f"Error restarting services after update: {e}")
 
-        @after_this_response
-        def do_restart():
-            restart_services()
-
-        return response
+            threading.Thread(target=restart_services).start()
+            
+            return jsonify(result)
+        else:
+            return jsonify(result), 500
 
     except Exception as e:
-        error_msg = f"Error applying update: {e}"
-        print(error_msg)
-        import traceback
-        print(traceback.format_exc())
+        app.logger.error(f"Error in apply_update: {str(e)}")
         return jsonify({
             'success': False,
-            'error': error_msg
+            'error': f"Update failed: {str(e)}"
         }), 500
 
 def get_local_ip():
@@ -1146,26 +950,16 @@ def map_settings():
             if not data or 'center' not in data or 'zoom' not in data:
                 return jsonify({'error': 'Invalid request data'}), 400
 
-            # Create a dictionary for updates
-            config_updates = {}
-            config_updates["MAP_CENTER_LAT"] = data['center'][0]
-            config_updates["MAP_CENTER_LON"] = data['center'][1]
-            config_updates["MAP_ZOOM"] = data['zoom']
+            # Parse the current config.py
+            current_config_dict = parse_config_file('/home/pi/config.py')
 
-            # Update the config.py file
-            with open('config.py', 'r') as f:
-                config_lines = f.readlines()
+            # Update the values
+            current_config_dict["MAP_CENTER_LAT"] = data['center'][0]
+            current_config_dict["MAP_CENTER_LON"] = data['center'][1]
+            current_config_dict["MAP_ZOOM"] = data['zoom']
 
-            with open('config.py', 'w') as f:
-                for line in config_lines:
-                    # Skip lines we're updating
-                    if any(key in line for key in config_updates.keys()):
-                        continue
-                    f.write(line)
-
-                # Add the updated values
-                for key, value in config_updates.items():
-                    f.write(f"{key} = {value}\n")
+            # Write the updated dictionary back to config.py
+            write_config_file(current_config_dict, '/home/pi/config.py')
 
             # Reload the config module to get the new values
             reload_config()
@@ -1625,6 +1419,101 @@ def shutdown_system():
     except Exception as e:
         app.logger.error(f"Unexpected error during shutdown: {e}")
         return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/restart', methods=['POST'])
+def restart_system():
+    """Restart the Raspberry Pi with a delayed response for countdown."""
+    try:
+        # First, send a response to the client
+        response = jsonify({'success': True, 'message': 'System is restarting'})
+        response.headers['Connection'] = 'close'  # Force the connection to close after sending
+
+        # Schedule the restart to happen after the response is sent
+        def restart_after_response():
+            try:
+                # Stop the METAR service
+                subprocess.run(['sudo', 'systemctl', 'stop', 'metar.service'], check=True)
+                app.logger.info("METAR service stopped for restart")
+
+                # Try to run blank.py to turn off all LEDs, but continue even if it fails
+                try:
+                    subprocess.run(['sudo', '/home/pi/metar/bin/python3', '/home/pi/blank.py'], check=True)
+                    app.logger.info("LEDs blanked for restart")
+                except subprocess.CalledProcessError as e:
+                    app.logger.warning(f"Failed to blank LEDs: {e}. Continuing with restart.")
+
+                # Stop the scheduler service
+                subprocess.run(['sudo', 'systemctl', 'stop', 'scheduler.service'], check=True)
+                app.logger.info("Scheduler service stopped for restart")
+
+                # Wait for countdown (20 seconds recommended)
+                app.logger.info("Waiting 1 second before restarting...")
+                time.sleep(1)
+
+                # Restart the Raspberry Pi
+                subprocess.run(['sudo', 'reboot'], check=True)
+                app.logger.info("Reboot command executed")
+            except Exception as e:
+                app.logger.error(f"Error during restart process: {e}")
+
+        # Start the restart process in a separate thread
+        threading.Thread(target=restart_after_response).start()
+
+        return response
+    except Exception as e:
+        app.logger.error(f"Unexpected error during restart: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/calculate-sun-times', methods=['POST'])
+def calculate_sun_times_endpoint():
+    """Calculate sunrise and sunset times for a selected city."""
+    try:
+        city_name = request.json.get('city')
+        if not city_name:
+            return jsonify({'error': 'City name is required'}), 400
+            
+        sunrise, sunset = calculate_sun_times(city_name)
+        
+        if sunrise and sunset:
+            return jsonify({
+                'success': True,
+                'sunrise': f"{sunrise.hour:02d}:{sunrise.minute:02d}",
+                'sunset': f"{sunset.hour:02d}:{sunset.minute:02d}",
+                'bright_time_start': f"{sunrise.hour:02d}:{sunrise.minute:02d}",
+                'dim_time_start': f"{sunset.hour:02d}:{sunset.minute:02d}"
+            })
+        else:
+            return jsonify({'error': 'Could not calculate sun times for this city'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': f'Error calculating sun times: {str(e)}'}), 500
+
+@app.route('/get-cities', methods=['GET'])
+def get_cities():
+    """Get the list of available cities."""
+    try:
+        from config import CITIES
+        cities = [city['name'] for city in CITIES]
+        return jsonify({'cities': cities})
+    except Exception as e:
+        return jsonify({'error': f'Error getting cities: {str(e)}'}), 500
+
+@app.route('/validate_config')
+def validate_config():
+    """Validate the current config.py file and return results."""
+    try:
+        is_valid, message = validate_config_file('/home/pi/config.py')
+        return jsonify({
+            'valid': is_valid,
+            'message': message,
+            'file_size': os.path.getsize('/home/pi/config.py') if os.path.exists('/home/pi/config.py') else 0
+        })
+    except Exception as e:
+        return jsonify({
+            'valid': False,
+            'message': f"Validation error: {str(e)}",
+            'file_size': 0
+        })
 
 if __name__ == '__main__':
     if ENABLE_HTTPS:

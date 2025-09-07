@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 last_wifi_check_time = 0
 last_wifi_status = False
 
-
 # Log startup with basic system info
 logger.info("METAR service starting up...")
 logger.info(f"Python version: {sys.version.split()[0]}")
@@ -118,26 +117,60 @@ def update_legend(pixels):
     if not LEGEND:
         return  # Do nothing if the legend is disabled
 
-    # Dynamically calculate the WINDY color
-    WINDY_COLOR = calculate_dimmed_color(VFR_COLOR, DIM_BRIGHTNESS)
+    # Get legend visibility settings with fallbacks
+    try:
+        legend_vfr = LEGEND_VFR
+    except NameError:
+        legend_vfr = True
+    try:
+        legend_mvfr = LEGEND_MVFR
+    except NameError:
+        legend_mvfr = True
+    try:
+        legend_ifr = LEGEND_IFR
+    except NameError:
+        legend_ifr = True
+    try:
+        legend_lifr = LEGEND_LIFR
+    except NameError:
+        legend_lifr = True
+    try:
+        legend_snowy = LEGEND_SNOWY
+    except NameError:
+        legend_snowy = True
+    try:
+        legend_lightning = LEGEND_LIGHTNING
+    except NameError:
+        legend_lightning = True
+    try:
+        legend_windy = LEGEND_WINDY
+    except NameError:
+        legend_windy = True
+    try:
+        legend_missing = LEGEND_MISSING
+    except NameError:
+        legend_missing = True
 
-    legend_colors = [
-        VFR_COLOR,
-        MVFR_COLOR,
-        IFR_COLOR,
-        LIFR_COLOR,
-        MISSING_COLOR,
-        LIGHTENING_COLOR,
-        WINDY_COLOR,
-        SNOWY_COLOR
+    # Define legend items with their colors and visibility settings in fixed order
+    legend_items = [
+        ('VFR', VFR_COLOR, legend_vfr),
+        ('MVFR', MVFR_COLOR, legend_mvfr),
+        ('IFR', IFR_COLOR, legend_ifr),
+        ('LIFR', LIFR_COLOR, legend_lifr),
+        ('SNOWY', SNOWY_COLOR, legend_snowy),
+        ('LIGHTNING', LIGHTENING_COLOR, legend_lightning),
+        ('WINDY', calculate_dimmed_color(VFR_COLOR, DIM_BRIGHTNESS), legend_windy),
+        ('MISSING', MISSING_COLOR, legend_missing)
     ]
 
-    # Start from the end of the strand
-    start_index = NUM_PIXELS - len(legend_colors)
-
-    for i, color in enumerate(legend_colors):
-        if start_index + i < NUM_PIXELS:  # Ensure we don't go out of bounds
-            set_pixel_color(start_index + i, color)
+    # Work from the end backwards - last LED is first legend item
+    # Only use as many LEDs as there are enabled legend items
+    enabled_items = [(name, color) for name, color, enabled in legend_items if enabled]
+    
+    for i, (name, color) in enumerate(enabled_items):
+        led_index = NUM_PIXELS - 1 - i  # Start from last LED and work backwards
+        if led_index >= 0:  # Ensure we don't go out of bounds
+            set_pixel_color(led_index, color)
 
     pixels.show()
 
@@ -306,16 +339,67 @@ def check_wifi_status():
 
 def update_leds(weather_data):
     """Update LEDs based on flt_cat from weather data."""
+    logger.info("update_leds called")
 
     if check_lights_off():
+        logger.info("Lights are off, returning early")
         return
 
     # Get list of airports, including "SKIP" entries first
     airport_list = weather.get_airports_with_skip(AIRPORTS_FILE)
+    logger.info(f"Airport list: {airport_list}")
+
+    # Determine how many LEDs are available for airports
+    # If legend is enabled, we need to count how many legend items are enabled
+    if LEGEND:
+        try:
+            legend_vfr = LEGEND_VFR
+        except NameError:
+            legend_vfr = True
+        try:
+            legend_mvfr = LEGEND_MVFR
+        except NameError:
+            legend_mvfr = True
+        try:
+            legend_ifr = LEGEND_IFR
+        except NameError:
+            legend_ifr = True
+        try:
+            legend_lifr = LEGEND_LIFR
+        except NameError:
+            legend_lifr = True
+        try:
+            legend_snowy = LEGEND_SNOWY
+        except NameError:
+            legend_snowy = True
+        try:
+            legend_lightning = LEGEND_LIGHTNING
+        except NameError:
+            legend_lightning = True
+        try:
+            legend_windy = LEGEND_WINDY
+        except NameError:
+            legend_windy = True
+        try:
+            legend_missing = LEGEND_MISSING
+        except NameError:
+            legend_missing = True
+        
+        # Count enabled legend items
+        enabled_legend_count = sum([legend_vfr, legend_mvfr, legend_ifr, legend_lifr, 
+                                   legend_snowy, legend_lightning, legend_windy, legend_missing])
+        available_leds = NUM_PIXELS - enabled_legend_count
+    else:
+        available_leds = NUM_PIXELS
+    
+    logger.info(f"Available LEDs for airports: {available_leds}")
 
     # Check for WiFi disconnection if the feature is enabled
     if WIFI_INDICATION and not check_wifi_status():
+        logger.info("WiFi disconnected, showing warning color")
         for index, airport_code in enumerate(airport_list):
+            if index >= available_leds:  # Skip if beyond available LEDs
+                break
             if airport_code == "SKIP":
                 set_pixel_color(index, (0, 0, 0))  # Keep SKIP LEDs off
             else:
@@ -326,7 +410,10 @@ def update_leds(weather_data):
 
     # Check for stale weather data if the feature is enabled
     if STALE_INDICATION and is_weather_stale():
+        logger.info("Weather data is stale, showing warning color")
         for index, airport_code in enumerate(airport_list):
+            if index >= available_leds:  # Skip if beyond available LEDs
+                break
             if airport_code == "SKIP":
                 set_pixel_color(index, (0, 0, 0))  # Keep SKIP LEDs off
             else:
@@ -355,6 +442,8 @@ def update_leds(weather_data):
         logger.info("-" * 80)
 
         for index, airport_code in enumerate(airport_list):
+            if index >= available_leds:  # Skip if beyond available LEDs
+                break
             if airport_code != "SKIP":
                 flt_cat, wind_speed, wind_gust, lightning = weather.get_airport_weather(airport_code, weather_data)
                 is_windy = airport_code in windy_airports
@@ -363,11 +452,15 @@ def update_leds(weather_data):
 
     # Update LEDs based on flt_cat
     try:
+#        logger.info("Updating LEDs based on flight categories")
         for index, airport_code in enumerate(airport_list):
+            if index >= available_leds:  # Skip if beyond available LEDs
+                break
             if airport_code == "SKIP":
                 set_pixel_color(index, (0, 0, 0))
             else:
                 flt_cat, wind_speed, wind_gust, lightning = weather.get_airport_weather(airport_code, weather_data)
+#                logger.info(f"Airport {airport_code}: {flt_cat}")
                 if flt_cat == 'VFR':
                     set_pixel_color(index, tuple(int(c * BRIGHTNESS) for c in VFR_COLOR))
                 elif flt_cat == 'MVFR':
@@ -381,8 +474,11 @@ def update_leds(weather_data):
                     logger.warning(f"Missing flight category data for {airport_code}")
 
         pixels.show()
+        logger.info("LEDs updated successfully")
     except Exception as e:
         logger.error(f"Error updating LEDs: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
 
 def handle_kiosk_timeout():
     """Handle kiosk mode timeout by restoring normal operation."""
@@ -418,6 +514,12 @@ def update_kiosk_airports(airport_codes):
 
 # Main loop
 previous_lights_off = False  # Track previous state
+logger.info("Starting main loop...")
+logger.info(f"ENABLE_LIGHTS_OFF: {ENABLE_LIGHTS_OFF}")
+logger.info(f"LIGHTS_ON_TIME: {LIGHTS_ON_TIME}")
+logger.info(f"LIGHTS_OFF_TIME: {LIGHTS_OFF_TIME}")
+logger.info(f"Current time: {datetime.datetime.now().time()}")
+
 while True:
     try:
         # Check if the lights should be off based on current time
@@ -442,23 +544,25 @@ while True:
             # Update LEDs - this will handle WiFi and stale data states
             update_leds(weather_data)
             update_led_brightness(pixels)
-
+            pixels.show()  # Ensure LEDs are updated
             if LEGEND:
                 update_legend(pixels)
 
             time.sleep(ANIMATION_PAUSE)
 
-            # Only run animations if we have good data
+            # Only run animations if we have good data and at least one airport needs animation
             if not (STALE_INDICATION and is_weather_stale()) and not (WIFI_INDICATION and not check_wifi_status()):
-                if WIND_ANIMATION and weather.get_windy_airports(weather_data):
-                    animate_windy_airports(weather.get_windy_airports(weather_data), weather_data)
+                windy = weather.get_windy_airports(weather_data)
+                lightning = weather.get_lightning_airports(weather_data)
+                snowy = weather.get_snowy_airports(weather_data)
 
-                if LIGHTENING_ANIMATION and weather.get_lightning_airports(weather_data):
-                    animate_lightning_airports(weather.get_lightning_airports(weather_data), weather_data)
-
-                if SNOWY_ANIMATION and weather.get_snowy_airports(weather_data):
-                    animate_snowy_airports(weather.get_snowy_airports(weather_data), weather_data)
-
+                for animation_name in ANIMATION_ORDER:
+                    if animation_name == "WINDY" and WIND_ANIMATION and windy:
+                        animate_windy_airports(windy, weather_data)
+                    elif animation_name == "LIGHTNING" and LIGHTENING_ANIMATION and lightning:
+                        animate_lightning_airports(lightning, weather_data)
+                    elif animation_name == "SNOWY" and SNOWY_ANIMATION and snowy:
+                        animate_snowy_airports(snowy, weather_data)
         else:
             # If lights should be off, ensure LEDs are off and sleep
             pixels.fill((0, 0, 0))
@@ -466,4 +570,6 @@ while True:
             time.sleep(10)  # Sleep longer when lights are off to reduce CPU usage
     except Exception as e:
         logger.error(f"Error in main loop: {str(e)}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
         time.sleep(5)  # Wait before retrying

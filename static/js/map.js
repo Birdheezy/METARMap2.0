@@ -3,10 +3,6 @@
 // Global variable to store the current map instance
 let currentAirportMap;
 
-// Add this at the top of the file with other global variables
-let weatherUpdateInterval = null;
-let isUpdatingWeather = false;
-
 // Function to initialize map colors from config
 function initializeMapColors(config) {
     // Set CSS variables for the legend colors
@@ -18,93 +14,6 @@ function initializeMapColors(config) {
     document.documentElement.style.setProperty('--lightening-color', config.lighteningColor);
     document.documentElement.style.setProperty('--snowy-color', config.snowyColor);
 }
-
-// Function to update the weather status
-function updateWeatherStatus() {
-    // Prevent multiple simultaneous calls
-    if (window.isUpdatingWeather) {
-        return;
-    }
-    
-    window.isUpdatingWeather = true;
-    
-    fetch('/weather-status')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update all instances of the timestamp text
-                const lastUpdatedElements = document.querySelectorAll('[id$="weather-last-updated"]');
-                lastUpdatedElements.forEach(el => {
-                    el.textContent = data.last_updated;
-                });
-                
-                // Update all status dots
-                const statusDots = document.querySelectorAll('[id$="weather-status-dot"]');
-                
-                try {
-                    const lastUpdated = data.last_updated;
-                    if (lastUpdated !== "Weather data not available") {
-                        const parts = lastUpdated.split(' ');
-                        const dateParts = parts[0].split('-');
-                        const timeParts = parts[1].split(':');
-                        
-                        const updateTime = new Date(
-                            parseInt(dateParts[2]),
-                            parseInt(dateParts[0]) - 1,
-                            parseInt(dateParts[1]),
-                            parseInt(timeParts[0]),
-                            parseInt(timeParts[1]),
-                            parseInt(timeParts[2])
-                        );
-                        
-                        const now = new Date();
-                        const diffMinutes = (now - updateTime) / (1000 * 60);
-                        
-                        statusDots.forEach(dot => {
-                            dot.style.backgroundColor = (diffMinutes < data.threshold) ? 'green' : 'red';
-                        });
-
-                        // Always fetch and update weather data
-                        fetch('/get-weather-data')
-                            .then(response => response.json())
-                            .then(weatherData => {
-                                if (currentAirportMap) {
-                                    currentAirportMap.loadAirports(weatherData);
-                                }
-                            })
-                            .catch(error => {
-                                console.error("Error updating airport markers:", error);
-                            });
-                    } else {
-                        statusDots.forEach(dot => dot.style.backgroundColor = 'red');
-                    }
-                } catch (e) {
-                    console.error("Error parsing date:", e);
-                    statusDots.forEach(dot => dot.style.backgroundColor = 'red');
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching weather status:', error);
-            const statusDots = document.querySelectorAll('[id$="weather-status-dot"]');
-            statusDots.forEach(dot => dot.style.backgroundColor = 'red');
-        })
-        .finally(() => {
-            window.isUpdatingWeather = false;
-        });
-}
-
-// Make the function available globally
-window.updateWeatherStatus = updateWeatherStatus;
-
-// Start weather updates when the page loads
-document.addEventListener('DOMContentLoaded', function() {
-    // Initial update
-    updateWeatherStatus();
-    
-    // Set up interval for updates
-    setInterval(updateWeatherStatus, 30000); // Update every 30 seconds
-});
 
 // Function to initialize the map system
 function initializeMapSystem(config) {

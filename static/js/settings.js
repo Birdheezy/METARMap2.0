@@ -1,116 +1,104 @@
+// Global flag to prevent multiple simultaneous weather update calls
+let isUpdatingWeather = false;
+
 // Save scroll position on form submission
 function saveScrollPosition() {
     sessionStorage.setItem('scrollPosition', window.scrollY);
 }
 
-    // Restore scroll position on page reload
-    document.addEventListener('DOMContentLoaded', function () {
-        const scrollPosition = sessionStorage.getItem('scrollPosition');
-        if (scrollPosition) {
-            window.scrollTo(0, parseInt(scrollPosition));
-            sessionStorage.removeItem('scrollPosition');
+// Floating Save Button and Form Change Detection
+let formChanged = false;
+let floatingSaveBtn = null;
+let saveButtonTimeout = null;
+
+// Initialize floating save button functionality
+function initializeFloatingSaveButton() {
+    // Create single floating save button
+    floatingSaveBtn = document.createElement('button');
+    floatingSaveBtn.className = 'floating-save-btn';
+    floatingSaveBtn.textContent = 'Save';
+    floatingSaveBtn.onclick = function() {
+        document.querySelector('form').submit();
+    };
+    document.body.appendChild(floatingSaveBtn);
+    
+    // Add change listeners to all form elements
+    const formElements = document.querySelectorAll('input, select, textarea');
+    formElements.forEach(element => {
+        element.addEventListener('change', function() {
+            formChanged = true;
+            showFloatingSaveButton();
+        });
+        
+        // For text inputs, also listen for input events
+        if (element.type === 'text' || element.type === 'number' || element.tagName === 'TEXTAREA') {
+            element.addEventListener('input', function() {
+                formChanged = true;
+                showFloatingSaveButton();
+            });
         }
     });
 
-    // Scan for networks when the "Scan" button is clicked
-    document.getElementById('scan-button').addEventListener('click', function () {
-        let scanButton = document.getElementById('scan-button');
-        let ssidSelect = document.getElementById('ssid-select');
-        let connectionStatus = document.getElementById('connection-status');
-
-        // Disable the button and show a loading message
-        scanButton.disabled = true;
-        connectionStatus.textContent = 'Scanning for networks...';
-
-        fetch('/scan-networks')
-            .then(response => response.json())
-            .then(data => {
-                ssidSelect.innerHTML = '<option value="">Select a network</option>';
-
-                if (data.networks && data.networks.length > 0) {
-                    data.networks.forEach(network => {
-                        let option = document.createElement('option');
-                        option.value = network.ssid;
-                        option.textContent = `${network.ssid} (Signal: ${network.signal}%)`;
-                        ssidSelect.appendChild(option);
-                    });
-                    connectionStatus.textContent = 'Scan complete. Select a network.';
-                } else {
-                    connectionStatus.textContent = 'No networks found. Try scanning again.';
-                }
-            })
-            .catch(error => {
-                console.error('Error scanning networks:', error);
-                connectionStatus.textContent = 'An error occurred while scanning.';
-            })
-            .finally(() => {
-                // Re-enable the button after the scan completes
-                scanButton.disabled = false;
-            });
+    // Hide floating save button when form is submitted
+    document.querySelector('form').addEventListener('submit', function() {
+        hideFloatingSaveButton();
+        formChanged = false;
     });
+}
 
-    // Connect to the selected network when "Connect" is clicked
-    document.getElementById('connect-button').addEventListener('click', function () {
-        let ssid = document.getElementById('ssid-select').value;
-        let password = document.getElementById('wifi-password').value;
-        let connectionStatus = document.getElementById('connection-status');
-        let connectButton = document.getElementById('connect-button');
-
-        if (!ssid) {
-            connectionStatus.textContent = 'Please select a network.';
-            return;
+function showFloatingSaveButton() {
+    // Clear existing timeout
+    if (saveButtonTimeout) {
+        clearTimeout(saveButtonTimeout);
+    }
+    
+    // Set a small delay before showing the button
+    saveButtonTimeout = setTimeout(() => {
+        if (floatingSaveBtn) {
+            floatingSaveBtn.classList.add('show');
         }
+    }, 300); // 300ms delay
+}
 
-        // Disable button and show connecting message
-        connectButton.disabled = true;
-        connectionStatus.textContent = 'Connecting to network... Please wait, this may take a few moments.';
+function hideFloatingSaveButton() {
+    // Clear timeout
+    if (saveButtonTimeout) {
+        clearTimeout(saveButtonTimeout);
+        saveButtonTimeout = null;
+    }
+    
+    // Hide button
+    if (floatingSaveBtn) {
+        floatingSaveBtn.classList.remove('show');
+    }
+}
 
-        fetch('/connect-to-network', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ ssid: ssid, password: password })
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    connectionStatus.textContent = 'Connected successfully! Network connection established.';
-                } else {
-                    // Even if we get an error, the connection might still be successful
-                    connectionStatus.textContent = 'Connection attempt completed. If your device is not connected, please try again.';
-                }
-            })
-            .catch(error => {
-                console.error('Error connecting to network:', error);
-                connectionStatus.textContent = 'Connection attempt completed. Please check your network settings.';
-            })
-            .finally(() => {
-                // Re-enable the button after attempt completes
-                setTimeout(() => {
-                    connectButton.disabled = false;
-                }, 3000);  // Wait 3 seconds before re-enabling
-            });
-    });
-
-function saveScrollPosition() {
-    sessionStorage.setItem('scrollPosition', window.scrollY);
+// Legend Items Collapsing Functionality
+function initializeLegendCollapsing() {
+    const legendToggle = document.getElementById('legend');
+    const legendItemsSection = document.querySelector('.legend-items-section');
+    
+    if (legendToggle && legendItemsSection) {
+        // Set initial state
+        if (!legendToggle.checked) {
+            legendItemsSection.classList.add('collapsed');
+        }
+        
+        // Add change listener
+        legendToggle.addEventListener('change', function() {
+            if (this.checked) {
+                legendItemsSection.classList.remove('collapsed');
+            } else {
+                legendItemsSection.classList.add('collapsed');
+            }
+        });
+    }
 }
 
 function saveSettings() {
   // Just submit the form without restarting METAR service
   document.forms[0].submit();
 }
-
-
-// Restore the scroll position after the page reloads
-document.addEventListener('DOMContentLoaded', function() {
-    const scrollPosition = sessionStorage.getItem('scrollPosition');
-    if (scrollPosition) {
-        window.scrollTo(0, parseInt(scrollPosition));
-        sessionStorage.removeItem('scrollPosition');
-    }
-});
 
 // JavaScript for toast notifications
 function showToast(message, category) {
@@ -127,89 +115,6 @@ function showToast(message, category) {
         document.body.removeChild(toast);
     }, 8000);
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-    if (typeof messages !== 'undefined' && messages.length > 0) {
-        messages.forEach(function(msg) {
-            showToast(msg.message, msg.category);
-        });
-    }
-});
-
-// Attach saveScrollPosition to buttons that trigger navigation or page reload
-document.querySelectorAll('a.btn-primary').forEach(button => {
-    button.addEventListener('click', saveScrollPosition);
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-    // Only try to set up the restart button if it exists
-    const restartButton = document.getElementById("restart-settings-button");
-    if (restartButton) {
-        restartButton.addEventListener("click", (event) => {
-            event.preventDefault();
-
-            // Disable the button to prevent double-clicks
-            restartButton.disabled = true;
-
-            const statusDiv = document.getElementById("restart-settings-status");
-
-            // Update the status message if the div exists
-            if (statusDiv) {
-                statusDiv.textContent = "Restarting Settings Service...";
-            }
-
-            // Send a request to restart the service
-            fetch('/restart_settings')
-                .then((response) => {
-                    if (response.ok) {
-                        if (statusDiv) {
-                            // Start a countdown before showing the refresh button
-                            let countdown = 3; // Seconds
-                            const countdownInterval = setInterval(() => {
-                                statusDiv.textContent = `Please wait ${countdown} seconds before refreshing...`;
-                                countdown--;
-
-                                if (countdown < 0) {
-                                    clearInterval(countdownInterval);
-
-                                    // Clear the status message
-                                    statusDiv.textContent = "";
-
-                                    // Add the "Refresh Page" button
-                                    const refreshButton = document.createElement("button");
-                                    refreshButton.textContent = "Refresh Page";
-                                    refreshButton.classList.add("btn", "btn-secondary", "mt-3");
-                                    refreshButton.addEventListener("click", () => {
-                                        location.reload();
-                                    });
-
-                                    // Append the button
-                                    statusDiv.appendChild(refreshButton);
-                                }
-                            }, 1000); // 1 second interval
-                        }
-                    } else {
-                        console.error("Failed to restart settings service.");
-                        if (statusDiv) {
-                            statusDiv.textContent = "Failed to restart settings service.";
-                        }
-                    }
-                })
-                .catch((error) => {
-                    console.error("Error restarting settings service:", error);
-                    if (statusDiv) {
-                        statusDiv.textContent = "An error occurred while restarting the service.";
-                    }
-                })
-                .finally(() => {
-                    // Re-enable the restart button after 10 seconds
-                    setTimeout(() => {
-                        restartButton.disabled = false;
-                    }, 10000); // Adjust the delay as needed
-                });
-        });
-    }
-});
 
 // Function to control services
 async function controlService(serviceName, action) {
@@ -280,6 +185,11 @@ function formatDate(dateStr) {
 
 // Function to update weather status
 function updateWeatherStatus() {
+    // Prevent multiple simultaneous calls
+    if (isUpdatingWeather) {
+        return;
+    }
+    isUpdatingWeather = true;
     fetch('/weather-status')
         .then(response => response.json())
         .then(data => {
@@ -380,6 +290,9 @@ function updateWeatherStatus() {
             statusDots.forEach(dot => {
                 dot.style.backgroundColor = 'red';
             });
+        })
+        .finally(() => {
+            isUpdatingWeather = false;
         });
 }
 
@@ -597,27 +510,6 @@ async function applyUpdate() {
     }
 }
 
-// Initialize map when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize map if the element exists
-    const mapElement = document.getElementById('airport-map');
-    if (mapElement) {
-        // Initialize the map system with color configuration
-        const colorConfig = {
-            vfrColor: VFR_COLOR,
-            mvfrColor: MVFR_COLOR,
-            ifrColor: IFR_COLOR,
-            lifrColor: LIFR_COLOR,
-            missingColor: MISSING_COLOR,
-            lighteningColor: LIGHTENING_COLOR,
-            snowyColor: SNOWY_COLOR,
-            weatherUpdateThreshold: WEATHER_UPDATE_THRESHOLD
-        };
-        
-        initializeMapSystem(colorConfig);
-    }
-});
-
 // Function to get marker color based on flight category
 function getMarkerColor(fltCat) {
     // Handle null/undefined flight category
@@ -643,17 +535,477 @@ function getMarkerColor(fltCat) {
     }
 }
 
-// LED Testing functionality
+function convertColor(color, colorOrder) {
+    // Convert hex color to RGB components
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+
+    // Return color components in the specified order
+    if (colorOrder === 'GRB') {
+        return `#${g.toString(16).padStart(2, '0')}${r.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    }
+    return color; // Return original color for RGB order
+}
+
+function testLEDs(color, startPixel = null, endPixel = null) {
+    const colorOrder = document.getElementById('test-led-color-order').value;
+    const adjustedColor = convertColor(color, colorOrder);
+
+    fetch('/test-leds', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            color: adjustedColor,
+            color_order: colorOrder,
+            brightness: 0.3,  // Fixed brightness at 0.3
+            start_pixel: startPixel,
+            end_pixel: endPixel
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            showToast('Failed to test LEDs: ' + data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        showToast('Error testing LEDs: ' + error, 'danger');
+    });
+}
+
+// Function to update line numbers
+function updateLineNumbers(textarea, lineNumbers) {
+    const lines = textarea.value.split('\n');
+    lineNumbers.innerHTML = lines.map((_, index) => `<div>${index + 1}</div>`).join('');
+}
+
+// Function to manually update weather
+async function updateWeatherManually() {
+    try {
+        // Show a loading toast
+        showToast('Updating weather data...', 'info');
+
+        const response = await fetch('/update-weather', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showToast('Weather updated successfully', 'success');
+            // Update the weather status display
+            updateWeatherStatus();
+            // If we're on the map page, update the markers
+            if (typeof updateAirportMarkers === 'function') {
+                updateAirportMarkers();
+            }
+        } else {
+            showToast(data.message || 'Failed to update weather', 'danger');
+        }
+    } catch (error) {
+        console.error('Error updating weather:', error);
+        showToast('Error updating weather: ' + error.message, 'danger');
+    }
+}
+
+// Function to confirm and execute system shutdown
+function confirmShutdown() {
+    if (confirm("WARNING: This will stop all services, turn off the LEDs, and shut down the controller.\n\nA manual power cycle will be required to restart the map. \n\nAre you sure you want to proceed with the shutdown?")) {
+        const countdownDiv = document.getElementById('shutdown-countdown');
+        const countdownTimer = document.getElementById('countdown-timer');
+        countdownDiv.style.display = 'block';
+        // Disable the shutdown button to prevent multiple clicks
+        const shutdownButton = document.querySelector('.shutdown-panel .btn-danger');
+        shutdownButton.disabled = true;
+        // Set shutdown-specific overlay text
+        countdownDiv.innerHTML = `
+            <div class="shutdown-countdown">
+                <p>System will shut down in <span id="countdown-timer">30</span> seconds...</p>
+                <p>It is safe to remove power when the countdown reaches zero.</p>
+                <p style="font-size: 1.2em; color: #f44336;">Shutting down...</p>
+            </div>
+        `;
+        const countdownTimerElem = document.getElementById('countdown-timer');
+        let secondsLeft = 30;
+        const countdownInterval = setInterval(() => {
+            secondsLeft--;
+            if (countdownTimerElem) countdownTimerElem.textContent = secondsLeft;
+            if (secondsLeft <= 0) {
+                clearInterval(countdownInterval);
+            }
+        }, 1000);
+        fetch('/shutdown', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                throw new Error('Server returned non-JSON response');
+            }
+        })
+        .then(data => {
+            if (data.success) {
+                showToast('System is shutting down...', 'info');
+            } else {
+                showToast('Error initiating shutdown: ' + (data.error || 'Unknown error'), 'danger');
+                shutdownButton.disabled = false;
+                countdownDiv.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error during shutdown:', error);
+            showToast('Error during shutdown: ' + error.message, 'danger');
+            shutdownButton.disabled = false;
+            countdownDiv.style.display = 'none';
+        });
+    }
+}
+
+function confirmRestart() {
+    if (confirm("This will restart your Raspberry Pi. All services will stop and the device will reboot.\n\nAre you sure you want to restart?")) {
+        const countdownDiv = document.getElementById('shutdown-countdown');
+        const countdownTimer = document.getElementById('countdown-timer');
+        countdownDiv.style.display = 'block';
+        // Disable the restart button to prevent multiple clicks
+        const restartButton = document.querySelector('.shutdown-panel .btn-warning');
+        restartButton.disabled = true;
+        // Set restart-specific overlay text
+        countdownDiv.innerHTML = `
+            <div class="shutdown-countdown">
+                <p>System will restart in <span id="countdown-timer">60</span> seconds...</p>
+                <p>Do NOT remove power during restart</p>
+                <p>When the lights come back on, you can refresh this page</p>
+            </div>
+        `;
+        const countdownTimerElem = document.getElementById('countdown-timer');
+        let secondsLeft = 60;
+        const countdownInterval = setInterval(() => {
+            secondsLeft--;
+            if (countdownTimerElem) countdownTimerElem.textContent = secondsLeft;
+            if (secondsLeft <= 0) {
+                clearInterval(countdownInterval);
+            }
+        }, 1000);
+        fetch('/restart', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                throw new Error('Server returned non-JSON response');
+            }
+        })
+        .then(data => {
+            if (data.success) {
+                showToast('System is restarting...', 'info');
+            } else {
+                showToast('Error initiating restart: ' + (data.error || 'Unknown error'), 'danger');
+                restartButton.disabled = false;
+                countdownDiv.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error during restart:', error);
+            showToast('Error during restart: ' + error.message, 'danger');
+            restartButton.disabled = false;
+            countdownDiv.style.display = 'none';
+        });
+    }
+}
+
+// Function to start METAR service after stopping LED test service
+async function startMetarWithCleanup() {
+    // Stop the LED test service first
+    await fetch('/led-test-service/stop', { method: 'POST' });
+    // Now start the METAR service
+    controlService('metar', 'start');
+}
+
+// Function to calculate sun times for a selected city
+async function calculateSunTimes(cityName) {
+    const calculatedTimes = document.getElementById('calculated-times');
+    
+    try {
+        calculatedTimes.innerHTML = 'Calculating times...';
+        
+        const response = await fetch('/calculate-sun-times', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ city: cityName })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            calculatedTimes.innerHTML = `
+                📍 Calculated times for ${cityName}:<br>
+                Bright time start: ${data.bright_time_start} (sunrise)<br>
+                Dim time start: ${data.dim_time_start} (sunset)
+            `;
+        } else {
+            calculatedTimes.innerHTML = `Error: ${data.error}`;
+        }
+    } catch (error) {
+        console.error('Error calculating sun times:', error);
+        calculatedTimes.innerHTML = 'Error calculating times. Please try again.';
+    }
+}
+
+// Function to toggle tooltip visibility
+function toggleTooltip(element) {
+    const dropdownContent = element.nextElementSibling;
+    if (dropdownContent && dropdownContent.classList.contains('dropdown-content')) {
+        const isVisible = dropdownContent.style.display === 'block';
+        dropdownContent.style.display = isVisible ? 'none' : 'block';
+        
+        // Update aria-expanded attribute for accessibility
+        element.setAttribute('aria-expanded', !isVisible);
+        
+        // Close other tooltips when opening a new one
+        if (!isVisible) {
+            document.querySelectorAll('.dropdown-content').forEach(content => {
+                if (content !== dropdownContent) {
+                    content.style.display = 'none';
+                }
+            });
+            document.querySelectorAll('.tooltip-icon').forEach(icon => {
+                if (icon !== element) {
+                    icon.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+    }
+}
+
+// Single DOMContentLoaded event listener for all initializations
 document.addEventListener('DOMContentLoaded', function() {
+    // Restore scroll position on page reload
+    const scrollPosition = sessionStorage.getItem('scrollPosition');
+    if (scrollPosition) {
+        window.scrollTo(0, parseInt(scrollPosition));
+        sessionStorage.removeItem('scrollPosition');
+    }
+
+    // Attach listener to form submission for saving scroll position
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', saveScrollPosition);
+    }
+
+    // Scan for networks when the "Scan" button is clicked
+    const scanButton = document.getElementById('scan-button');
+    if (scanButton) {
+        scanButton.addEventListener('click', function () {
+            let ssidSelect = document.getElementById('ssid-select');
+            let connectionStatus = document.getElementById('connection-status');
+
+            // Disable the button and show a loading message
+            scanButton.disabled = true;
+            connectionStatus.textContent = 'Scanning for networks...';
+
+            fetch('/scan-networks')
+                .then(response => response.json())
+                .then(data => {
+                    ssidSelect.innerHTML = '<option value="">Select a network</option>';
+
+                    if (data.networks && data.networks.length > 0) {
+                        data.networks.forEach(network => {
+                            let option = document.createElement('option');
+                            option.value = network.ssid;
+                            option.textContent = `${network.ssid} (Signal: ${network.signal}%)`;
+                            ssidSelect.appendChild(option);
+                        });
+                        connectionStatus.textContent = 'Scan complete. Select a network.';
+                    } else {
+                        connectionStatus.textContent = 'No networks found. Try scanning again.';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error scanning networks:', error);
+                    connectionStatus.textContent = 'An error occurred while scanning.';
+                })
+                .finally(() => {
+                    // Re-enable the button after the scan completes
+                    scanButton.disabled = false;
+                });
+        });
+    }
+
+    // Connect to the selected network when "Connect" is clicked
+    const connectButton = document.getElementById('connect-button');
+    if (connectButton) {
+        connectButton.addEventListener('click', function () {
+            let ssid = document.getElementById('ssid-select').value;
+            let password = document.getElementById('wifi-password').value;
+            let connectionStatus = document.getElementById('connection-status');
+
+            if (!ssid) {
+                connectionStatus.textContent = 'Please select a network.';
+                return;
+            }
+
+            // Disable button and show connecting message
+            connectButton.disabled = true;
+            connectionStatus.textContent = 'Connecting to network... Please wait, this may take a few moments.';
+
+            fetch('/connect-to-network', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ ssid: ssid, password: password })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        connectionStatus.textContent = 'Connected successfully! Network connection established.';
+                    } else {
+                        // Even if we get an error, the connection might still be successful
+                        connectionStatus.textContent = 'Connection attempt completed. If your device is not connected, please try again.';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error connecting to network:', error);
+                    connectionStatus.textContent = 'Connection attempt completed. Please check your network settings.';
+                })
+                .finally(() => {
+                    // Re-enable the button after attempt completes
+                    setTimeout(() => {
+                        connectButton.disabled = false;
+                    }, 3000);  // Wait 3 seconds before re-enabling
+                });
+        });
+    }
+
+    // Show toast messages
+    if (typeof messages !== 'undefined' && messages.length > 0) {
+        messages.forEach(function(msg) {
+            showToast(msg.message, msg.category);
+        });
+    }
+
+    // Attach saveScrollPosition to buttons that trigger navigation or page reload
+    document.querySelectorAll('a.btn-primary').forEach(button => {
+        button.addEventListener('click', saveScrollPosition);
+    });
+
+    // Restart button
+    const restartButton = document.getElementById("restart-settings-button");
+    if (restartButton) {
+        restartButton.addEventListener("click", (event) => {
+            event.preventDefault();
+
+            // Disable the button to prevent double-clicks
+            restartButton.disabled = true;
+
+            const statusDiv = document.getElementById("restart-settings-status");
+
+            // Update the status message if the div exists
+            if (statusDiv) {
+                statusDiv.textContent = "Restarting Settings Service...";
+            }
+
+            // Send a request to restart the service
+            fetch('/restart_settings')
+                .then((response) => {
+                    if (response.ok) {
+                        if (statusDiv) {
+                            // Start a countdown before showing the refresh button
+                            let countdown = 3; // Seconds
+                            const countdownInterval = setInterval(() => {
+                                statusDiv.textContent = `Please wait ${countdown} seconds before refreshing...`;
+                                countdown--;
+
+                                if (countdown < 0) {
+                                    clearInterval(countdownInterval);
+
+                                    // Clear the status message
+                                    statusDiv.textContent = "";
+
+                                    // Add the "Refresh Page" button
+                                    const refreshButton = document.createElement("button");
+                                    refreshButton.textContent = "Refresh Page";
+                                    refreshButton.classList.add("btn", "btn-secondary", "mt-3");
+                                    refreshButton.addEventListener("click", () => {
+                                        location.reload();
+                                    });
+
+                                    // Append the button
+                                    statusDiv.appendChild(refreshButton);
+                                }
+                            }, 1000); // 1 second interval
+                        }
+                    } else {
+                        console.error("Failed to restart settings service.");
+                        if (statusDiv) {
+                            statusDiv.textContent = "Failed to restart settings service.";
+                        }
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error restarting settings service:", error);
+                    if (statusDiv) {
+                        statusDiv.textContent = "An error occurred while restarting the service.";
+                    }
+                })
+                .finally(() => {
+                    // Re-enable the restart button after 10 seconds
+                    setTimeout(() => {
+                        restartButton.disabled = false;
+                    }, 10000); // Adjust the delay as needed
+                });
+        });
+    }
+
+    // Initialize map if the element exists
+    const mapElement = document.getElementById('airport-map');
+    if (mapElement) {
+        // Initialize the map system with color configuration
+        const colorConfig = {
+            vfrColor: VFR_COLOR,
+            mvfrColor: MVFR_COLOR,
+            ifrColor: IFR_COLOR,
+            lifrColor: LIFR_COLOR,
+            missingColor: MISSING_COLOR,
+            lighteningColor: LIGHTENING_COLOR,
+            snowyColor: SNOWY_COLOR,
+            weatherUpdateThreshold: WEATHER_UPDATE_THRESHOLD
+        };
+        
+        initializeMapSystem(colorConfig);
+    }
+
+    // LED Testing functionality
     // Handle LED mode selection
     const ledModeRadios = document.querySelectorAll('input[name="led-mode"]');
     const ledRangeInputs = document.getElementById('led-range-inputs');
 
-    ledModeRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            ledRangeInputs.style.display = this.value === 'range' ? 'block' : 'none';
+    if (ledModeRadios.length > 0 && ledRangeInputs) {
+        ledModeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                ledRangeInputs.style.display = this.value === 'range' ? 'block' : 'none';
+            });
         });
-    });
+    }
 
     // Function to get current LED range based on mode
     function getLedRange() {
@@ -682,57 +1034,63 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Handle custom color test
-    document.getElementById('test-custom-color')?.addEventListener('click', function() {
-        const color = document.getElementById('custom-led-color').value;
-        const { startPixel, endPixel } = getLedRange();
-        testLEDs(color, startPixel, endPixel);
-    });
+    const testCustomColor = document.getElementById('test-custom-color');
+    if (testCustomColor) {
+        testCustomColor.addEventListener('click', function() {
+            const color = document.getElementById('custom-led-color').value;
+            const { startPixel, endPixel } = getLedRange();
+            testLEDs(color, startPixel, endPixel);
+        });
+    }
 
     // Handle turn off button
-    document.getElementById('turn-off-leds')?.addEventListener('click', function() {
-        // Create a promise for stopping the service
-        const stopServicePromise = fetch('/led-test-service/stop', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success) {
-                console.warn('Failed to stop LED test service:', data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error stopping LED test service:', error);
-        });
-
-        // Create a promise for turning off LEDs
-        const turnOffLedsPromise = fetch('/turn-off-leds', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success) {
-                showToast('Failed to turn off LEDs: ' + data.error, 'danger');
-            }
-        })
-        .catch(error => {
-            showToast('Error turning off LEDs: ' + error, 'danger');
-        });
-
-        // Execute both promises in parallel
-        Promise.all([stopServicePromise, turnOffLedsPromise])
-            .then(() => {
-                showToast('LEDs turned off', 'success');
+    const turnOffLeds = document.getElementById('turn-off-leds');
+    if (turnOffLeds) {
+        turnOffLeds.addEventListener('click', function() {
+            // Create a promise for stopping the service
+            const stopServicePromise = fetch('/led-test-service/stop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    console.warn('Failed to stop LED test service:', data.error);
+                }
             })
             .catch(error => {
-                console.error('Error during LED turn off:', error);
+                console.error('Error stopping LED test service:', error);
             });
-    });
+
+            // Create a promise for turning off LEDs
+            const turnOffLedsPromise = fetch('/turn-off-leds', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    showToast('Failed to turn off LEDs: ' + data.error, 'danger');
+                }
+            })
+            .catch(error => {
+                showToast('Error turning off LEDs: ' + error, 'danger');
+            });
+
+            // Execute both promises in parallel
+            Promise.all([stopServicePromise, turnOffLedsPromise])
+                .then(() => {
+                    showToast('LEDs turned off', 'success');
+                })
+                .catch(error => {
+                    console.error('Error during LED turn off:', error);
+                });
+        });
+    }
 
     // Handle automated test
     let currentIndex = -1;
@@ -765,7 +1123,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (data.status === 'running') {
                             // Stop METAR service first
                             return fetch('/service/control/metar/stop', {
-                                method: 'POST'
+                                method: 'POST',
                             }).then(() => {
                                 showToast('METAR service stopped', 'info');
                             });
@@ -875,52 +1233,8 @@ document.addEventListener('DOMContentLoaded', function() {
             testStatus.textContent = `Testing: ${currentColor.name}`;
         }
     }
-});
 
-function convertColor(color, colorOrder) {
-    // Convert hex color to RGB components
-    const hex = color.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-
-    // Return color components in the specified order
-    if (colorOrder === 'GRB') {
-        return `#${g.toString(16).padStart(2, '0')}${r.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-    }
-    return color; // Return original color for RGB order
-}
-
-function testLEDs(color, startPixel = null, endPixel = null) {
-    const colorOrder = document.getElementById('test-led-color-order').value;
-    const adjustedColor = convertColor(color, colorOrder);
-
-    fetch('/test-leds', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-            color: adjustedColor,
-            color_order: colorOrder,
-            brightness: 0.3,  // Fixed brightness at 0.3
-            start_pixel: startPixel,
-            end_pixel: endPixel
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (!data.success) {
-            showToast('Failed to test LEDs: ' + data.error, 'danger');
-        }
-    })
-    .catch(error => {
-        showToast('Error testing LEDs: ' + error, 'danger');
-    });
-}
-
-// Smooth scrolling for navbar links
-document.addEventListener('DOMContentLoaded', function() {
+    // Smooth scrolling for navbar links
     document.querySelectorAll('.navbar a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function(e) {
             const targetId = this.getAttribute('href').slice(1);
@@ -933,10 +1247,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-});
 
-// Single DOMContentLoaded event listener for all initializations
-document.addEventListener('DOMContentLoaded', function() {
     // Initialize tooltips
     const tooltipIcons = document.querySelectorAll('.tooltip-icon');
     tooltipIcons.forEach(icon => {
@@ -945,14 +1256,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Initialize sunrise/sunset toggle
+    const sunriseSunsetToggle = document.getElementById('use_sunrise_sunset');
+    if (sunriseSunsetToggle) {
+        if (sunriseSunsetToggle.checked) {
+            document.querySelectorAll('.bright-dim-select').forEach(function(el) {
+                el.style.opacity = '0.5';
+                el.style.pointerEvents = 'none';
+            });
+        } else {
+            document.querySelectorAll('.bright-dim-select').forEach(function(el) {
+                el.style.opacity = '1';
+                el.style.pointerEvents = 'auto';
+            });
+        }
+    }
+
     // Initialize LED test section toggle
     const ledTestToggle = document.getElementById('led-test-toggle');
     const ledTestContent = document.getElementById('led-test-content');
     if (ledTestToggle && ledTestContent) {
+        // Set initial state - collapsed by default
+        ledTestContent.classList.add('collapsed');
+        ledTestToggle.querySelector('.info-toggle').textContent = '▼';
+        
         ledTestToggle.addEventListener('click', function() {
-            const isVisible = ledTestContent.classList.contains('show');
-            ledTestContent.classList.toggle('show');
-            this.querySelector('.info-toggle').textContent = isVisible ? '▼' : '▲';
+            const isCollapsed = ledTestContent.classList.contains('collapsed');
+            if (isCollapsed) {
+                ledTestContent.classList.remove('collapsed');
+                this.querySelector('.info-toggle').textContent = '▲';
+            } else {
+                ledTestContent.classList.add('collapsed');
+                this.querySelector('.info-toggle').textContent = '▼';
+            }
         });
     }
 
@@ -976,13 +1312,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Restore scroll position if saved
-    const scrollPosition = sessionStorage.getItem('scrollPosition');
-    if (scrollPosition) {
-        window.scrollTo(0, parseInt(scrollPosition));
-        sessionStorage.removeItem('scrollPosition');
-    }
-
     // Add color order change handler
     const colorOrderSelect = document.getElementById('test-led-color-order');
     if (colorOrderSelect) {
@@ -996,109 +1325,66 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-});
 
-// Function to update line numbers
-function updateLineNumbers(textarea, lineNumbers) {
-    const lines = textarea.value.split('\n');
-    lineNumbers.innerHTML = lines.map((_, index) => `<div>${index + 1}</div>`).join('');
-}
+    // Initialize floating save button
+    initializeFloatingSaveButton();
 
-// Function to manually update weather
-async function updateWeatherManually() {
-    try {
-        // Show a loading toast
-        showToast('Updating weather data...', 'info');
+    // Initialize legend collapsing
+    initializeLegendCollapsing();
 
-        const response = await fetch('/update-weather', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-
-        const data = await response.json();
-
-        if (data.status === 'success') {
-            showToast('Weather updated successfully', 'success');
-            // Update the weather status display
-            updateWeatherStatus();
-            // If we're on the map page, update the markers
-            if (typeof updateAirportMarkers === 'function') {
-                updateAirportMarkers();
-            }
-        } else {
-            showToast(data.message || 'Failed to update weather', 'danger');
+    // Initialize animation editor
+    initializeAnimationEditor();
+    
+    // Test initialization after a delay to see if it's a timing issue
+    setTimeout(() => {
+        console.log('Delayed test - trying to find elements...');
+        const testList = document.getElementById('animation-sequence-list');
+        const testInput = document.getElementById('animation-sequence-input');
+        console.log('Delayed test results:');
+        console.log('sequenceList found:', !!testList);
+        console.log('sequenceInput found:', !!testInput);
+        
+        if (testList && testInput) {
+            console.log('Elements found in delayed test, trying to initialize...');
+            initializeAnimationSequence();
         }
-    } catch (error) {
-        console.error('Error updating weather:', error);
-        showToast('Error updating weather: ' + error.message, 'danger');
-    }
-}
-
-// Function to confirm and execute system shutdown
-function confirmShutdown() {
-    if (confirm("WARNING: This will stop all services, turn off the LEDs, and shut down the Raspberry Pi.\n\nAre you sure you want to proceed with the shutdown?")) {
-        // Show the countdown
-        const countdownDiv = document.getElementById('shutdown-countdown');
-        const countdownTimer = document.getElementById('countdown-timer');
-        countdownDiv.style.display = 'block';
-        
-        // Disable the shutdown button to prevent multiple clicks
-        const shutdownButton = document.querySelector('.shutdown-panel .btn-danger');
-        shutdownButton.disabled = true;
-        
-        // Start the countdown
-        let secondsLeft = 20;
-        const countdownInterval = setInterval(() => {
-            secondsLeft--;
-            countdownTimer.textContent = secondsLeft;
-            
-            if (secondsLeft <= 0) {
-                clearInterval(countdownInterval);
-                // The actual shutdown will happen on the server side
+    }, 2000);
+    
+    // Add preview button functionality
+    const previewButton = document.getElementById('preview-animations');
+    if (previewButton) {
+        previewButton.addEventListener('click', function() {
+            try {
+                const sequenceInput = document.getElementById('animation-sequence-input');
+                if (sequenceInput && sequenceInput.value) {
+                    const order = sequenceInput.value.split(',');
+                    updateAnimationPreview(order);
+                }
+            } catch (error) {
+                console.error('Error updating animation preview:', error);
             }
-        }, 1000);
-        
-        // Send the shutdown request to the server
-        fetch('/shutdown', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => {
-            // Check if the response is JSON
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            } else {
-                // If not JSON, throw an error
-                throw new Error('Server returned non-JSON response');
-            }
-        })
-        .then(data => {
-            if (data.success) {
-                showToast('System is shutting down...', 'info');
-            } else {
-                showToast('Error initiating shutdown: ' + (data.error || 'Unknown error'), 'danger');
-                // Re-enable the button if there was an error
-                shutdownButton.disabled = false;
-                countdownDiv.style.display = 'none';
-            }
-        })
-        .catch(error => {
-            console.error('Error during shutdown:', error);
-            showToast('Error during shutdown: ' + error.message, 'danger');
-            // Re-enable the button if there was an error
-            shutdownButton.disabled = false;
-            countdownDiv.style.display = 'none';
         });
     }
-}
 
-// Add input validation for LED range
-document.addEventListener('DOMContentLoaded', function() {
+    // Add change listeners for animation toggles to update sequence
+    ['wind_animation', 'lightening_animation', 'snowy_animation'].forEach(id => {
+        const toggle = document.getElementById(id);
+        if (toggle) {
+            toggle.addEventListener('change', function() {
+                try {
+                    // Reinitialize sequence to update status indicators
+                    const editorContent = document.getElementById('animation-editor-content');
+                    if (editorContent && !editorContent.classList.contains('collapsed')) {
+                        initializeAnimationSequence();
+                    }
+                } catch (error) {
+                    console.error('Error updating animation sequence:', error);
+                }
+            });
+        }
+    });
+
+    // Add input validation for LED range
     const startPixelInput = document.getElementById('start-pixel');
     const endPixelInput = document.getElementById('end-pixel');
 
@@ -1127,12 +1413,431 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Sunrise/Sunset functionality
+    const daytimeDimmingToggle = document.getElementById('daytime_dimming');
+    const sunriseSunsetSection = document.getElementById('sunrise-sunset-section');
+    const citySelection = document.getElementById('city-selection');
+    const manualTimeSettings = document.getElementById('manual-time-settings');
+    const citySelect = document.getElementById('city-select');
+    const calculatedTimes = document.getElementById('calculated-times');
+
+    // Handle daytime dimming toggle
+    if (daytimeDimmingToggle) {
+        daytimeDimmingToggle.addEventListener('change', function() {
+            if (this.checked) {
+                sunriseSunsetSection.style.display = 'block';
+            } else {
+                sunriseSunsetSection.style.display = 'none';
+                // Uncheck sunrise/sunset toggle when daytime dimming is disabled
+                if (sunriseSunsetToggle) {
+                    sunriseSunsetToggle.checked = false;
+                    citySelection.style.display = 'none';
+                    manualTimeSettings.style.opacity = '1';
+                    manualTimeSettings.style.pointerEvents = 'auto';
+                }
+            }
+        });
+    }
+
+    // Handle sunrise/sunset toggle
+    if (sunriseSunsetToggle) {
+        sunriseSunsetToggle.addEventListener('change', function() {
+            if (this.checked) {
+                citySelection.style.display = 'block';
+                // Only grey out bright/dim time selects
+                document.querySelectorAll('.bright-dim-select').forEach(function(el) {
+                    el.style.opacity = '0.5';
+                    el.style.pointerEvents = 'none';
+                });
+            } else {
+                citySelection.style.display = 'none';
+                // Restore bright/dim time selects
+                document.querySelectorAll('.bright-dim-select').forEach(function(el) {
+                    el.style.opacity = '1';
+                    el.style.pointerEvents = 'auto';
+                });
+                calculatedTimes.innerHTML = '';
+            }
+            // On page load, set correct state
+            if (sunriseSunsetToggle.checked) {
+                document.querySelectorAll('.bright-dim-select').forEach(function(el) {
+                    el.style.opacity = '0.5';
+                    el.style.pointerEvents = 'none';
+                });
+            } else {
+                document.querySelectorAll('.bright-dim-select').forEach(function(el) {
+                    el.style.opacity = '1';
+                    el.style.pointerEvents = 'auto';
+                });
+            }
+        });
+    }
+
+    // Handle city selection
+    if (citySelect) {
+        citySelect.addEventListener('change', function() {
+            const selectedCity = this.value;
+            if (selectedCity && sunriseSunsetToggle && sunriseSunsetToggle.checked) {
+                calculateSunTimes(selectedCity);
+            } else {
+                calculatedTimes.innerHTML = '';
+            }
+        });
+    }
+
+    // Function to close all tooltips when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.classList.contains('tooltip-icon')) {
+            document.querySelectorAll('.dropdown-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            document.querySelectorAll('.tooltip-icon').forEach(icon => {
+                icon.setAttribute('aria-expanded', 'false');
+            });
+        }
+    });
+
+    // Legend Configuration Drag and Drop Functionality
+    const legendList = document.getElementById('legend-items-list');
+    const legendOrderInput = document.getElementById('legend_order_input');
+    
+    if (legendList) {
+        let draggedItem = null;
+        
+        // Initialize drag and drop
+        function initializeDragAndDrop() {
+            const items = legendList.querySelectorAll('.legend-item');
+            
+            items.forEach(item => {
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragend', handleDragEnd);
+                item.addEventListener('dragover', handleDragOver);
+                item.addEventListener('drop', handleDrop);
+                item.addEventListener('dragenter', handleDragEnter);
+                item.addEventListener('dragleave', handleDragLeave);
+            });
+        }
+        
+        function handleDragStart(e) {
+            draggedItem = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.outerHTML);
+        }
+        
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            draggedItem = null;
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            
+            if (draggedItem !== this) {
+                const allItems = [...legendList.querySelectorAll('.legend-item')];
+                const draggedIndex = allItems.indexOf(draggedItem);
+                const droppedIndex = allItems.indexOf(this);
+                
+                if (draggedIndex < droppedIndex) {
+                    this.parentNode.insertBefore(draggedItem, this.nextSibling);
+                } else {
+                    this.parentNode.insertBefore(draggedItem, this);
+                }
+                
+                updateLegendOrder();
+            }
+        }
+        
+        function handleDragEnter(e) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+        }
+        
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+        
+        function updateLegendOrder() {
+            const items = legendList.querySelectorAll('.legend-item');
+            const order = Array.from(items).map(item => item.dataset.key);
+            legendOrderInput.value = order.join(',');
+        }
+        
+        // Handle checkbox changes
+        legendList.addEventListener('change', function(e) {
+            if (e.target.classList.contains('legend-checkbox')) {
+                updateLegendOrder();
+            }
+        });
+        
+        // Initialize on page load
+        initializeDragAndDrop();
+        
+        // Re-initialize after any dynamic content changes
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    initializeDragAndDrop();
+                }
+            });
+        });
+        
+        observer.observe(legendList, { childList: true });
+    }
 });
 
-// Function to start METAR service after stopping LED test service
-async function startMetarWithCleanup() {
-    // Stop the LED test service first
-    await fetch('/led-test-service/stop', { method: 'POST' });
-    // Now start the METAR service
-    controlService('metar', 'start');
+// Animation Editor Functionality
+function initializeAnimationEditor() {
+    const animationEditorToggle = document.getElementById('animation-editor-toggle');
+    const animationEditorContent = document.getElementById('animation-editor-content');
+    
+    if (!animationEditorToggle || !animationEditorContent) {
+        console.warn('Animation editor elements not found');
+        return;
+    }
+    
+    try {
+        // Set initial state - collapsed by default
+        animationEditorContent.classList.add('collapsed');
+        const toggleIcon = animationEditorToggle.querySelector('.info-toggle');
+        if (toggleIcon) {
+            toggleIcon.textContent = '▼';
+        }
+        
+        animationEditorToggle.addEventListener('click', function() {
+            console.log('Animation editor toggle clicked');
+            const isCollapsed = animationEditorContent.classList.contains('collapsed');
+            console.log('Is collapsed:', isCollapsed);
+            if (isCollapsed) {
+                animationEditorContent.classList.remove('collapsed');
+                if (toggleIcon) {
+                    toggleIcon.textContent = '▲';
+                }
+                // Initialize animation sequence when expanding
+                console.log('Expanding, calling initializeAnimationSequence...');
+                initializeAnimationSequence();
+            } else {
+                animationEditorContent.classList.add('collapsed');
+                if (toggleIcon) {
+                    toggleIcon.textContent = '▼';
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error initializing animation editor:', error);
+    }
+}
+
+function initializeAnimationSequence() {
+    console.log('initializeAnimationSequence called');
+    const sequenceList = document.getElementById('animation-sequence-list');
+    const sequenceInput = document.getElementById('animation-sequence-input');
+    
+    console.log('sequenceList found:', !!sequenceList);
+    console.log('sequenceInput found:', !!sequenceInput);
+    
+    if (!sequenceList || !sequenceInput) {
+        console.warn('Animation sequence elements not found');
+        console.log('Available elements with similar IDs:');
+        console.log('animation-sequence-list:', document.getElementById('animation-sequence-list'));
+        console.log('animation-sequence-input:', document.getElementById('animation-sequence-input'));
+        return;
+    }
+    
+    try {
+        // Get current animation order and enabled states
+        const currentOrder = (typeof ANIMATION_ORDER !== 'undefined' && Array.isArray(ANIMATION_ORDER)) ? ANIMATION_ORDER : ['WINDY', 'LIGHTNING', 'SNOWY'];
+        
+        const enabledStates = {
+            'WINDY': document.getElementById('wind_animation')?.checked || false,
+            'LIGHTNING': document.getElementById('lightening_animation')?.checked || false,
+            'SNOWY': document.getElementById('snowy_animation')?.checked || false
+        };
+        
+        // Populate the sequence list
+        sequenceList.innerHTML = '';
+        currentOrder.forEach(animation => {
+            const item = createAnimationSequenceItem(animation, enabledStates[animation]);
+            sequenceList.appendChild(item);
+        });
+        
+        // Initialize drag and drop
+        initializeAnimationDragAndDrop();
+        
+        // Update the hidden input
+        updateAnimationSequenceInput();
+    } catch (error) {
+        console.error('Error initializing animation sequence:', error);
+        // Fallback to default order
+        sequenceList.innerHTML = '<div class="error-message">Error loading animation sequence</div>';
+    }
+}
+
+function createAnimationSequenceItem(animation, isEnabled) {
+    const item = document.createElement('div');
+    item.className = 'animation-sequence-item';
+    item.draggable = true;
+    item.dataset.animation = animation;
+    
+    const statusClass = isEnabled ? 'enabled' : 'disabled';
+    const statusText = isEnabled ? 'Enabled' : 'Disabled';
+    
+    item.innerHTML = `
+        <span class="animation-name">${animation}</span>
+        <span class="animation-status ${statusClass}">${statusText}</span>
+    `;
+    
+    return item;
+}
+
+function initializeAnimationDragAndDrop() {
+    const sequenceList = document.getElementById('animation-sequence-list');
+    let draggedItem = null;
+    
+    sequenceList.addEventListener('dragstart', function(e) {
+        draggedItem = e.target;
+        e.target.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    });
+    
+    sequenceList.addEventListener('dragend', function(e) {
+        e.target.classList.remove('dragging');
+        draggedItem = null;
+    });
+    
+    sequenceList.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    });
+    
+    sequenceList.addEventListener('drop', function(e) {
+        e.preventDefault();
+        if (draggedItem && draggedItem !== e.target) {
+            const allItems = [...sequenceList.querySelectorAll('.animation-sequence-item')];
+            const draggedIndex = allItems.indexOf(draggedItem);
+            const droppedIndex = allItems.indexOf(e.target);
+            
+            if (draggedIndex < droppedIndex) {
+                e.target.parentNode.insertBefore(draggedItem, e.target.nextSibling);
+            } else {
+                e.target.parentNode.insertBefore(draggedItem, e.target);
+            }
+            
+            updateAnimationSequenceInput();
+        }
+    });
+}
+
+function updateAnimationSequenceInput() {
+    const sequenceList = document.getElementById('animation-sequence-list');
+    const sequenceInput = document.getElementById('animation-sequence-input');
+    
+    if (sequenceList && sequenceInput) {
+        const items = sequenceList.querySelectorAll('.animation-sequence-item');
+        const order = Array.from(items).map(item => item.dataset.animation);
+        sequenceInput.value = order.join(',');
+        
+        // Update preview
+        updateAnimationPreview(order);
+    }
+}
+
+function updateAnimationPreview(order) {
+    try {
+        const previewElement = document.getElementById('preview-sequence');
+        if (!previewElement) {
+            console.warn('Preview element not found');
+            return;
+        }
+        
+        if (!Array.isArray(order) || order.length === 0) {
+            previewElement.innerHTML = 'No animations configured';
+            return;
+        }
+        
+        const enabledStates = {
+            'WINDY': document.getElementById('wind_animation')?.checked || false,
+            'LIGHTNING': document.getElementById('lightening_animation')?.checked || false,
+            'SNOWY': document.getElementById('snowy_animation')?.checked || false
+        };
+        
+        const enabledOrder = order.filter(animation => enabledStates[animation]);
+        if (enabledOrder.length > 0) {
+            previewElement.innerHTML = enabledOrder.map(animation => 
+                `<span class="preview-animation">${animation}</span>`
+            ).join(' → ');
+        } else {
+            previewElement.innerHTML = 'No animations enabled';
+        }
+    } catch (error) {
+        console.error('Error updating animation preview:', error);
+        const previewElement = document.getElementById('preview-sequence');
+        if (previewElement) {
+            previewElement.innerHTML = 'Error updating preview';
+        }
+    }
+}
+
+// Test function for debugging
+function testElementFinding() {
+    console.log('=== Testing Element Finding ===');
+    
+    // Test basic element finding
+    const sequenceList = document.getElementById('animation-sequence-list');
+    const sequenceInput = document.getElementById('animation-sequence-input');
+    
+    console.log('sequenceList:', sequenceList);
+    console.log('sequenceInput:', sequenceInput);
+    
+    // Test if elements exist in DOM
+    if (sequenceList) {
+        console.log('sequenceList HTML:', sequenceList.outerHTML);
+        console.log('sequenceList parent:', sequenceList.parentElement);
+        
+        // Try to manually populate the list to test if display works
+        console.log('Testing manual population...');
+        sequenceList.innerHTML = '';
+        
+        const testItems = [
+            { name: 'WINDY', enabled: true },
+            { name: 'LIGHTNING', enabled: false },
+            { name: 'SNOWY', enabled: true }
+        ];
+        
+        testItems.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'animation-sequence-item';
+            div.innerHTML = `
+                <span class="animation-name">${item.name}</span>
+                <span class="animation-status ${item.enabled ? 'enabled' : 'disabled'}">${item.enabled ? 'Enabled' : 'Disabled'}</span>
+            `;
+            sequenceList.appendChild(div);
+        });
+        
+        console.log('Manual population complete, list now has', sequenceList.children.length, 'children');
+    }
+    
+    if (sequenceInput) {
+        console.log('sequenceInput HTML:', sequenceInput.outerHTML);
+    }
+    
+    // Test querySelector as alternative
+    const sequenceListAlt = document.querySelector('#animation-sequence-list');
+    const sequenceInputAlt = document.querySelector('#animation-sequence-input');
+    
+    console.log('querySelector results:');
+    console.log('sequenceListAlt:', sequenceListAlt);
+    console.log('sequenceInputAlt:', sequenceInputAlt);
+    
+    // Test if we can find any elements with similar names
+    const allElements = document.querySelectorAll('*[id*="animation"]');
+    console.log('All elements with "animation" in ID:', allElements);
+    
+    console.log('=== End Test ===');
 }

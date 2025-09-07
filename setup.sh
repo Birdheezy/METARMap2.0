@@ -42,7 +42,7 @@ update_system() {
     if apt update; then
         echo -e "${GREEN}✓ Package lists updated successfully${NC}"
         echo -e "${CYAN}Upgrading packages...${NC}"
-        if apt upgrade -y; then
+        if apt-get -o Dpkg::Options::="--force-confold" upgrade -y; then
             echo -e "${GREEN}✓ System upgrade completed successfully${NC}"
             return 0
         else
@@ -88,54 +88,53 @@ setup_git() {
             ;;
     esac
 
-    # Initialize git repo
-    echo -ne "${CYAN}Initializing Git repository with ${YELLOW}$BRANCH${CYAN} branch... ${NC}"
-    if git init -b "$BRANCH" > /dev/null 2>&1; then
+    # Remove any existing git repository
+    if [ -d ".git" ]; then
+        echo -ne "${CYAN}Removing existing git repository... ${NC}"
+        rm -rf .git > /dev/null 2>&1
+        echo -e "${GREEN}✓${NC}"
+    fi
+
+    # Clone the repository with the selected branch
+    echo -ne "${CYAN}Cloning repository with ${YELLOW}$BRANCH${CYAN} branch... ${NC}"
+    if git clone -b "$BRANCH" https://github.com/Birdheezy/METARMap2.0.git temp_repo > /dev/null 2>&1; then
         echo -e "${GREEN}✓${NC}"
     else
-        echo -e "${RED}✗ Failed${NC}"
+        echo -e "${RED}✗ Failed to clone repository${NC}"
         return 1
     fi
 
-    # Add remote origin
-    echo -ne "${CYAN}Adding remote repository... ${NC}"
-    if git remote add origin https://github.com/Birdheezy/METARMap2.0 > /dev/null 2>&1; then
+    # Move all files from temp directory to /home/pi
+    echo -ne "${CYAN}Moving files to /home/pi... ${NC}"
+    if cp -r temp_repo/* . > /dev/null 2>&1; then
         echo -e "${GREEN}✓${NC}"
     else
-        echo -e "${RED}✗ Failed${NC}"
+        echo -e "${RED}✗ Failed to move files${NC}"
+        rm -rf temp_repo
         return 1
     fi
 
-    # Fetch branches
-    echo -ne "${CYAN}Fetching repository branches... ${NC}"
-    if git fetch origin > /dev/null 2>&1; then
+    # Copy hidden files (like .git)
+    echo -ne "${CYAN}Copying hidden files... ${NC}"
+    if cp -r temp_repo/.* . > /dev/null 2>&1 2>/dev/null; then
         echo -e "${GREEN}✓${NC}"
     else
-        echo -e "${RED}✗ Failed${NC}"
-        return 1
+        echo -e "${YELLOW}⚠ Some hidden files may not have been copied${NC}"
     fi
 
-    # Checkout selected branch with force
-    echo -ne "${CYAN}Setting up ${YELLOW}$BRANCH${CYAN} branch... ${NC}"
-    if git checkout -f -b "$BRANCH" "origin/$BRANCH" > /dev/null 2>&1; then
+    # Clean up temporary directory
+    echo -ne "${CYAN}Cleaning up... ${NC}"
+    rm -rf temp_repo > /dev/null 2>&1
         echo -e "${GREEN}✓${NC}"
-    else
-        echo -e "${RED}✗ Failed${NC}"
-        return 1
-    fi
-
-    # Pull latest changes with force
-    echo -ne "${CYAN}Pulling latest changes... ${NC}"
-    if git pull -f origin "$BRANCH" > /dev/null 2>&1; then
-        echo -e "${GREEN}✓${NC}"
-    else
-        echo -e "${RED}✗ Failed${NC}"
-        return 1
-    fi
 
     # Set ownership
     echo -ne "${CYAN}Setting file ownership... ${NC}"
     sudo chown -R pi:pi /home/pi > /dev/null 2>&1
+    echo -e "${GREEN}✓${NC}"
+
+    # Add /home/pi to Git's safe.directory for the root user (as services run as root)
+    echo -ne "${CYAN}Configuring Git safe directory for root... ${NC}"
+    git config --global --add safe.directory /home/pi > /dev/null 2>&1
     echo -e "${GREEN}✓${NC}"
 
     echo -e "\n${GREEN}✓ Git repository setup completed successfully${NC}"
@@ -152,6 +151,42 @@ create_venv() {
         return 0
     else
         echo -e "${RED}✗ Error creating virtual environment${NC}"
+        return 1
+    fi
+}
+
+# Function to install Python packages
+install_packages() {
+    local venv_name=$1
+    echo -e "${CYAN}Installing Python packages in ${YELLOW}${venv_name}${CYAN} environment...${NC}"
+    
+    # Activate virtual environment
+    source "${venv_name}/bin/activate"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}✗ Failed to activate virtual environment${NC}"
+        return 1
+    fi
+
+    # Install required Python packages (minimal, explicit)
+    echo -e "${CYAN}Installing required Python libraries...${NC}"
+    if pip install --no-cache-dir \
+        adafruit-blinka \
+        rpi_ws281x \
+        adafruit-circuitpython-neopixel \
+        RPi.GPIO \
+        flask \
+        requests \
+        pytz \
+        astral \
+        schedule; then
+
+        # Deactivate virtual environment
+        deactivate
+        echo -e "\n${GREEN}✓ All packages installed successfully${NC}"
+        return 0
+    else
+        deactivate
+        echo -e "${RED}✗ Failed to install Python packages${NC}"
         return 1
     fi
 }
@@ -176,142 +211,312 @@ print_welcome_banner() {
     echo -e "${YELLOW}User CTRL+C to cancel at any time.${NC}"
 }
 
-# Main script
-print_welcome_banner
-
-read -e -p "$(echo -e "${CYAN}Would you like to update the system? [Y/n]: ${NC}")" UPDATE_CHOICE
-UPDATE_CHOICE=${UPDATE_CHOICE:-y}  # Default to 'y' if empty
-case ${UPDATE_CHOICE,,} in  # Convert to lowercase
-    [Yy]*|"")
-        update_system
-        ;;
-    [Nn]*)
-        echo -e "${YELLOW}⚠ Skipping system update${NC}"
-        ;;
-    *)
-        echo -e "${RED}✗ Invalid input${NC}"
-        exit 1
-        ;;
-esac
-
-# Virtual environment setup prompt
-print_section_header "Virtual Environment Setup"
-echo -e "${YELLOW}A virtual environment isolates Python packages for this project.${NC}"
-
-read -e -p "$(echo -e "${CYAN}Would you like to set up a virtual environment? [Y/n]: ${NC}")" VENV_SETUP_CHOICE
-VENV_SETUP_CHOICE=${VENV_SETUP_CHOICE:-y}
-case ${VENV_SETUP_CHOICE,,} in
-    [Yy]*|"")
-        # Ask for virtual environment name
-        read -p "$(echo -e "${CYAN}Enter virtual environment name (default: ${GREEN}metar${CYAN}): ${NC}")" VENV_NAME
-        VENV_NAME=${VENV_NAME:-metar}
-
-        # Validate venv name (only allow alphanumeric and underscores)
-        if [[ ! $VENV_NAME =~ ^[a-zA-Z0-9_]+$ ]]; then
-            echo -e "${RED}╔════════════════════════════════════════════════════╗${NC}"
-            echo -e "${RED}║  Error: Invalid virtual environment name           ║${NC}"
-            echo -e "${RED}║                                                    ║${NC}"
-            echo -e "${RED}║  Use only letters, numbers, and underscores        ║${NC}"
-            echo -e "${RED}╚════════════════════════════════════════════════════╝${NC}"
-            exit 1
-        fi
-
-        create_venv "$VENV_NAME"
-        ;;
-    [Nn]*)
-        echo -e "${YELLOW}⚠ Skipping virtual environment setup${NC}"
-        ;;
-    *)
-        echo -e "${RED}✗ Invalid input${NC}"
-        exit 1
-        ;;
-esac
-
-# Add Git installation prompt
-print_section_header "Software Installation"
-echo -e "${YELLOW}This step will download all the necessary files for METARMap${NC}"
-echo -e "${YELLOW}from the GitHub repository.${NC}"
-echo ""
-
-read -e -p "$(echo -e "${CYAN}Would you like to install Git and clone the required files? [Y/n]: ${NC}")" GIT_CHOICE
-GIT_CHOICE=${GIT_CHOICE:-y}
-case ${GIT_CHOICE,,} in
-    [Yy]*|"")
-        # Set default branch to production
-        BRANCH="production"
-        setup_git
-        ;;
-    [Nn]*)
-        echo -e "${YELLOW}⚠ Skipping Git installation${NC}"
-        ;;
-    *)
-        echo -e "${RED}✗ Invalid input${NC}"
-        ;;
-esac
-
-# Add package installation prompt
-print_section_header "Python Package Installation"
-echo -e "${YELLOW}The following packages are required for METARMap:${NC}"
-echo -e "  ${CYAN}• adafruit-circuitpython-neopixel${NC} - LED control"
-echo -e "  ${CYAN}• flask${NC} - web interface"
-echo -e "  ${CYAN}• requests${NC} - API communication"
-echo -e "  ${CYAN}• schedule${NC} - task automation"
-echo ""
-
-read -e -p "$(echo -e "${CYAN}Would you like to install the required packages? [Y/n]: ${NC}")" PACKAGES_CHOICE
-PACKAGES_CHOICE=${PACKAGES_CHOICE:-y}
-case ${PACKAGES_CHOICE,,} in
-    [Yy]*|"")
-        if [ -n "$VENV_NAME" ]; then
-            install_packages "$VENV_NAME"
-        else
-            echo -e "${RED}✗ Virtual environment name not set${NC}"
-        fi
-        ;;
-    [Nn]*)
-        echo -e "${YELLOW}⚠ Skipping package installation${NC}"
-        ;;
-    *)
-        echo -e "${RED}✗ Invalid input${NC}"
-        ;;
-esac
-
-# Function to install Python packages
-install_packages() {
-    local venv_name=$1
-    local packages=(
-        "adafruit-circuitpython-neopixel"
-        "flask"
-        "requests"
-        "schedule"
-    )
-
-    print_section_header "Installing Python Packages"
-    echo -e "${CYAN}Installing Python packages in ${YELLOW}${venv_name}${CYAN} environment...${NC}"
+# Function for express install
+express_install() {
+    echo -e "${GREEN}Starting Express Install...${NC}"
+    echo -e "${YELLOW}This will install METARMap with recommended defaults.${NC}"
+    echo ""
     
-    # Activate virtual environment
-    source "${venv_name}/bin/activate"
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}✗ Failed to activate virtual environment${NC}"
-        return 1
-    fi
+    # Set defaults for express install
+    VENV_NAME="metar"
+    BRANCH="production"
+    
+    # System update
+    echo -e "${CYAN}Updating system...${NC}"
+    update_system
+    
+    # Virtual environment
+    echo -e "${CYAN}Creating virtual environment...${NC}"
+    create_venv "$VENV_NAME"
+    
+    # Git setup
+    echo -e "${CYAN}Setting up Git repository...${NC}"
+    setup_git
+    
+    # Package installation
+    echo -e "${CYAN}Installing Python packages...${NC}"
+    install_packages "$VENV_NAME"
+    
+    # Skip WiFi broadcasting for express install
+    echo -e "${YELLOW}Skipping WiFi broadcasting setup (can be configured later)${NC}"
+    
+    # Services
+    echo -e "${CYAN}Installing system services...${NC}"
+    setup_services "$VENV_NAME"
+    
+    # Aliases
+    echo -e "${CYAN}Setting up command aliases...${NC}"
+    setup_aliases "$VENV_NAME"
+    
+    # Disable HTTPS for express install
+    echo -e "${CYAN}Configuring HTTPS settings...${NC}"
+    disable_https
+    
+    # Skip Tailscale for express install
+    echo -e "${YELLOW}Skipping Tailscale setup (can be configured later)${NC}"
+    
+    # Final setup
+    echo -ne "${CYAN}Finalizing file permissions... ${NC}"
+    sudo chown -R pi:pi /home/pi > /dev/null 2>&1
+    echo -e "${GREEN}✓${NC}"
+    
+    echo -e "\n${GREEN}✓ Express install completed successfully!${NC}"
+    echo -e "${YELLOW}A system reboot is recommended to apply all changes.${NC}"
+    echo ""
+    
+    read -e -p "$(echo -e "${CYAN}Would you like to reboot now? [Y/n]: ${NC}")" REBOOT_CHOICE
+    REBOOT_CHOICE=${REBOOT_CHOICE:-y}
+    case ${REBOOT_CHOICE,,} in
+        [Yy]*|"")
+            echo -e "${CYAN}Rebooting system...${NC}"
+            sudo reboot
+            ;;
+        [Nn]*)
+            echo -e "${YELLOW}Please remember to reboot your system to apply all changes${NC}"
+            ;;
+        *)
+            echo -e "${RED}✗ Invalid input. Please reboot manually when ready${NC}"
+            ;;
+    esac
+}
 
-    # Install each package
-    for package in "${packages[@]}"; do
-        echo -ne "${CYAN}Installing ${YELLOW}$package${CYAN}... ${NC}"
-        if pip3 install "$package" > /dev/null 2>&1; then
-            echo -e "${GREEN}✓${NC}"
-        else
-            echo -e "${RED}✗ Failed${NC}"
-            deactivate
-            return 1
-        fi
-    done
+# Function for advanced install
+advanced_install() {
+    echo -e "${YELLOW}Starting Advanced Install...${NC}"
+    echo -e "${YELLOW}You will be prompted for each installation step.${NC}"
+    echo ""
+    
+    read -e -p "$(echo -e "${CYAN}Would you like to update the system? [Y/n]: ${NC}")" UPDATE_CHOICE
+    UPDATE_CHOICE=${UPDATE_CHOICE:-y}  # Default to 'y' if empty
+    case ${UPDATE_CHOICE,,} in  # Convert to lowercase
+        [Yy]*|"")
+            update_system
+            ;;
+        [Nn]*)
+            echo -e "${YELLOW}⚠ Skipping system update${NC}"
+            ;;
+        *)
+            echo -e "${RED}✗ Invalid input${NC}"
+            exit 1
+            ;;
+    esac
 
-    # Deactivate virtual environment
-    deactivate
-    echo -e "\n${GREEN}✓ All packages installed successfully${NC}"
-    return 0
+    # Virtual environment setup prompt
+    print_section_header "Virtual Environment Setup"
+    echo -e "${YELLOW}A virtual environment isolates Python packages for this project.${NC}"
+
+    read -e -p "$(echo -e "${CYAN}Would you like to set up a virtual environment? [Y/n]: ${NC}")" VENV_SETUP_CHOICE
+    VENV_SETUP_CHOICE=${VENV_SETUP_CHOICE:-y}
+    case ${VENV_SETUP_CHOICE,,} in
+        [Yy]*|"")
+            # Ask for virtual environment name
+            read -p "$(echo -e "${CYAN}Enter virtual environment name (default: ${GREEN}metar${CYAN}): ${NC}")" VENV_NAME
+            VENV_NAME=${VENV_NAME:-metar}
+
+            # Validate venv name (only allow alphanumeric and underscores)
+            if [[ ! $VENV_NAME =~ ^[a-zA-Z0-9_]+$ ]]; then
+                echo -e "${RED}╔════════════════════════════════════════════════════╗${NC}"
+                echo -e "${RED}║  Error: Invalid virtual environment name           ║${NC}"
+                echo -e "${RED}║                                                    ║${NC}"
+                echo -e "${RED}║  Use only letters, numbers, and underscores        ║${NC}"
+                echo -e "${RED}╚════════════════════════════════════════════════════╝${NC}"
+                exit 1
+            fi
+
+            create_venv "$VENV_NAME"
+            ;;
+        [Nn]*)
+            echo -e "${YELLOW}⚠ Skipping virtual environment setup${NC}"
+            ;;
+        *)
+            echo -e "${RED}✗ Invalid input${NC}"
+            exit 1
+            ;;
+    esac
+
+    # Add Git installation prompt
+    print_section_header "Software Installation"
+    echo -e "${YELLOW}This step will download all the necessary files for METARMap${NC}"
+    echo -e "${YELLOW}from the GitHub repository.${NC}"
+    echo ""
+
+    read -e -p "$(echo -e "${CYAN}Would you like to install Git and clone the required files? [Y/n]: ${NC}")" GIT_CHOICE
+    GIT_CHOICE=${GIT_CHOICE:-y}
+    case ${GIT_CHOICE,,} in
+        [Yy]*|"")
+            # Set default branch to production
+            BRANCH="production"
+            setup_git
+            ;;
+        [Nn]*)
+            echo -e "${YELLOW}⚠ Skipping Git installation${NC}"
+            ;;
+        *)
+            echo -e "${RED}✗ Invalid input${NC}"
+            ;;
+    esac
+
+    # Add package installation prompt
+    print_section_header "Python Package Installation"
+    echo -e "${YELLOW}The following packages are required for METARMap:${NC}"
+    echo -e "  ${CYAN}• adafruit-circuitpython-neopixel${NC} - LED control"
+    echo -e "  ${CYAN}• flask${NC} - web interface"
+    echo -e "  ${CYAN}• requests${NC} - API communication"
+    echo -e "  ${CYAN}• schedule${NC} - task automation"
+    echo -e "  ${CYAN}• astral${NC} - sunrise/sunset calculations"
+    echo -e "  ${CYAN}• pytz${NC} - time zone calculations"
+    echo ""
+
+    read -e -p "$(echo -e "${CYAN}Would you like to install the required packages? [Y/n]: ${NC}")" PACKAGES_CHOICE
+    PACKAGES_CHOICE=${PACKAGES_CHOICE:-y}
+    case ${PACKAGES_CHOICE,,} in
+        [Yy]*|"")
+            if [ -n "$VENV_NAME" ]; then
+                install_packages "$VENV_NAME"
+            else
+                echo -e "${RED}✗ Virtual environment name not set${NC}"
+            fi
+            ;;
+        [Nn]*)
+            echo -e "${YELLOW}⚠ Skipping package installation${NC}"
+            ;;
+        *)
+            echo -e "${RED}✗ Invalid input${NC}"
+            ;;
+    esac
+
+    # Add WiFi broadcasting setup prompt
+    setup_wifi_broadcast
+
+    # Add to main script:
+    print_section_header "Service Installation"
+    echo -e "${YELLOW}This will install the following services:${NC}"
+    echo -e "  ${CYAN}• METAR service${NC} - Controls the LED display"
+    echo -e "  ${CYAN}• Settings service${NC} - Provides the web interface"
+    echo -e "  ${CYAN}• Scheduler service${NC} - Handles automated tasks"
+    echo -e "  ${CYAN}• LED Test service${NC} - Provides LED testing functionality"
+    echo ""
+
+    read -e -p "$(echo -e "${CYAN}Would you like to install all services? [Y/n]: ${NC}")" SERVICES_CHOICE
+    SERVICES_CHOICE=${SERVICES_CHOICE:-y}
+    case ${SERVICES_CHOICE,,} in
+        [Yy]*|"")
+            if [ -z "$VENV_NAME" ]; then
+                echo -e "${RED}✗ Cannot install services without a virtual environment. Please re-run and create a venv.${NC}"
+            else
+                setup_services "$VENV_NAME"
+            fi
+
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}✓ All services installed and enabled successfully${NC}"
+            else
+                echo -e "${RED}✗ Error installing services${NC}"
+            fi
+            ;;
+        [Nn]*)
+            echo -e "${YELLOW}⚠ Skipping service installation and enabling${NC}"
+            ;;
+        *)
+            echo -e "${RED}✗ Invalid input${NC}"
+            ;;
+    esac
+
+    # Add Command Aliases Setup right after Service Installation
+    print_section_header "Command Aliases Setup"
+    echo -e "${YELLOW}Command aliases make it easier to control your METARMap${NC}"
+    echo -e "${YELLOW}by providing simple commands like:${NC}"
+    echo -e "  ${CYAN}• startmetar${NC} - Start the LED display"
+    echo -e "  ${CYAN}• stopmetar${NC} - Stop the LED display"
+    echo -e "  ${CYAN}• blank${NC} - Turn off all LEDs"
+    echo ""
+
+    read -e -p "$(echo -e "${CYAN}Would you like to install command aliases? [Y/n]: ${NC}")" ALIAS_CHOICE
+    ALIAS_CHOICE=${ALIAS_CHOICE:-y}
+    case ${ALIAS_CHOICE,,} in
+        [Yy]*|"")
+            if [ -z "$VENV_NAME" ]; then
+                echo -e "${RED}✗ Cannot install aliases without a virtual environment. Please re-run and create a venv.${NC}"
+            else
+                setup_aliases "$VENV_NAME"
+            fi
+            ;;
+        [Nn]*)
+            echo -e "${YELLOW}⚠ Skipping alias setup${NC}"
+            ;;
+        *)
+            echo -e "${RED}✗ Invalid input${NC}"
+            ;;
+    esac
+
+    # Add SSL setup prompt
+    print_section_header "SSL Certificate Setup"
+    echo -e "${YELLOW}Setting up HTTPS will:${NC}"
+    echo -e "  ${CYAN}1. Generate a self-signed SSL certificate${NC}"
+    echo -e "  ${CYAN}2. Enable HTTPS in config.py${NC}"
+    echo -e "  ${CYAN}3. Configure the web interface to use HTTPS (port 443)${NC}"
+    echo ""
+
+    read -e -p "$(echo -e "${CYAN}Would you like to setup HTTPS with a self-signed certificate? [N/y]: ${NC}")" SSL_CHOICE
+    SSL_CHOICE=${SSL_CHOICE:-n}
+    case ${SSL_CHOICE,,} in
+        [Yy]*)
+            setup_ssl
+            ;;
+        [Nn]*|"")
+            echo -e "${CYAN}Disabling HTTPS...${NC}"
+            disable_https
+            echo -e "${GREEN}✓ HTTPS disabled${NC}"
+            ;;
+        *)
+            echo -e "${RED}✗ Invalid input${NC}"
+            ;;
+    esac
+
+    # Add Tailscale installation prompt
+    print_section_header "Tailscale Remote Access"
+    echo -e "${YELLOW}Tailscale provides secure remote access to your METARMap${NC}"
+    echo -e "${YELLOW}from anywhere in the world, without port forwarding.${NC}"
+    echo ""
+
+    read -e -p "$(echo -e "${CYAN}Would you like to install Tailscale? [N/y]: ${NC}")" TAILSCALE_CHOICE
+    TAILSCALE_CHOICE=${TAILSCALE_CHOICE:-n}
+    case ${TAILSCALE_CHOICE,,} in
+        [Yy]*)
+            install_tailscale
+            ;;
+        [Nn]*|"")
+            echo -e "${YELLOW}⚠ Skipping Tailscale installation${NC}"
+            ;;
+        *)
+            echo -e "${RED}✗ Invalid input${NC}"
+            ;;
+    esac
+
+    # Add reboot prompt at the end
+    print_section_header "Setup Complete"
+    echo -e "${GREEN}✓ METARMap installation has been completed successfully!${NC}"
+    echo -e "${YELLOW}A system reboot is recommended to apply all changes.${NC}"
+    echo ""
+
+    # Final ownership check
+    echo -ne "${CYAN}Finalizing file permissions for /home/pi... ${NC}"
+    sudo chown -R pi:pi /home/pi > /dev/null 2>&1
+    echo -e "${GREEN}✓${NC}"
+
+    read -e -p "$(echo -e "${CYAN}Would you like to reboot now? [Y/n]: ${NC}")" REBOOT_CHOICE
+    REBOOT_CHOICE=${REBOOT_CHOICE:-y}
+    case ${REBOOT_CHOICE,,} in
+        [Yy]*|"")
+            echo -e "${CYAN}Rebooting system...${NC}"
+            sudo reboot
+            ;;
+        [Nn]*)
+            echo -e "${YELLOW}Please remember to reboot your system to apply all changes${NC}"
+            ;;
+        *)
+            echo -e "${RED}✗ Invalid input. Please reboot manually when ready${NC}"
+            ;;
+    esac
 }
 
 # Function to setup WiFi broadcasting
@@ -322,7 +527,6 @@ setup_wifi_broadcast() {
     echo ""
     
     # Present options for WiFi broadcasting
-    echo -e "${CYAN}Choose a WiFi broadcasting solution:${NC}"
     echo -e "  ${MAGENTA}1)${NC} ${GREEN}AccessPopup${NC} (RaspberryConnect solution)"
     echo -e "  ${MAGENTA}2)${NC} ${YELLOW}Skip${NC} WiFi broadcasting setup"
     echo ""
@@ -380,7 +584,8 @@ setup_accesspopup() {
 
             # Cleanup
             echo -ne "${CYAN}Cleaning up temporary files... ${NC}"
-            rm -rf AccessPopup.tar.gz > /dev/null 2>&1
+            rm -f AccessPopup.tar.gz > /dev/null 2>&1
+            rm -rf AccessPopup > /dev/null 2>&1
             echo -e "${GREEN}✓${NC}"
 
             echo -e "\n${GREEN}✓ AccessPopup WiFi broadcast setup completed${NC}"
@@ -395,22 +600,16 @@ setup_accesspopup() {
     fi
 }
 
-# Add WiFi broadcasting setup prompt
-setup_wifi_broadcast
-
-# Function to install a service
-install_service() {
+# Function to create service file
+create_service_file() {
     local service_name=$1
     local service_content=$2
+    local service_path="/etc/systemd/system/${service_name}"
 
     echo -ne "${CYAN}Creating ${service_name}... ${NC}"
-    echo "$service_content" | sudo tee "/etc/systemd/system/${service_name}" > /dev/null
+    echo -e "$service_content" | sudo tee "$service_path" > /dev/null
 
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✓${NC}"
-        echo -ne "${CYAN}Enabling ${service_name}... ${NC}"
-        sudo systemctl daemon-reload > /dev/null 2>&1
-        sudo systemctl enable "${service_name}" > /dev/null 2>&1
         echo -e "${GREEN}✓${NC}"
         return 0
     else
@@ -419,15 +618,25 @@ install_service() {
     fi
 }
 
-# Service definitions
-METAR_SERVICE="[Unit]
+# Function to setup services
+setup_services() {
+    local venv_name=$1
+
+    if [ -z "$venv_name" ]; then
+        echo -e "${RED}✗ Virtual environment name not provided. Cannot create services.${NC}"
+        return 1
+    fi
+
+    # Service definitions using the provided venv_name
+    # Note: All services run as root to handle GPIO and service control without sudo issues.
+    METAR_SERVICE="[Unit]
 Description=Run Metar Service
 After=network.target
 
 [Service]
 Type=simple
 WorkingDirectory=/home/pi
-ExecStart=/home/pi/metar/bin/python3 /home/pi/metar.py
+ExecStart=/home/pi/${venv_name}/bin/python3 /home/pi/metar.py
 Restart=always
 User=root
 StandardOutput=journal
@@ -436,78 +645,64 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target"
 
-SETTINGS_SERVICE="[Unit]
+    SETTINGS_SERVICE="[Unit]
 Description=Run Flask App for Settings
 After=network.target
 
 [Service]
 WorkingDirectory=/home/pi/
-ExecStart=sudo /home/pi/metar/bin/python3 /home/pi/settings.py
+ExecStart=/home/pi/${venv_name}/bin/python3 /home/pi/settings.py
 Restart=on-failure
-User=pi
+User=root
 StandardOutput=journal
 StandardError=journal
 
 [Install]
 WantedBy=multi-user.target"
 
-SCHEDULER_SERVICE="[Unit]
+    SCHEDULER_SERVICE="[Unit]
 Description=Scheduler Service
 After=network.target
 
 [Service]
 Type=simple
 WorkingDirectory=/home/pi
-ExecStart=sudo /home/pi/metar/bin/python3 /home/pi/scheduler.py
+ExecStart=/home/pi/${venv_name}/bin/python3 /home/pi/scheduler.py
 Restart=always
-User=pi
+User=root
 StandardOutput=journal
 StandardError=journal
 
 [Install]
 WantedBy=multi-user.target"
 
-LED_TEST_SERVICE="[Unit]
+    LED_TEST_SERVICE="[Unit]
 Description=LED Test Service
 After=network.target
 
 [Service]
 Type=simple
 WorkingDirectory=/home/pi
-ExecStart=sudo /home/pi/metar/bin/python3 /home/pi/led_test.py
+ExecStart=/home/pi/${venv_name}/bin/python3 /home/pi/led_test.py
 Restart=always
-User=pi
+User=root
 StandardOutput=journal
 StandardError=journal
 
 [Install]
 WantedBy=multi-user.target"
 
-# Function to create service file
-create_service_file() {
-    local service_name=$1
-    local service_content=$2
-    local service_path="/etc/systemd/system/${service_name}"
-
-    echo -ne "${CYAN}Creating ${service_name}... ${NC}"
-    echo "$service_content" > "$service_path"
-
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✓${NC}"
-        return 0
-    else
-        echo -e "${RED}✗ Failed${NC}"
-        return 1
-    fi
-}
-
-# Function to enable services
-enable_services() {
     echo -ne "${CYAN}Reloading systemd daemon... ${NC}"
     if sudo systemctl daemon-reload > /dev/null 2>&1; then
         echo -e "${GREEN}✓${NC}"
 
-        local services=("metar.service" "settings.service" "scheduler.service")
+        # Create and enable services
+        create_service_file "metar.service" "$METAR_SERVICE"
+        create_service_file "settings.service" "$SETTINGS_SERVICE"
+        create_service_file "scheduler.service" "$SCHEDULER_SERVICE"
+        create_service_file "ledtest.service" "$LED_TEST_SERVICE"
+
+        local services=("metar.service" "settings.service" "scheduler.service") # ledtest is on-demand
         for service in "${services[@]}"; do
             echo -ne "${CYAN}Enabling ${service}... ${NC}"
             if sudo systemctl enable "$service" > /dev/null 2>&1; then
@@ -520,72 +715,32 @@ enable_services() {
         echo -e "${RED}✗ Failed${NC}"
         return 1
     fi
+
+    return 0
 }
-
-# Add to main script:
-print_section_header "Service Installation"
-echo -e "${YELLOW}This will install the following services:${NC}"
-echo -e "  ${CYAN}• METAR service${NC} - Controls the LED display"
-echo -e "  ${CYAN}• Settings service${NC} - Provides the web interface"
-echo -e "  ${CYAN}• Scheduler service${NC} - Handles automated tasks"
-echo -e "  ${CYAN}• LED Test service${NC} - Provides LED testing functionality"
-echo ""
-
-read -e -p "$(echo -e "${CYAN}Would you like to install all services? [Y/n]: ${NC}")" SERVICES_CHOICE
-SERVICES_CHOICE=${SERVICES_CHOICE:-y}
-case ${SERVICES_CHOICE,,} in
-    [Yy]*|"")
-        # Create service files
-        create_service_file "metar.service" "$METAR_SERVICE"
-        create_service_file "settings.service" "$SETTINGS_SERVICE"
-        create_service_file "scheduler.service" "$SCHEDULER_SERVICE"
-        create_service_file "ledtest.service" "$LED_TEST_SERVICE"
-
-        # Enable required services
-        enable_services
-
-        if [ $? -eq 0 ]; then
-            echo -e "${GREEN}✓ All services installed and enabled successfully${NC}"
-        else
-            echo -e "${RED}✗ Error installing services${NC}"
-        fi
-        ;;
-    [Nn]*)
-        echo -e "${YELLOW}⚠ Skipping service installation and enabling${NC}"
-        ;;
-    *)
-        echo -e "${RED}✗ Invalid input${NC}"
-        ;;
-esac
 
 # Function to setup aliases
 setup_aliases() {
-    local ALIASES="alias blank='sudo /home/pi/metar/bin/python3 blank.py'
-alias metar='sudo /home/pi/metar/bin/python3 '
+    local venv_name=$1
+    if [ -z "$venv_name" ]; then
+        echo -e "${RED}✗ Virtual environment name not provided. Cannot create aliases.${NC}"
+        return 1
+    fi
+
+    local ALIASES="alias blank='sudo /home/pi/${venv_name}/bin/python3 /home/pi/blank.py'
+alias metar='sudo /home/pi/${venv_name}/bin/python3 '
 alias startmetar='sudo systemctl start metar.service'
 alias startscheduler='sudo systemctl start scheduler.service'
 alias startsettings='sudo systemctl start settings.service'
-alias startledtest='sudo systemctl start ledtest.service'
 alias stopmetar='sudo systemctl stop metar.service'
 alias stopsettings='sudo systemctl stop settings.service'
 alias stopscheduler='sudo systemctl stop scheduler.service'
-alias stopledtest='sudo systemctl stop ledtest.service'
 alias restartmetar='sudo systemctl restart metar.service'
 alias restartsettings='sudo systemctl restart settings.service'
 alias restartscheduler='sudo systemctl restart scheduler.service'
-alias restartledtest='sudo systemctl restart ledtest.service'
 alias metarstatus='sudo systemctl status metar.service'
 alias settingsstatus='sudo systemctl status settings.service'
-alias schedulerstatus='sudo systemctl status scheduler.service'
-alias ledteststatus='sudo systemctl status ledtest.service'
-
-# LED Test commands
-alias testleds='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py'
-alias ledtest='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py'
-alias ledtest-red='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py red'
-alias ledtest-green='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py green'
-alias ledtest-blue='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py blue'
-alias ledtest-off='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py off'"
+alias schedulerstatus='sudo systemctl status scheduler.service'"
 
     echo -ne "${CYAN}Installing command aliases... ${NC}"
     # Write aliases to the pi user's .bash_aliases file
@@ -597,29 +752,6 @@ alias ledtest-off='sudo /home/pi/metar/bin/python3 /home/pi/led_test.py off'"
     echo -e "${YELLOW}Or log out and log back in for aliases to take effect automatically.${NC}"
     return 0
 }
-
-# Add Command Aliases Setup right after Service Installation
-print_section_header "Command Aliases Setup"
-echo -e "${YELLOW}Command aliases make it easier to control your METARMap${NC}"
-echo -e "${YELLOW}by providing simple commands like:${NC}"
-echo -e "  ${CYAN}• startmetar${NC} - Start the LED display"
-echo -e "  ${CYAN}• stopmetar${NC} - Stop the LED display"
-echo -e "  ${CYAN}• blank${NC} - Turn off all LEDs"
-echo ""
-
-read -e -p "$(echo -e "${CYAN}Would you like to install command aliases? [Y/n]: ${NC}")" ALIAS_CHOICE
-ALIAS_CHOICE=${ALIAS_CHOICE:-y}
-case ${ALIAS_CHOICE,,} in
-    [Yy]*|"")
-        setup_aliases
-        ;;
-    [Nn]*)
-        echo -e "${YELLOW}⚠ Skipping alias setup${NC}"
-        ;;
-    *)
-        echo -e "${RED}✗ Invalid input${NC}"
-        ;;
-esac
 
 # Function to disable HTTPS in config
 disable_https() {
@@ -656,13 +788,13 @@ setup_ssl() {
     echo -e "${YELLOW}Generating self-signed SSL certificate...${NC}"
 
     # Create directory for certificates if it doesn't exist
-    sudo mkdir -p /etc/metar/ssl
+    sudo mkdir -p /etc/ssl/certs /etc/ssl/private
 
     # Generate SSL certificate
     echo -ne "${CYAN}Generating SSL certificate... ${NC}"
     if sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-        -keyout /etc/metar/ssl/metar.key \
-        -out /etc/metar/ssl/metar.crt \
+        -keyout /etc/ssl/private/flask-selfsigned.key \
+        -out /etc/ssl/certs/flask-selfsigned.crt \
         -subj "/C=US/ST=State/L=City/O=METARMap/CN=metar.local" > /dev/null 2>&1; then
         echo -e "${GREEN}✓${NC}"
     else
@@ -672,9 +804,8 @@ setup_ssl() {
 
     # Set proper permissions
     echo -ne "${CYAN}Setting certificate permissions... ${NC}"
-    if sudo chmod 644 /etc/metar/ssl/metar.crt && \
-       sudo chmod 600 /etc/metar/ssl/metar.key && \
-       sudo chown -R pi:pi /etc/metar/ssl; then
+    if sudo chmod 644 /etc/ssl/certs/flask-selfsigned.crt && \
+       sudo chmod 600 /etc/ssl/private/flask-selfsigned.key; then
         echo -e "${GREEN}✓${NC}"
     else
         echo -e "${RED}✗ Failed to set permissions${NC}"
@@ -697,12 +828,6 @@ setup_ssl() {
             echo "ENABLE_HTTPS = True" | sudo tee -a "$CONFIG_FILE" > /dev/null
         fi
 
-        # Add SSL certificate paths if they don't exist
-        if ! grep -q "SSL_CERT" "$CONFIG_FILE"; then
-            echo "SSL_CERT = '/etc/metar/ssl/metar.crt'" | sudo tee -a "$CONFIG_FILE" > /dev/null
-            echo "SSL_KEY = '/etc/metar/ssl/metar.key'" | sudo tee -a "$CONFIG_FILE" > /dev/null
-        fi
-
         # Verify the changes
         if grep -q "ENABLE_HTTPS = True" "$CONFIG_FILE"; then
             echo -e "${GREEN}✓${NC}"
@@ -719,30 +844,6 @@ setup_ssl() {
     echo -e "${YELLOW}This is normal for self-signed certificates.${NC}"
     return 0
 }
-
-# Add SSL setup prompt
-print_section_header "SSL Certificate Setup"
-echo -e "${YELLOW}Setting up HTTPS will:${NC}"
-echo -e "  ${CYAN}1. Generate a self-signed SSL certificate${NC}"
-echo -e "  ${CYAN}2. Enable HTTPS in config.py${NC}"
-echo -e "  ${CYAN}3. Configure the web interface to use HTTPS (port 443)${NC}"
-echo ""
-
-read -e -p "$(echo -e "${CYAN}Would you like to setup HTTPS with a self-signed certificate? [N/y]: ${NC}")" SSL_CHOICE
-SSL_CHOICE=${SSL_CHOICE:-n}
-case ${SSL_CHOICE,,} in
-    [Yy]*)
-        setup_ssl
-        ;;
-    [Nn]*|"")
-        echo -e "${CYAN}Disabling HTTPS...${NC}"
-        disable_https
-        echo -e "${GREEN}✓ HTTPS disabled${NC}"
-        ;;
-    *)
-        echo -e "${RED}✗ Invalid input${NC}"
-        ;;
-esac
 
 # Function to install Tailscale
 install_tailscale() {
@@ -821,43 +922,26 @@ install_tailscale() {
     return 0
 }
 
-# Add Tailscale installation prompt
-print_section_header "Tailscale Remote Access"
-echo -e "${YELLOW}Tailscale provides secure remote access to your METARMap${NC}"
-echo -e "${YELLOW}from anywhere in the world, without port forwarding.${NC}"
+# Main script
+print_welcome_banner
+
+# Choose installation type
+echo -e "${CYAN}Choose installation type:${NC}"
+echo -e "  ${MAGENTA}1)${NC} ${GREEN}Express Install${NC} (automated, recommended)"
+echo -e "  ${MAGENTA}2)${NC} ${YELLOW}Advanced Install${NC} (step-by-step, customizable)"
 echo ""
 
-read -e -p "$(echo -e "${CYAN}Would you like to install Tailscale? [N/y]: ${NC}")" TAILSCALE_CHOICE
-TAILSCALE_CHOICE=${TAILSCALE_CHOICE:-n}
-case ${TAILSCALE_CHOICE,,} in
-    [Yy]*)
-        install_tailscale
+read -p "$(echo -e "${CYAN}Enter choice (1 or 2): ${NC}")" INSTALL_CHOICE
+
+case $INSTALL_CHOICE in
+    1|"")
+        express_install
         ;;
-    [Nn]*|"")
-        echo -e "${YELLOW}⚠ Skipping Tailscale installation${NC}"
+    2)
+        advanced_install
         ;;
     *)
-        echo -e "${RED}✗ Invalid input${NC}"
-        ;;
-esac
-
-# Add reboot prompt at the end
-print_section_header "Setup Complete"
-echo -e "${GREEN}✓ METARMap installation has been completed successfully!${NC}"
-echo -e "${YELLOW}A system reboot is recommended to apply all changes.${NC}"
-echo ""
-
-read -e -p "$(echo -e "${CYAN}Would you like to reboot now? [Y/n]: ${NC}")" REBOOT_CHOICE
-REBOOT_CHOICE=${REBOOT_CHOICE:-y}
-case ${REBOOT_CHOICE,,} in
-    [Yy]*|"")
-        echo -e "${CYAN}Rebooting system...${NC}"
-        sudo reboot
-        ;;
-    [Nn]*)
-        echo -e "${YELLOW}Please remember to reboot your system to apply all changes${NC}"
-        ;;
-    *)
-        echo -e "${RED}✗ Invalid input. Please reboot manually when ready${NC}"
+        echo -e "${RED}✗ Invalid choice${NC}"
+        exit 1
         ;;
 esac

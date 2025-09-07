@@ -209,21 +209,3 @@
         font-size: 13px;
     }
 </style>
-
-<!-- Map-specific JavaScript -->
-<script>
-    // Initialize map when document is ready
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize the map system with configuration
-        initializeMapSystem({
-            vfrColor: '{{ vfr_color }}',
-            mvfrColor: '{{ mvfr_color }}',
-            ifrColor: '{{ ifr_color }}',
-            lifrColor: '{{ lifr_color }}',
-            missingColor: '{{ missing_color }}',
-            lighteningColor: '{{ lightening_color }}',
-            snowyColor: '{{ snowy_color }}',
-            weatherUpdateThreshold: {{ weather_update_threshold }}
-        });
-    });
-</script> 
