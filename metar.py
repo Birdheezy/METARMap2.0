@@ -451,10 +451,11 @@ def update_leds(weather_data):
                 flt_cat, wind_speed, wind_gust, lightning = weather.get_airport_weather(airport_code, weather_data)
                 is_windy = airport_code in windy_airports
                 is_snowy = airport_code in snowy_airports
-                # Handle None values for wind_speed and wind_gust
-                wind_speed_str = f"{wind_speed:<2}" if wind_speed is not None else "N/A"
-                wind_gust_str = f"{wind_gust:<2}" if wind_gust is not None else "N/A"
-                logger.info(f"{airport_code:<10} {flt_cat:<12} {wind_speed_str} kt {' '*8} {wind_gust_str} kt {' '*8} {'Yes' if is_windy else 'No':<6} {'Yes' if lightning else 'No':<10} {'Yes' if is_snowy else 'No':<6} {get_current_brightness():<10}")
+                # Convert all values to strings to handle None values gracefully
+                flt_cat_str = str(flt_cat) if flt_cat is not None else "None"
+                wind_speed_str = str(wind_speed) if wind_speed is not None else "None"
+                wind_gust_str = str(wind_gust) if wind_gust is not None else "None"
+                logger.info(f"{airport_code:<10} {flt_cat_str:<12} {wind_speed_str:<2} kt {' '*8} {wind_gust_str:<2} kt {' '*8} {'Yes' if is_windy else 'No':<6} {'Yes' if lightning else 'No':<10} {'Yes' if is_snowy else 'No':<6} {get_current_brightness():<10}")
 
     # Update LEDs based on flt_cat
     try:
