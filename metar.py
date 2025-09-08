@@ -112,6 +112,49 @@ def calculate_dimmed_color(base_color, dim_brightness):
     """Calculate the dimmed color by applying the brightness factor."""
     return tuple(int(c * dim_brightness) for c in base_color)
 
+def get_available_leds():
+    """Calculate the number of LEDs available for airports (excluding legend LEDs)."""
+    if LEGEND:
+        try:
+            legend_vfr = LEGEND_VFR
+        except NameError:
+            legend_vfr = True
+        try:
+            legend_mvfr = LEGEND_MVFR
+        except NameError:
+            legend_mvfr = True
+        try:
+            legend_ifr = LEGEND_IFR
+        except NameError:
+            legend_ifr = True
+        try:
+            legend_lifr = LEGEND_LIFR
+        except NameError:
+            legend_lifr = True
+        try:
+            legend_snowy = LEGEND_SNOWY
+        except NameError:
+            legend_snowy = True
+        try:
+            legend_lightning = LEGEND_LIGHTNING
+        except NameError:
+            legend_lightning = True
+        try:
+            legend_windy = LEGEND_WINDY
+        except NameError:
+            legend_windy = True
+        try:
+            legend_missing = LEGEND_MISSING
+        except NameError:
+            legend_missing = True
+        
+        # Count enabled legend items
+        enabled_legend_count = sum([legend_vfr, legend_mvfr, legend_ifr, legend_lifr, 
+                                   legend_snowy, legend_lightning, legend_windy, legend_missing])
+        return NUM_PIXELS - enabled_legend_count
+    else:
+        return NUM_PIXELS
+
 def update_legend(pixels):
     """Update the legend LEDs at the end of the strand if LEGEND is enabled."""
     if not LEGEND:
@@ -350,47 +393,7 @@ def update_leds(weather_data):
     logger.info(f"Airport list: {airport_list}")
 
     # Determine how many LEDs are available for airports
-    # If legend is enabled, we need to count how many legend items are enabled
-    if LEGEND:
-        try:
-            legend_vfr = LEGEND_VFR
-        except NameError:
-            legend_vfr = True
-        try:
-            legend_mvfr = LEGEND_MVFR
-        except NameError:
-            legend_mvfr = True
-        try:
-            legend_ifr = LEGEND_IFR
-        except NameError:
-            legend_ifr = True
-        try:
-            legend_lifr = LEGEND_LIFR
-        except NameError:
-            legend_lifr = True
-        try:
-            legend_snowy = LEGEND_SNOWY
-        except NameError:
-            legend_snowy = True
-        try:
-            legend_lightning = LEGEND_LIGHTNING
-        except NameError:
-            legend_lightning = True
-        try:
-            legend_windy = LEGEND_WINDY
-        except NameError:
-            legend_windy = True
-        try:
-            legend_missing = LEGEND_MISSING
-        except NameError:
-            legend_missing = True
-        
-        # Count enabled legend items
-        enabled_legend_count = sum([legend_vfr, legend_mvfr, legend_ifr, legend_lifr, 
-                                   legend_snowy, legend_lightning, legend_windy, legend_missing])
-        available_leds = NUM_PIXELS - enabled_legend_count
-    else:
-        available_leds = NUM_PIXELS
+    available_leds = get_available_leds()
     
     logger.info(f"Available LEDs for airports: {available_leds}")
 
@@ -448,7 +451,10 @@ def update_leds(weather_data):
                 flt_cat, wind_speed, wind_gust, lightning = weather.get_airport_weather(airport_code, weather_data)
                 is_windy = airport_code in windy_airports
                 is_snowy = airport_code in snowy_airports
-                logger.info(f"{airport_code:<10} {flt_cat:<12} {wind_speed:<2} kt {' '*8} {wind_gust:<2} kt {' '*8} {'Yes' if is_windy else 'No':<6} {'Yes' if lightning else 'No':<10} {'Yes' if is_snowy else 'No':<6} {get_current_brightness():<10}")
+                # Handle None values for wind_speed and wind_gust
+                wind_speed_str = f"{wind_speed:<2}" if wind_speed is not None else "N/A"
+                wind_gust_str = f"{wind_gust:<2}" if wind_gust is not None else "N/A"
+                logger.info(f"{airport_code:<10} {flt_cat:<12} {wind_speed_str} kt {' '*8} {wind_gust_str} kt {' '*8} {'Yes' if is_windy else 'No':<6} {'Yes' if lightning else 'No':<10} {'Yes' if is_snowy else 'No':<6} {get_current_brightness():<10}")
 
     # Update LEDs based on flt_cat
     try:
