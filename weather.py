@@ -165,6 +165,131 @@ def get_snowy_airports(weather_data):
     return snowy_airports
 
 
+def determine_flight_category(raw_metar):
+    """
+    Determine flight category from raw METAR string when API doesn't provide it.
+    
+    Args:
+        raw_metar: Raw METAR string (e.g., "METAR KMHR 162035Z AUTO 30005KT 10SM 34/09 A2991 RMK AO2")
+        
+    Returns:
+        str: Flight category ('VFR', 'MVFR', 'IFR', 'LIFR', or 'MISSING')
+    """
+    if not raw_metar or not isinstance(raw_metar, str):
+        return 'MISSING'
+    
+    try:
+        # Parse visibility and ceiling from METAR
+        visibility = _parse_visibility(raw_metar)
+        ceiling = _parse_ceiling(raw_metar)
+        
+        # If visibility is missing, cannot determine flight category
+        if visibility is None:
+            return 'MISSING'
+        
+        # Determine flight category based on visibility and ceiling
+        if visibility >= 5.0:
+            # VFR: Visibility ≥ 5 SM AND (Ceiling ≥ 3,000 ft OR no ceiling reported)
+            if ceiling is None or ceiling >= 3000:
+                return 'VFR'
+            else:
+                return 'MVFR'  # Good visibility but low ceiling
+        elif visibility >= 3.0:
+            # MVFR: Visibility 3-5 SM AND (Ceiling ≥ 1,000 ft OR no ceiling reported)
+            if ceiling is None or ceiling >= 1000:
+                return 'MVFR'
+            else:
+                return 'IFR'  # Marginal visibility with low ceiling
+        elif visibility >= 1.0:
+            # IFR: Visibility 1-3 SM AND (Ceiling ≥ 500 ft OR no ceiling reported)
+            if ceiling is None or ceiling >= 500:
+                return 'IFR'
+            else:
+                return 'LIFR'  # Poor visibility with very low ceiling
+        else:
+            # LIFR: Visibility < 1 SM
+            return 'LIFR'
+            
+    except Exception as e:
+        logging.error(f"Error determining flight category from METAR '{raw_metar}': {e}")
+        return 'MISSING'
+
+
+def _parse_visibility(raw_metar):
+    """
+    Parse visibility from METAR string.
+    
+    Args:
+        raw_metar: Raw METAR string
+        
+    Returns:
+        float: Visibility in statute miles, or None if not found
+    """
+    try:
+        # Visibility pattern: Must end with SM (statute miles)
+        visibility_pattern = re.compile(r'(\d{1,2}|\d/\d|M\d/\d)SM')
+        
+        parts = raw_metar.split()
+        for part in parts:
+            vis_match = visibility_pattern.match(part)
+            if vis_match:
+                vis_str = vis_match.group(1)  # Get the visibility value
+                
+                # Handle different visibility formats
+                if vis_str.startswith('M'):
+                    # Less than format (e.g., M1/4)
+                    vis_str = vis_str[1:]  # Remove M
+                
+                if '/' in vis_str:
+                    # Fractional visibility (e.g., 1/4)
+                    numerator, denominator = vis_str.split('/')
+                    return float(numerator) / float(denominator)
+                else:
+                    # Integer visibility
+                    return float(vis_str)
+        
+        return None
+        
+    except Exception as e:
+        logging.error(f"Error parsing visibility from METAR: {e}")
+        return None
+
+
+def _parse_ceiling(raw_metar):
+    """
+    Parse ceiling from METAR string.
+    
+    Args:
+        raw_metar: Raw METAR string
+        
+    Returns:
+        int: Ceiling height in feet AGL, or None if no ceiling
+    """
+    try:
+        # Cloud pattern: FEW/SCT/BKN/OVC/VV followed by altitude
+        cloud_pattern = re.compile(r'(FEW|SCT|BKN|OVC|VV)(\d{3})?(CB|TCU)?')
+        
+        parts = raw_metar.split()
+        ceiling_layers = []
+        
+        for part in parts:
+            cloud_match = cloud_pattern.match(part)
+            if cloud_match:
+                type_str, altitude_str, cloud_type = cloud_match.groups()
+                
+                # Only BKN and OVC layers count as ceilings
+                if type_str in ['BKN', 'OVC'] and altitude_str:
+                    altitude = int(altitude_str) * 100  # Convert to feet
+                    ceiling_layers.append(altitude)
+        
+        # Return the lowest ceiling (most restrictive)
+        return min(ceiling_layers) if ceiling_layers else None
+        
+    except Exception as e:
+        logging.error(f"Error parsing ceiling from METAR: {e}")
+        return None
+
+
 def get_flt_cat_color(flt_cat):
     """Return the color corresponding to the flight category."""
     if flt_cat == 'VFR':
@@ -181,7 +306,17 @@ def get_flt_cat_color(flt_cat):
 def get_airport_weather(airport_code, weather_data):
     """Retrieve and format weather data for a given airport."""
     airport_weather = weather_data.get(airport_code, {})
-    flt_cat = airport_weather.get('flt_cat', 'MISSING')
+    
+    # Handle null flight category - determine from raw METAR if needed
+    flt_cat = airport_weather.get('flt_cat')
+    if flt_cat is None:
+        raw_observation = airport_weather.get('raw_observation', '')
+        flt_cat = determine_flight_category(raw_observation)
+    elif flt_cat == 'MISSING':
+        flt_cat = 'MISSING'  # Keep as is
+    else:
+        flt_cat = flt_cat  # Use the provided value
+    
     wind_speed = airport_weather.get('wind_speed', 0)  # Default to 0 if missing
     wind_gust = airport_weather.get('wind_gust', 0)    # Default to 0 if missing
 
@@ -233,6 +368,13 @@ def parse_weather(metar_data):
             value = properties.get(key, default)
             return value if value is not None else default
         
+        # Handle flight category - use API value if available, otherwise determine from raw METAR
+        api_flt_cat = feature['properties'].get('fltcat')
+        if api_flt_cat is not None:
+            flt_cat = api_flt_cat
+        else:
+            # API didn't provide flight category, determine it from raw METAR
+            flt_cat = determine_flight_category(raw_observation)
         
         airport_weather = {
             "observation_time": feature['properties'].get('obsTime', None),
@@ -241,7 +383,7 @@ def parse_weather(metar_data):
             "wind_direction": safe_get_numeric(feature['properties'], 'wdir', 0),
             "wind_speed": safe_get_numeric(feature['properties'], 'wspd', 0),
             "wind_gust": safe_get_numeric(feature['properties'], 'wgst', 0),
-            "flt_cat": feature['properties'].get('fltcat', 'MISSING'),
+            "flt_cat": flt_cat,
             "visibility": safe_get_visibility(feature['properties'], 'visib', 0),
             "altimeter": safe_get_numeric(feature['properties'], 'altim', 0),
             "cloud_coverage": feature['properties'].get('clouds', []),  # Use the clouds array from API
