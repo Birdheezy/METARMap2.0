@@ -1292,6 +1292,93 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Initialize additional collapsible sections
+    const timeSettingsToggle = document.getElementById('time-settings-toggle');
+    const timeSettingsContent = document.getElementById('time-settings-content');
+    if (timeSettingsToggle && timeSettingsContent) {
+        timeSettingsContent.classList.add('collapsed');
+        timeSettingsToggle.querySelector('.info-toggle').textContent = '▼';
+        timeSettingsToggle.addEventListener('click', function() {
+            const isCollapsed = timeSettingsContent.classList.contains('collapsed');
+            if (isCollapsed) {
+                timeSettingsContent.classList.remove('collapsed');
+                this.querySelector('.info-toggle').textContent = '▲';
+            } else {
+                timeSettingsContent.classList.add('collapsed');
+                this.querySelector('.info-toggle').textContent = '▼';
+            }
+        });
+    }
+
+    const advancedSettingsToggle = document.getElementById('advanced-settings-toggle');
+    const advancedSettingsContent = document.getElementById('advanced-settings-content');
+    if (advancedSettingsToggle && advancedSettingsContent) {
+        advancedSettingsContent.classList.add('collapsed');
+        advancedSettingsToggle.querySelector('.info-toggle').textContent = '▼';
+        advancedSettingsToggle.addEventListener('click', function() {
+            const isCollapsed = advancedSettingsContent.classList.contains('collapsed');
+            if (isCollapsed) {
+                advancedSettingsContent.classList.remove('collapsed');
+                this.querySelector('.info-toggle').textContent = '▲';
+            } else {
+                advancedSettingsContent.classList.add('collapsed');
+                this.querySelector('.info-toggle').textContent = '▼';
+            }
+        });
+    }
+
+    const airportsToggle = document.getElementById('airports-toggle');
+    const airportsContent = document.getElementById('airports-content');
+    if (airportsToggle && airportsContent) {
+        airportsContent.classList.add('collapsed');
+        airportsToggle.querySelector('.info-toggle').textContent = '▼';
+        airportsToggle.addEventListener('click', function() {
+            const isCollapsed = airportsContent.classList.contains('collapsed');
+            if (isCollapsed) {
+                airportsContent.classList.remove('collapsed');
+                this.querySelector('.info-toggle').textContent = '▲';
+            } else {
+                airportsContent.classList.add('collapsed');
+                this.querySelector('.info-toggle').textContent = '▼';
+            }
+        });
+    }
+
+    const wifiSettingsToggle = document.getElementById('wifi-settings-toggle');
+    const wifiSettingsContent = document.getElementById('wifi-settings-content');
+    if (wifiSettingsToggle && wifiSettingsContent) {
+        wifiSettingsContent.classList.add('collapsed');
+        wifiSettingsToggle.querySelector('.info-toggle').textContent = '▼';
+        wifiSettingsToggle.addEventListener('click', function() {
+            const isCollapsed = wifiSettingsContent.classList.contains('collapsed');
+            if (isCollapsed) {
+                wifiSettingsContent.classList.remove('collapsed');
+                this.querySelector('.info-toggle').textContent = '▲';
+            } else {
+                wifiSettingsContent.classList.add('collapsed');
+                this.querySelector('.info-toggle').textContent = '▼';
+            }
+        });
+    }
+
+    // Initialize color settings section toggle
+    const colorSettingsToggle = document.getElementById('color-settings-toggle');
+    const colorSettingsContent = document.getElementById('color-settings-content');
+    if (colorSettingsToggle && colorSettingsContent) {
+        colorSettingsContent.classList.add('collapsed');
+        colorSettingsToggle.querySelector('.info-toggle').textContent = '▼';
+        colorSettingsToggle.addEventListener('click', function() {
+            const isCollapsed = colorSettingsContent.classList.contains('collapsed');
+            if (isCollapsed) {
+                colorSettingsContent.classList.remove('collapsed');
+                this.querySelector('.info-toggle').textContent = '▲';
+            } else {
+                colorSettingsContent.classList.add('collapsed');
+                this.querySelector('.info-toggle').textContent = '▼';
+            }
+        });
+    }
+
     // Initialize all status updates
     updateAllServiceStatuses();
     
@@ -1410,6 +1497,49 @@ document.addEventListener('DOMContentLoaded', function() {
             validateRange(this);
             if (startPixelInput.value && parseInt(startPixelInput.value) > parseInt(this.value)) {
                 startPixelInput.value = this.value;
+            }
+        });
+    }
+
+    // Add validation for snowy animation duration fields
+    const snowCycleMinInput = document.getElementById('snow_cycle_min_duration');
+    const snowCycleMaxInput = document.getElementById('snow_cycle_max_duration');
+
+    function validateSnowDuration(input, min, max) {
+        let value = parseFloat(input.value);
+        if (isNaN(value)) {
+            input.value = '';
+            return false;
+        } else {
+            value = Math.min(Math.max(value, min), max);
+            input.value = value;
+            return true;
+        }
+    }
+
+    function validateSnowMinMax() {
+        if (snowCycleMinInput && snowCycleMaxInput) {
+            const minValue = parseFloat(snowCycleMinInput.value);
+            const maxValue = parseFloat(snowCycleMaxInput.value);
+            
+            if (!isNaN(minValue) && !isNaN(maxValue) && minValue >= maxValue) {
+                showToast('Snow Cycle Min Duration must be less than Max Duration', 'danger');
+                return false;
+            }
+        }
+        return true;
+    }
+
+    if (snowCycleMinInput && snowCycleMaxInput) {
+        snowCycleMinInput.addEventListener('change', function() {
+            if (validateSnowDuration(this, 0.5, 10.0)) {
+                validateSnowMinMax();
+            }
+        });
+
+        snowCycleMaxInput.addEventListener('change', function() {
+            if (validateSnowDuration(this, 1.0, 15.0)) {
+                validateSnowMinMax();
             }
         });
     }

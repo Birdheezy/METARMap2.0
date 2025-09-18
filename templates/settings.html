@@ -15,8 +15,7 @@
 
 <!-- Navigation Bar -->
 <nav class="navbar">
-    <a href="#brightness">Brightness</a>
-    <a href="#color">Color</a>
+    <a href="#color">Color & Brightness</a>
     <a href="#animation-editor">Animation</a>
     <a href="#time-settings">Time</a>
     <a href="#advanced-settings">Advanced</a>
@@ -40,46 +39,13 @@
     </section>
 
     <form method="POST" action="/">
-    <section id="brightness">
 
-        <h2>Brightness Settings</h2>
-
-        <div class="mb-3">
-            <div class="dropdown-container">
-                <label for="brightness">Default Brightness (0.01 to 1.0)</label>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                <div class="dropdown-content" style="display: none;">
-                    Adjusts the default LED brightness between 0.01 (minimum) and 1 (maximum)
-                </div>
-            </div>
-            <input type="text" class="form-control input-small" name="brightness" value="{{ config.BRIGHTNESS }}" placeholder="Default: 0.5">
+    <section id="color" class="dark-section">
+        <div class="info-header" id="color-settings-toggle">
+            <h2 style="margin: 0;">Color & Brightness Settings</h2>
+            <span class="info-toggle">▼</span>
         </div>
-
-        <div class="mb-3">
-            <div class="dropdown-container">
-                <label for="daytime_dim_brightness">Night/Dimmed Brightness (0.01 to 1.0)</label>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-                <div class="dropdown-content" style="display: none;">
-                    The LED brightness between "Dim time Start" and "Bright time start". Between 0.01 (minimum) and 1 (maximum)
-                </div>
-            </div>
-            <input type="text" class="form-control input-small" name="daytime_dim_brightness" value="{{ config.DAYTIME_DIM_BRIGHTNESS }}" placeholder="Default: 0.2">
-        </div>
-
-        <div class="mb-3">
-            <div class="dropdown-container">
-                <label for="dim_brightness">Windy Dim Brightness (0.01 to 1.0)</label>
-                    <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
-            <div class="dropdown-content" style="display: none;">
-                How dim the LED will get when executing the windy animation. Range is between 0.01 (minimum) 1 (maximum)
-            </div>
-        </div>
-            <input type="text" class="form-control input-small" name="dim_brightness" value="{{ config.DIM_BRIGHTNESS }}" placeholder="Default: 0.05">
-        </div>
-    </section>
-
-    <section id="color">
-        <h2>Color Settings</h2>
+        <div class="info-content" id="color-settings-content">
         <div class="color-settings-container">
             <!-- Flight Categories Column -->
             <div class="color-column">
@@ -130,6 +96,47 @@
                     </div>
                 </div>
             </div>
+
+        </div>
+        
+        <!-- Brightness Settings Row -->
+        <div class="brightness-settings-row">
+            <h3>Brightness Settings</h3>
+            <div class="brightness-settings-grid">
+                <div class="brightness-setting">
+                    <div class="dropdown-container">
+                        <label for="brightness">Default Brightness (0.01 to 1.0)</label>
+                            <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                        <div class="dropdown-content" style="display: none;">
+                            Adjusts the default LED brightness between 0.01 (minimum) and 1 (maximum)
+                        </div>
+                    </div>
+                    <input type="text" class="form-control input-small" name="brightness" value="{{ config.BRIGHTNESS }}" placeholder="Default: 0.5">
+                </div>
+
+                <div class="brightness-setting">
+                    <div class="dropdown-container">
+                        <label for="daytime_dim_brightness">Night/Dimmed Brightness (0.01 to 1.0)</label>
+                            <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                        <div class="dropdown-content" style="display: none;">
+                            The LED brightness between "Dim time Start" and "Bright time start". Between 0.01 (minimum) and 1 (maximum)
+                        </div>
+                    </div>
+                    <input type="text" class="form-control input-small" name="daytime_dim_brightness" value="{{ config.DAYTIME_DIM_BRIGHTNESS }}" placeholder="Default: 0.2">
+                </div>
+
+                <div class="brightness-setting">
+                    <div class="dropdown-container">
+                        <label for="dim_brightness">Windy Dim Brightness (0.01 to 1.0)</label>
+                            <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false">i</span>
+                    <div class="dropdown-content" style="display: none;">
+                        How dim the LED will get when executing the windy animation. Range is between 0.01 (minimum) 1 (maximum)
+                    </div>
+                </div>
+                    <input type="text" class="form-control input-small" name="dim_brightness" value="{{ config.DIM_BRIGHTNESS }}" placeholder="Default: 0.05">
+                </div>
+            </div>
+        </div>
         </div>
     </section>
 
@@ -233,15 +240,15 @@
         <div class="info-content" id="animation-editor-content">
             
             <!-- Animation Order Section -->
-            <div class="test-section">
+<!--            <div class="test-section">
                 <h3 class="subsection-title">Animation Sequence</h3>
                 <p>Drag and drop to reorder animations. Only enabled animations will be included.</p>
                 <div id="animation-sequence-list" class="draggable-list">
                     <!-- Will be populated by JavaScript -->
-                </div>
+<!--                </div>
                 <button type="button" class="btn btn-primary" onclick="testElementFinding()" style="margin-top: 10px;">Test Element Finding</button>
-                <input type="hidden" name="animation_sequence" id="animation_sequence_input">
-            </div>
+                <input type="hidden" name="animation_sequence" id="animation-sequence-input">
+            </div> -->
 
             <!-- Wind Animation Settings -->
             <div class="test-section">
@@ -305,14 +312,29 @@
                 </div>
                 <div class="animation-settings-grid">
                     <div class="setting-group">
-                        <label for="snow_blink_count">Blink Count</label>
-                        <input type="number" class="form-control input-small" name="snow_blink_count" value="{{ config.SNOW_BLINK_COUNT }}" min="1" max="10">
-                        <small>Number of snow blinks per cycle</small>
+                        <label for="snowy_animation_duration">Animation Duration (seconds)</label>
+                        <input type="number" class="form-control input-small" name="snowy_animation_duration" value="{{ snowy_animation_duration }}" min="1.0" max="30.0" step="0.1">
+                        <small>Total time the snowy animation runs</small>
                     </div>
                     <div class="setting-group">
-                        <label for="snow_blink_pause">Blink Pause (seconds)</label>
-                        <input type="number" class="form-control input-small" name="snow_blink_pause" value="{{ config.SNOW_BLINK_PAUSE }}" min="0.1" max="2" step="0.1">
-                        <small>Pause between snow blinks</small>
+                        <label for="snow_cycle_min_duration">Cycle Min Duration (seconds)</label>
+                        <input type="number" class="form-control input-small" name="snow_cycle_min_duration" value="{{ snow_cycle_min_duration }}" min="0.5" max="10.0" step="0.1">
+                        <small>Minimum time for one fade cycle</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="snow_cycle_max_duration">Cycle Max Duration (seconds)</label>
+                        <input type="number" class="form-control input-small" name="snow_cycle_max_duration" value="{{ snow_cycle_max_duration }}" min="1.0" max="15.0" step="0.1">
+                        <small>Maximum time for one fade cycle</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="snow_start_offset_max">Start Offset Max (seconds)</label>
+                        <input type="number" class="form-control input-small" name="snow_start_offset_max" value="{{ snow_start_offset_max }}" min="0.1" max="5.0" step="0.1">
+                        <small>Maximum random start delay for each LED</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="snow_min_brightness">Min Brightness</label>
+                        <input type="number" class="form-control input-small" name="snow_min_brightness" value="{{ snow_min_brightness }}" min="0.01" max="0.5" step="0.01">
+                        <small>Minimum brightness in the fade cycle (0.01-0.5)</small>
                     </div>
                 </div>
             </div>
@@ -348,8 +370,12 @@
 
     
     <!-- Time Settings Section -->
-        <section id="time-settings">
-            <h2>Time Settings</h2>
+        <section id="time-settings" class="dark-section">
+            <div class="info-header" id="time-settings-toggle">
+                <h2 style="margin: 0;">Time Settings</h2>
+                <span class="info-toggle">▼</span>
+            </div>
+            <div class="info-content" id="time-settings-content">
 
             <!-- Daytime Dimming and Sunrise/Sunset Toggles (offset group) -->
             <div class="toggle-container offset-toggles" style="margin-bottom: 0;">
@@ -486,11 +512,16 @@
                     </span>
                 </div>
             </div>
+            </div>
         </section>
 
         <!-- Advanced Settings Section -->
-        <section id="advanced-settings">
-            <h2>Advanced Settings</h2>
+        <section id="advanced-settings" class="dark-section">
+            <div class="info-header" id="advanced-settings-toggle">
+                <h2 style="margin: 0;">Advanced Settings</h2>
+                <span class="info-toggle">▼</span>
+            </div>
+            <div class="info-content" id="advanced-settings-content">
 
             <!-- Number of Windy Animation Steps -->
             <div class="mb-3">
@@ -555,6 +586,17 @@
                     <label for="update_weather" class="toggle-label">Enable Weather Updates</label>
                 </div>
                 <div class="toggle-wrapper">
+                    <input type="checkbox" id="stale_indication" name="stale_indication" class="toggle-input" {% if config.STALE_INDICATION %}checked{% endif %}>
+                    <label for="stale_indication" class="toggle-label">Enable Stale Data Indication</label>
+                    <div class="dropdown-container" style="margin-left: 10px;">
+                        <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false" onclick="event.stopPropagation()">i</span>
+                        <div class="dropdown-content" style="display: none;">
+                            When enabled, all LEDs will turn the set color if weather data becomes stale (more than 2x update interval old).<br>
+                            This provides a visual indication that the weather data may be outdated.
+                        </div>
+                    </div>
+                </div>
+                <div class="toggle-wrapper">
                     <input type="checkbox" id="legend" name="legend" class="toggle-input" {% if legend %}checked{% endif %}>
                     <label for="legend" class="toggle-label">Enable LED Legend</label>
                     <div class="dropdown-container" style="margin-left: 10px;">
@@ -607,36 +649,35 @@
                         </div>
                     </div>
                 </div>
-                <div class="toggle-wrapper">
-                    <input type="checkbox" id="stale_indication" name="stale_indication" class="toggle-input" {% if config.STALE_INDICATION %}checked{% endif %}>
-                    <label for="stale_indication" class="toggle-label">Enable Stale Data Indication</label>
-                    <div class="dropdown-container" style="margin-left: 10px;">
-                        <span class="tooltip-icon" tabindex="0" role="button" aria-expanded="false" onclick="event.stopPropagation()">i</span>
-                        <div class="dropdown-content" style="display: none;">
-                            When enabled, all LEDs will turn the set color if weather data becomes stale (more than 2x update interval old).<br>
-                            This provides a visual indication that the weather data may be outdated.
-                        </div>
-                    </div>
-                </div>
+            </div>
             </div>
         </section>
 
     <!-- Airports Section with Line Numbers -->
-    <section id="airports" class="airports">
-        <h2>Airports</h2>
-        <label for="airportsText">ICAO Identifiers (one per line. SKIP for unused/blank LEDs)</label>
+    <section id="airports" class="airports dark-section">
+        <div class="info-header" id="airports-toggle">
+            <h2 style="margin: 0;">Airports</h2>
+            <span class="info-toggle">▼</span>
+        </div>
+        <div class="info-content" id="airports-content">
+            <label for="airportsText">ICAO Identifiers (one per line. SKIP for unused/blank LEDs)</label>
 
         <div class="textarea-wrapper">
             <div class="line-numbers" id="line-numbers"></div>
             <textarea class="form-controltextarea" name="airports" id="airportsText" rows="10">{{ airports }}</textarea>
         </div>
     </br>
+        </div>
     </section>
 
     <!-- WiFi Settings Section -->
-    <section id="wifi-settings">
-        <h2>WiFi Settings</h2>
-        <text style="font-size: small;">NOTE: Save settings before connecting to a new netwrok</text>
+    <section id="wifi-settings" class="dark-section">
+        <div class="info-header" id="wifi-settings-toggle">
+            <h2 style="margin: 0;">WiFi Settings</h2>
+            <span class="info-toggle">▼</span>
+        </div>
+        <div class="info-content" id="wifi-settings-content">
+            <text style="font-size: small;">NOTE: Save settings before connecting to a new netwrok</text>
     </br>
         <button id="scan-button" class="btn-primary">Scan for Networks</button>
         <div id="connection-status" class="mt-3"></div>
@@ -651,6 +692,7 @@
         </div>
         <div class="mt-4">
             <button type="button" id="connect-button" class="btn-primary">Connect</button>
+        </div>
         </div>
     </section>
     <section>

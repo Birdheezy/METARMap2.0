@@ -1,7 +1,7 @@
 from config import * # Import settings from config.py
 import board
 import neopixel
-TEST_BRIGHTNESS = 0.2
+TEST_BRIGHTNESS = 0.1
 pixel_pin = f"D{PIXEL_PIN}"  # Create "D18"
 pixels = neopixel.NeoPixel(getattr(board, pixel_pin), NUM_PIXELS, brightness=TEST_BRIGHTNESS, auto_write=False, pixel_order=LED_COLOR_ORDER)
 
