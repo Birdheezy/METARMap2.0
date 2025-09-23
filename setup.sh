@@ -455,20 +455,30 @@ advanced_install() {
     echo -e "  ${CYAN}2. Enable HTTPS in config.py${NC}"
     echo -e "  ${CYAN}3. Configure the web interface to use HTTPS (port 443)${NC}"
     echo ""
+    echo -e "${CYAN}Choose an option:${NC}"
+    echo -e "  ${MAGENTA}1)${NC} ${GREEN}Yes${NC} - Setup HTTPS with self-signed certificate"
+    echo -e "  ${MAGENTA}2)${NC} ${YELLOW}No${NC} - Disable HTTPS"
+    echo -e "  ${MAGENTA}3)${NC} ${CYAN}Skip${NC} - Leave config.py as-is and move to next step"
+    echo ""
 
-    read -e -p "$(echo -e "${CYAN}Would you like to setup HTTPS with a self-signed certificate? [N/y]: ${NC}")" SSL_CHOICE
-    SSL_CHOICE=${SSL_CHOICE:-n}
-    case ${SSL_CHOICE,,} in
-        [Yy]*)
+    read -p "$(echo -e "${CYAN}Enter choice (1, 2, or 3): ${NC}")" SSL_CHOICE
+    case $SSL_CHOICE in
+        1)
             setup_ssl
             ;;
-        [Nn]*|"")
+        2)
             echo -e "${CYAN}Disabling HTTPS...${NC}"
             disable_https
             echo -e "${GREEN}✓ HTTPS disabled${NC}"
             ;;
+        3|"")
+            echo -e "${YELLOW}⚠ Skipping SSL certificate setup${NC}"
+            echo -e "${CYAN}config.py will remain unchanged (ENABLE_HTTPS = True)${NC}"
+            echo -e "${YELLOW}You can configure SSL certificates later through the settings interface${NC}"
+            ;;
         *)
-            echo -e "${RED}✗ Invalid input${NC}"
+            echo -e "${RED}✗ Invalid choice. Skipping SSL certificate setup...${NC}"
+            echo -e "${CYAN}config.py will remain unchanged (ENABLE_HTTPS = True)${NC}"
             ;;
     esac
 

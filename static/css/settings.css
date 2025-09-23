@@ -30,14 +30,14 @@ body {
 /* Floating Save Button */
 .floating-save-btn {
     position: fixed;
-    top: 100px; /* Below the navbar */
+    top: 50%; /* Below the navbar */
     right: 30%; /* Closer to content, not at the very edge */
     background: linear-gradient(135deg, #007bff, #0056b3);
     color: white;
     border: none;
     padding: 8px 16px;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 18px;
     font-weight: 500;
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
@@ -126,7 +126,7 @@ section {
     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
 }
 
-#brightness, #time-settings, #animation-editor, #airports, #wifi-settings, #color {
+#brightness, #time-settings, #animation-editor, #airports, #wifi-settings, #color, #advanced-settings {
     scroll-margin-top: 70px;  /* Adjust to match or exceed your navbar height */
 }
 
@@ -1632,6 +1632,54 @@ input[type="color"]::-webkit-color-swatch {
     align-items: center;
     justify-content: center;
     color: #ccc;
+}
+
+/* Brightness Settings Grid Layout */
+.brightness-settings-grid {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    justify-content: center;
+    align-items: flex-start;
+    margin-top: 15px;
+}
+
+.brightness-setting {
+    flex: 1;
+    min-width: 0; /* Allows flex items to shrink below their content size */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.brightness-setting .dropdown-container {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.brightness-setting .dropdown-container label {
+    font-size: 0.9em;
+    line-height: 1.3;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.brightness-setting input[type="text"] {
+    width: 80px;
+    margin: 0 auto;
+}
+
+/* Responsive design for brightness settings */
+@media (max-width: 768px) {
+    .brightness-settings-grid {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .brightness-setting {
+        width: 100%;
+    }
 }
 
 /* Enhanced draggable list for animation sequence */

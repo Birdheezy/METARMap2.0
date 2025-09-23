@@ -64,6 +64,11 @@ def reload_config():
     NUM_STEPS = globals().get('NUM_STEPS', None)
     SNOW_BLINK_COUNT = globals().get('SNOW_BLINK_COUNT', None)
     SNOW_BLINK_PAUSE = globals().get('SNOW_BLINK_PAUSE', None)
+    SNOWY_ANIMATION_DURATION = globals().get('SNOWY_ANIMATION_DURATION', None)
+    SNOW_CYCLE_MIN_DURATION = globals().get('SNOW_CYCLE_MIN_DURATION', None)
+    SNOW_CYCLE_MAX_DURATION = globals().get('SNOW_CYCLE_MAX_DURATION', None)
+    SNOW_START_OFFSET_MAX = globals().get('SNOW_START_OFFSET_MAX', None)
+    SNOW_MIN_BRIGHTNESS = globals().get('SNOW_MIN_BRIGHTNESS', None)
     WIND_ANIMATION = globals().get('WIND_ANIMATION', None)
     LIGHTENING_ANIMATION = globals().get('LIGHTENING_ANIMATION', None)
     SNOWY_ANIMATION = globals().get('SNOWY_ANIMATION', None)
@@ -176,6 +181,11 @@ def edit_settings():
                 config_updates["LIGHTNING_FLASH_COUNT"] = int(request.form.get('lightning_flash_count', 0))
                 config_updates["SNOW_BLINK_COUNT"] = int(request.form.get('snow_blink_count', 0))
                 config_updates["SNOW_BLINK_PAUSE"] = float(request.form.get('snow_blink_pause', 0))
+                config_updates["SNOWY_ANIMATION_DURATION"] = float(request.form.get('snowy_animation_duration', 5.0))
+                config_updates["SNOW_CYCLE_MIN_DURATION"] = float(request.form.get('snow_cycle_min_duration', 2.0))
+                config_updates["SNOW_CYCLE_MAX_DURATION"] = float(request.form.get('snow_cycle_max_duration', 4.0))
+                config_updates["SNOW_START_OFFSET_MAX"] = float(request.form.get('snow_start_offset_max', 1.0))
+                config_updates["SNOW_MIN_BRIGHTNESS"] = float(request.form.get('snow_min_brightness', 0.05))
                 config_updates["NUM_STEPS"] = int(request.form.get('num_steps', 0))
                 config_updates["NUM_PIXELS"] = int(request.form.get('num_pixels', 0))
                 config_updates["WEATHER_UPDATE_INTERVAL"] = int(request.form.get('weather_update_interval', 5))
@@ -255,13 +265,62 @@ def edit_settings():
             except ValueError:
                 raise ValueError("Could not update Number of Steps: Please enter a valid integer.")
             try:
-                config_updates["SNOW_BLINK_COUNT"] = int(request.form['snow_blink_count'])
+                config_updates["SNOW_BLINK_COUNT"] = int(request.form.get('snow_blink_count', 0))
             except ValueError:
                 raise ValueError("Could not update Snow Blink Count: Please enter a valid integer.")
             try:
-                config_updates["SNOW_BLINK_PAUSE"] = float(request.form['snow_blink_pause'])
+                config_updates["SNOW_BLINK_PAUSE"] = float(request.form.get('snow_blink_pause', 0))
             except ValueError:
                 raise ValueError("Could not update Snow Blink Pause: Please enter a valid number.")
+            try:
+                config_updates["SNOWY_ANIMATION_DURATION"] = float(request.form.get('snowy_animation_duration', 5.0))
+                if config_updates["SNOWY_ANIMATION_DURATION"] < 1.0 or config_updates["SNOWY_ANIMATION_DURATION"] > 30.0:
+                    raise ValueError("Snowy Animation Duration must be between 1.0 and 30.0 seconds.")
+            except ValueError as e:
+                if "between" in str(e):
+                    raise e
+                else:
+                    raise ValueError("Could not update Snowy Animation Duration: Please enter a valid number.")
+            try:
+                config_updates["SNOW_CYCLE_MIN_DURATION"] = float(request.form.get('snow_cycle_min_duration', 2.0))
+                if config_updates["SNOW_CYCLE_MIN_DURATION"] < 0.5 or config_updates["SNOW_CYCLE_MIN_DURATION"] > 10.0:
+                    raise ValueError("Snow Cycle Min Duration must be between 0.5 and 10.0 seconds.")
+            except ValueError as e:
+                if "between" in str(e):
+                    raise e
+                else:
+                    raise ValueError("Could not update Snow Cycle Min Duration: Please enter a valid number.")
+            try:
+                config_updates["SNOW_CYCLE_MAX_DURATION"] = float(request.form.get('snow_cycle_max_duration', 4.0))
+                if config_updates["SNOW_CYCLE_MAX_DURATION"] < 1.0 or config_updates["SNOW_CYCLE_MAX_DURATION"] > 15.0:
+                    raise ValueError("Snow Cycle Max Duration must be between 1.0 and 15.0 seconds.")
+            except ValueError as e:
+                if "between" in str(e):
+                    raise e
+                else:
+                    raise ValueError("Could not update Snow Cycle Max Duration: Please enter a valid number.")
+            try:
+                config_updates["SNOW_START_OFFSET_MAX"] = float(request.form.get('snow_start_offset_max', 1.0))
+                if config_updates["SNOW_START_OFFSET_MAX"] < 0.1 or config_updates["SNOW_START_OFFSET_MAX"] > 5.0:
+                    raise ValueError("Snow Start Offset Max must be between 0.1 and 5.0 seconds.")
+            except ValueError as e:
+                if "between" in str(e):
+                    raise e
+                else:
+                    raise ValueError("Could not update Snow Start Offset Max: Please enter a valid number.")
+            try:
+                config_updates["SNOW_MIN_BRIGHTNESS"] = float(request.form.get('snow_min_brightness', 0.05))
+                if config_updates["SNOW_MIN_BRIGHTNESS"] < 0.01 or config_updates["SNOW_MIN_BRIGHTNESS"] > 0.5:
+                    raise ValueError("Snow Min Brightness must be between 0.01 and 0.5.")
+            except ValueError as e:
+                if "between" in str(e):
+                    raise e
+                else:
+                    raise ValueError("Could not update Snow Min Brightness: Please enter a valid number.")
+            
+            # Validate that min duration is less than max duration
+            if config_updates["SNOW_CYCLE_MIN_DURATION"] >= config_updates["SNOW_CYCLE_MAX_DURATION"]:
+                raise ValueError("Snow Cycle Min Duration must be less than Snow Cycle Max Duration.")
             try:
                 config_updates["DAYTIME_DIM_BRIGHTNESS"] = float(request.form['daytime_dim_brightness'])
             except ValueError:
@@ -463,6 +522,11 @@ def edit_settings():
         lightning_flash_count=config.LIGHTNING_FLASH_COUNT,
         snow_blink_count=config.SNOW_BLINK_COUNT,
         snow_blink_pause=config.SNOW_BLINK_PAUSE,
+        snowy_animation_duration=getattr(config, 'SNOWY_ANIMATION_DURATION', 5.0),
+        snow_cycle_min_duration=getattr(config, 'SNOW_CYCLE_MIN_DURATION', 2.0),
+        snow_cycle_max_duration=getattr(config, 'SNOW_CYCLE_MAX_DURATION', 4.0),
+        snow_start_offset_max=getattr(config, 'SNOW_START_OFFSET_MAX', 1.0),
+        snow_min_brightness=getattr(config, 'SNOW_MIN_BRIGHTNESS', 0.05),
         wind_animation=config.WIND_ANIMATION,
         lightening_animation=config.LIGHTENING_ANIMATION,
         snowy_animation=config.SNOWY_ANIMATION,

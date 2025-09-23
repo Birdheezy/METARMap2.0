@@ -163,7 +163,6 @@ function initializeAirportMap(containerId, colorConfig, mapCenter, mapZoom) {
                         <span style="margin-left: 8px;">${data.site || 'Unknown location'}</span>
                     </div>
                     <div class="airport-popup-content">
-                        <div class="metar-label">Raw METAR:</div>
                         <div class="metar-text">${data.raw_observation || 'Not available'}</div>
                     </div>
                 </div>

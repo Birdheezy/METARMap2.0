@@ -10,6 +10,7 @@ import datetime
 import subprocess
 import logging
 import os
+import random
 
 # Configure logging with more detailed format for CLI mode
 logging.basicConfig(
@@ -283,30 +284,75 @@ def animate_windy_airports(windy_airports, weather_data):
         time.sleep(step_delay)
 
 def animate_snowy_airports(snowy_airports, weather_data):
-    """Animate the snowy airports with a twinkling white effect."""
-    snowy_color = tuple(int(c * BRIGHTNESS) for c in SNOWY_COLOR)
-
-    # Twinkling effect: alternate between on and off state
-    for _ in range(SNOW_BLINK_COUNT):  # Use SNOW_BLINK_COUNT for the number of twinkles
-        for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
-            if airport_code in snowy_airports:
-                # Set LED to snowy color
-                set_pixel_color(index, snowy_color)
-        pixels.show()
-        time.sleep(SNOW_BLINK_PAUSE)  # Use SNOW_BLINK_PAUSE for twinkle on duration
-
-        for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
-            if airport_code in snowy_airports:
-                # Turn off LED to create a twinkling effect
-                set_pixel_color(index, (0, 0, 0))
-        pixels.show()
-        time.sleep(SNOW_BLINK_PAUSE)  # Use SNOW_BLINK_PAUSE for twinkle off duration
-
-    # Revert back to the original flight category colors after animation
-    for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
+    """Animate the snowy airports with a realistic twinkling effect."""
+    import random
+    
+    # Store original colors for restoration
+    original_colors = {}
+    airport_list = weather.get_airports_with_skip(AIRPORTS_FILE)
+    
+    for index, airport_code in enumerate(airport_list):
         if airport_code in snowy_airports:
             flt_cat, _, _, _ = weather.get_airport_weather(airport_code, weather_data)
-            set_pixel_color(index, tuple(int(c * BRIGHTNESS) for c in weather.get_flt_cat_color(flt_cat)))
+            base_color = weather.get_flt_cat_color(flt_cat)
+            original_colors[index] = tuple(int(c * BRIGHTNESS) for c in base_color)
+    
+    # Track LED states for each snowy airport
+    led_states = {}  # index -> {'start_brightness': float, 'cycle_duration': float, 'start_time': float}
+    start_time = time.time()
+    
+    # Initialize random states for each LED
+    for index, airport_code in enumerate(airport_list):
+        if airport_code in snowy_airports:
+            led_states[index] = {
+                'start_brightness': random.uniform(SNOW_MIN_BRIGHTNESS, get_current_brightness()),  # Random starting brightness
+                'cycle_duration': random.uniform(SNOW_CYCLE_MIN_DURATION, SNOW_CYCLE_MAX_DURATION),   # Random cycle duration
+                'start_time': start_time + random.uniform(0, SNOW_START_OFFSET_MAX)  # Random start offset
+            }
+    
+    # Twinkling animation loop
+    end_time = start_time + SNOWY_ANIMATION_DURATION
+    
+    while time.time() < end_time:
+        current_time = time.time()
+        
+        # Update LED colors based on fade cycle
+        for index, state in led_states.items():
+            # Calculate time since this LED's cycle started
+            cycle_time = (current_time - state['start_time']) % state['cycle_duration']
+            
+            # Calculate position in cycle (0.0 to 1.0)
+            cycle_position = cycle_time / state['cycle_duration']
+            
+            # Create fade cycle: start → max → min → start
+            max_brightness = get_current_brightness()
+            if cycle_position < 0.33:
+                # First third: fade from start to max
+                fade_progress = cycle_position / 0.33  # 0.0 to 1.0
+                current_brightness = state['start_brightness'] + (max_brightness - state['start_brightness']) * fade_progress
+            elif cycle_position < 0.66:
+                # Second third: fade from max to min
+                fade_progress = (cycle_position - 0.33) / 0.33  # 0.0 to 1.0
+                current_brightness = max_brightness - (max_brightness - SNOW_MIN_BRIGHTNESS) * fade_progress
+            else:
+                # Final third: fade from min back to start
+                fade_progress = (cycle_position - 0.66) / 0.34  # 0.0 to 1.0
+                current_brightness = SNOW_MIN_BRIGHTNESS + (state['start_brightness'] - SNOW_MIN_BRIGHTNESS) * fade_progress
+            
+            # Apply brightness to snowy color
+            brightness = current_brightness * BRIGHTNESS
+            color = tuple(int(c * brightness) for c in SNOWY_COLOR)
+            set_pixel_color(index, color)
+        
+        # Update display
+        pixels.show()
+        
+        # Small delay to prevent excessive CPU usage
+        time.sleep(0.05)
+    
+    # Restore original flight category colors
+    for index, original_color in original_colors.items():
+        set_pixel_color(index, original_color)
     pixels.show()
 
 
