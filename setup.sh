@@ -155,10 +155,31 @@ create_venv() {
     fi
 }
 
+# Function to install build dependencies
+install_build_dependencies() {
+    echo -e "${CYAN}Installing build dependencies for Python packages...${NC}"
+    
+    # Install Python development headers and build tools
+    if apt install -y python3-dev python3-pip build-essential gcc g++ make cmake pkg-config; then
+        echo -e "${GREEN}✓ Build dependencies installed successfully${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ Failed to install build dependencies${NC}"
+        return 1
+    fi
+}
+
 # Function to install Python packages
 install_packages() {
     local venv_name=$1
     echo -e "${CYAN}Installing Python packages in ${YELLOW}${venv_name}${CYAN} environment...${NC}"
+    
+    # First install build dependencies
+    install_build_dependencies
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}✗ Failed to install build dependencies${NC}"
+        return 1
+    fi
     
     # Activate virtual environment
     source "${venv_name}/bin/activate"
@@ -169,6 +190,15 @@ install_packages() {
 
     # Install required Python packages (minimal, explicit)
     echo -e "${CYAN}Installing required Python libraries...${NC}"
+    
+    # First, remove any conflicting type packages that aren't needed
+    echo -e "${CYAN}Cleaning up conflicting type packages...${NC}"
+    pip uninstall -y types-flask-migrate 2>/dev/null || true
+    
+    # Note about potential dependency warnings
+    echo -e "${YELLOW}Note: You may see a warning about 'types-flask-migrate' dependency conflicts.${NC}"
+    echo -e "${YELLOW}This is harmless and can be safely ignored - it doesn't affect METARMap functionality.${NC}"
+    
     if pip install --no-cache-dir \
         adafruit-blinka \
         rpi_ws281x \
@@ -183,6 +213,8 @@ install_packages() {
         # Deactivate virtual environment
         deactivate
         echo -e "\n${GREEN}✓ All packages installed successfully${NC}"
+        echo -e "${YELLOW}Note: If you saw a 'types-flask-migrate' dependency conflict warning above,${NC}"
+        echo -e "${YELLOW}this is harmless and can be safely ignored. Your METARMap will work perfectly.${NC}"
         return 0
     else
         deactivate
@@ -365,6 +397,8 @@ advanced_install() {
     echo -e "  ${CYAN}• schedule${NC} - task automation"
     echo -e "  ${CYAN}• astral${NC} - sunrise/sunset calculations"
     echo -e "  ${CYAN}• pytz${NC} - time zone calculations"
+    echo -e "${YELLOW}Note: This will also install build dependencies (python3-dev, build-essential, etc.)${NC}"
+    echo -e "${YELLOW}needed to compile the hardware control packages.${NC}"
     echo ""
 
     read -e -p "$(echo -e "${CYAN}Would you like to install the required packages? [Y/n]: ${NC}")" PACKAGES_CHOICE
