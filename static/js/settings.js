@@ -1480,7 +1480,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isNaN(value)) {
             input.value = '';
         } else {
-            value = Math.min(Math.max(value, 1), 50);
+            value = Math.min(Math.max(value, 1), 500);
             input.value = value;
         }
     }
