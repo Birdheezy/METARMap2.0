@@ -43,6 +43,12 @@ def fetch_metar():
         'format': 'geojson'
     }
 
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+    }
+
+    logging.info(f"Sending request with User-Agent: {headers['User-Agent']}")
+
     try:
         # Construct the full URL for debugging
         full_url = f"{base_url}?ids={','.join(airport_ids)}&format=geojson"
@@ -51,7 +57,8 @@ def fetch_metar():
         logging.info(f"Request parameters: {params}")
         
         start_time = datetime.datetime.now()
-        response = requests.get(base_url, params=params)
+        # Pass the 'headers' dictionary to the request
+        response = requests.get(base_url, params=params, headers=headers)
         elapsed_time = (datetime.datetime.now() - start_time).total_seconds()
         
         logging.info(f"API response received in {elapsed_time:.2f} seconds. Status code: {response.status_code}")
@@ -535,3 +542,6 @@ def update_airports_file(airport_codes):
 
 if __name__ == "__main__":
     main()
+
+
+
