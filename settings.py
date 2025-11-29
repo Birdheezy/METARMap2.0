@@ -760,7 +760,7 @@ def get_service_logs(service_name):
         # Get logs for any service with consistent formatting, limited to last 200 lines
         result = subprocess.run(
             ['sudo', 'journalctl', '-u', f'{service_name}.service', '-n', '200',
-             '-o', 'short-precise', '--no-pager', '--no-hostname'],
+             '-o', 'short', '--no-pager', '--no-hostname'],
             capture_output=True,
             text=True,
             check=True  # This will raise an exception if the command fails

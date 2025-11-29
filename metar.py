@@ -254,101 +254,143 @@ def animate_lightning_airports(lightning_airports, weather_data):
 
 def animate_windy_airports(windy_airports, weather_data):
     """Animate the windy airports by dimming and brightening LEDs."""
-    step_delay = WIND_FADE_TIME / NUM_STEPS  # Calculate delay per step
+    # Pre-calculate affected LEDs and their base colors to avoid lookups in the loop
+    windy_leds = []
+    for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
+        if airport_code in windy_airports:
+            flt_cat, _, _, _ = weather.get_airport_weather(airport_code, weather_data)
+            base_color = weather.get_flt_cat_color(flt_cat)
+            windy_leds.append((index, base_color))
+
+    if not windy_leds:
+        return
+
+    step_delay = WIND_FADE_TIME / NUM_STEPS  # Target delay per step
+
+    # Helper for dynamic sleep
+    def dynamic_sleep(start_time, duration):
+        elapsed = time.time() - start_time
+        if elapsed < duration:
+            time.sleep(duration - elapsed)
 
     # Step 1: Gradual fade to DIM_BRIGHTNESS
     for step in range(NUM_STEPS):
-        brightness = BRIGHTNESS - (BRIGHTNESS - DIM_BRIGHTNESS) * (step / NUM_STEPS)
-        for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
-            if airport_code in windy_airports:
-                flt_cat, _, _, _ = weather.get_airport_weather(airport_code, weather_data)
-                color = weather.get_flt_cat_color(flt_cat)
-                pixel_color = tuple(int(c * brightness) for c in color)
-                set_pixel_color(index, pixel_color)
+        loop_start = time.time()
+        # Calculate brightness factor for this step
+        current_brightness = BRIGHTNESS - (BRIGHTNESS - DIM_BRIGHTNESS) * (step / NUM_STEPS)
+        
+        for index, base_color in windy_leds:
+            # Apply brightness directly
+            r, g, b = base_color
+            pixel_color = (int(r * current_brightness), int(g * current_brightness), int(b * current_brightness))
+            set_pixel_color(index, pixel_color)
+            
         pixels.show()
-        time.sleep(step_delay)
+        dynamic_sleep(loop_start, step_delay)
 
     # Pause at DIM_BRIGHTNESS
     time.sleep(WIND_PAUSE)
 
     # Step 2: Gradual fade back to full BRIGHTNESS
     for step in range(NUM_STEPS):
-        brightness = DIM_BRIGHTNESS + (BRIGHTNESS - DIM_BRIGHTNESS) * (step / NUM_STEPS)
-        for index, airport_code in enumerate(weather.get_airports_with_skip(AIRPORTS_FILE)):
-            if airport_code in windy_airports:
-                flt_cat, _, _, _ = weather.get_airport_weather(airport_code, weather_data)
-                color = weather.get_flt_cat_color(flt_cat)
-                pixel_color = tuple(int(c * brightness) for c in color)
-                set_pixel_color(index, pixel_color)
+        loop_start = time.time()
+        current_brightness = DIM_BRIGHTNESS + (BRIGHTNESS - DIM_BRIGHTNESS) * (step / NUM_STEPS)
+        
+        for index, base_color in windy_leds:
+            r, g, b = base_color
+            pixel_color = (int(r * current_brightness), int(g * current_brightness), int(b * current_brightness))
+            set_pixel_color(index, pixel_color)
+            
         pixels.show()
-        time.sleep(step_delay)
+        dynamic_sleep(loop_start, step_delay)
 
 def animate_snowy_airports(snowy_airports, weather_data):
     """Animate the snowy airports with a realistic twinkling effect."""
     import random
     
+    # Pre-calculate global constants for this animation frame
+    # Hoist get_current_brightness out of the loop
+    global_max_brightness = get_current_brightness()
+    
+    # Unpack snowy color for faster tuple construction
+    snow_r, snow_g, snow_b = SNOWY_COLOR
+    
     # Store original colors for restoration
     original_colors = {}
     airport_list = weather.get_airports_with_skip(AIRPORTS_FILE)
+    
+    # Pre-calculate the list of snowy LED indices to avoid iterating the full airport list
+    snowy_indices = []
     
     for index, airport_code in enumerate(airport_list):
         if airport_code in snowy_airports:
             flt_cat, _, _, _ = weather.get_airport_weather(airport_code, weather_data)
             base_color = weather.get_flt_cat_color(flt_cat)
             original_colors[index] = tuple(int(c * BRIGHTNESS) for c in base_color)
+            snowy_indices.append(index)
+            
+    if not snowy_indices:
+        return
     
     # Track LED states for each snowy airport
     led_states = {}  # index -> {'start_brightness': float, 'cycle_duration': float, 'start_time': float}
     start_time = time.time()
     
     # Initialize random states for each LED
-    for index, airport_code in enumerate(airport_list):
-        if airport_code in snowy_airports:
-            led_states[index] = {
-                'start_brightness': random.uniform(SNOW_MIN_BRIGHTNESS, get_current_brightness()),  # Random starting brightness
-                'cycle_duration': random.uniform(SNOW_CYCLE_MIN_DURATION, SNOW_CYCLE_MAX_DURATION),   # Random cycle duration
-                'start_time': start_time + random.uniform(0, SNOW_START_OFFSET_MAX)  # Random start offset
-            }
+    for index in snowy_indices:
+        led_states[index] = {
+            'start_brightness': random.uniform(SNOW_MIN_BRIGHTNESS, global_max_brightness),
+            'cycle_duration': random.uniform(SNOW_CYCLE_MIN_DURATION, SNOW_CYCLE_MAX_DURATION),
+            'start_time': start_time + random.uniform(0, SNOW_START_OFFSET_MAX)
+        }
     
     # Twinkling animation loop
     end_time = start_time + SNOWY_ANIMATION_DURATION
+    target_frame_time = 0.05 # 20 FPS
     
-    while time.time() < end_time:
-        current_time = time.time()
-        
+    while True:
+        loop_start = time.time()
+        if loop_start >= end_time:
+            break
+            
         # Update LED colors based on fade cycle
-        for index, state in led_states.items():
+        for index in snowy_indices:
+            state = led_states[index]
+            
             # Calculate time since this LED's cycle started
-            cycle_time = (current_time - state['start_time']) % state['cycle_duration']
+            cycle_time = (loop_start - state['start_time']) % state['cycle_duration']
             
             # Calculate position in cycle (0.0 to 1.0)
             cycle_position = cycle_time / state['cycle_duration']
             
             # Create fade cycle: start → max → min → start
-            max_brightness = get_current_brightness()
+            # Use the pre-calculated global_max_brightness
             if cycle_position < 0.33:
                 # First third: fade from start to max
                 fade_progress = cycle_position / 0.33  # 0.0 to 1.0
-                current_brightness = state['start_brightness'] + (max_brightness - state['start_brightness']) * fade_progress
+                current_brightness = state['start_brightness'] + (global_max_brightness - state['start_brightness']) * fade_progress
             elif cycle_position < 0.66:
                 # Second third: fade from max to min
                 fade_progress = (cycle_position - 0.33) / 0.33  # 0.0 to 1.0
-                current_brightness = max_brightness - (max_brightness - SNOW_MIN_BRIGHTNESS) * fade_progress
+                current_brightness = global_max_brightness - (global_max_brightness - SNOW_MIN_BRIGHTNESS) * fade_progress
             else:
                 # Final third: fade from min back to start
                 fade_progress = (cycle_position - 0.66) / 0.34  # 0.0 to 1.0
                 current_brightness = SNOW_MIN_BRIGHTNESS + (state['start_brightness'] - SNOW_MIN_BRIGHTNESS) * fade_progress
             
             # Apply brightness to snowy color
-            brightness = current_brightness * BRIGHTNESS
-            color = tuple(int(c * brightness) for c in SNOWY_COLOR)
+            # FIX: Do NOT multiply by BRIGHTNESS again. current_brightness is already scaled relative to global brightness.
+            # Optimized: Direct tuple construction instead of generator
+            color = (int(snow_r * current_brightness), int(snow_g * current_brightness), int(snow_b * current_brightness))
             set_pixel_color(index, color)
         
         # Update display
         pixels.show()
         
-        # Small delay to prevent excessive CPU usage
-        time.sleep(0.05)
+        # Dynamic sleep to maintain frame rate
+        elapsed = time.time() - loop_start
+        if elapsed < target_frame_time:
+            time.sleep(target_frame_time - elapsed)
     
     # Restore original flight category colors
     for index, original_color in original_colors.items():
