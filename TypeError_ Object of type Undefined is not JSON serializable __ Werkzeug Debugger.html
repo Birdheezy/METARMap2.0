@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<!-- saved from url=(0041)http://metar-garage.emu-toad.ts.net:5000/ -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>TypeError: Object of type Undefined is not JSON serializable
+ // Werkzeug Debugger</title>
+    <link rel="stylesheet" href="./TypeError_ Object of type Undefined is not JSON serializable __ Werkzeug Debugger_files/style.css">
+    <link rel="shortcut icon" href="http://metar-garage.emu-toad.ts.net:5000/?__debugger__=yes&amp;cmd=resource&amp;f=console.png">
+    <script src="./TypeError_ Object of type Undefined is not JSON serializable __ Werkzeug Debugger_files/debugger.js.download"></script>
+    <script>
+      var CONSOLE_MODE = false,
+          EVALEX = false,
+          EVALEX_TRUSTED = false,
+          SECRET = "NnaPtZyQUlRYXfjoEEt3";
+    </script>
+  </head>
+  <body style="background-color: #fff">
+    <div class="debugger">
+<h1>TypeError</h1>
+<div class="detail">
+  <p class="errormsg">TypeError: Object of type Undefined is not JSON serializable
+</p>
+</div>
+<h2 class="traceback" style="cursor: pointer;">Traceback <em>(most recent call last)</em></h2>
+<div class="traceback">
+  <h3></h3>
+  <ul><li><div class="frame" id="frame-1948161400">
+  <h4>File <cite class="filename">"/home/pi/metar/lib/python3.13/site-packages/flask/app.py"</cite>,
+      line <em class="line">1536</em>,
+      in <code class="function">__call__</code></h4>
+  <div class="source library"><pre class="line before"><span class="ws">    </span>) -&gt; cabc.Iterable[bytes]:</pre>
+<pre class="line before"><span class="ws">        </span>"""The WSGI server calls the Flask application object as the</pre>
+<pre class="line before"><span class="ws">        </span>WSGI application. This calls :meth:`wsgi_app`, which can be</pre>
+<pre class="line before"><span class="ws">        </span>wrapped to apply middleware.</pre>
+<pre class="line before"><span class="ws">        </span>"""</pre>
+<pre class="line current"><span class="ws">        </span>return self.wsgi_app(environ, start_response)
+<span class="ws">        </span>       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948161480">
+  <h4>File <cite class="filename">"/home/pi/metar/lib/python3.13/site-packages/flask/app.py"</cite>,
+      line <em class="line">1514</em>,
+      in <code class="function">wsgi_app</code></h4>
+  <div class="source library"><pre class="line before"><span class="ws">            </span>try:</pre>
+<pre class="line before"><span class="ws">                </span>ctx.push()</pre>
+<pre class="line before"><span class="ws">                </span>response = self.full_dispatch_request()</pre>
+<pre class="line before"><span class="ws">            </span>except Exception as e:</pre>
+<pre class="line before"><span class="ws">                </span>error = e</pre>
+<pre class="line current"><span class="ws">                </span>response = self.handle_exception(e)
+<span class="ws">                </span>           ^^^^^^^^^^^^^^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws">            </span>except:  # noqa: B001</pre>
+<pre class="line after"><span class="ws">                </span>error = sys.exc_info()[1]</pre>
+<pre class="line after"><span class="ws">                </span>raise</pre>
+<pre class="line after"><span class="ws">            </span>return response(environ, start_response)</pre>
+<pre class="line after"><span class="ws">        </span>finally:</pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948161640">
+  <h4>File <cite class="filename">"/home/pi/metar/lib/python3.13/site-packages/flask/app.py"</cite>,
+      line <em class="line">1511</em>,
+      in <code class="function">wsgi_app</code></h4>
+  <div class="source library"><pre class="line before"><span class="ws">        </span>ctx = self.request_context(environ)</pre>
+<pre class="line before"><span class="ws">        </span>error: BaseException | None = None</pre>
+<pre class="line before"><span class="ws">        </span>try:</pre>
+<pre class="line before"><span class="ws">            </span>try:</pre>
+<pre class="line before"><span class="ws">                </span>ctx.push()</pre>
+<pre class="line current"><span class="ws">                </span>response = self.full_dispatch_request()
+<span class="ws">                </span>           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws">            </span>except Exception as e:</pre>
+<pre class="line after"><span class="ws">                </span>error = e</pre>
+<pre class="line after"><span class="ws">                </span>response = self.handle_exception(e)</pre>
+<pre class="line after"><span class="ws">            </span>except:  # noqa: B001</pre>
+<pre class="line after"><span class="ws">                </span>error = sys.exc_info()[1]</pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948162760">
+  <h4>File <cite class="filename">"/home/pi/metar/lib/python3.13/site-packages/flask/app.py"</cite>,
+      line <em class="line">919</em>,
+      in <code class="function">full_dispatch_request</code></h4>
+  <div class="source library"><pre class="line before"><span class="ws">            </span>request_started.send(self, _async_wrapper=self.ensure_sync)</pre>
+<pre class="line before"><span class="ws">            </span>rv = self.preprocess_request()</pre>
+<pre class="line before"><span class="ws">            </span>if rv is None:</pre>
+<pre class="line before"><span class="ws">                </span>rv = self.dispatch_request()</pre>
+<pre class="line before"><span class="ws">        </span>except Exception as e:</pre>
+<pre class="line current"><span class="ws">            </span>rv = self.handle_user_exception(e)
+<span class="ws">            </span>     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws">        </span>return self.finalize_request(rv)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def finalize_request(</pre>
+<pre class="line after"><span class="ws">        </span>self,</pre>
+<pre class="line after"><span class="ws">        </span>rv: ft.ResponseReturnValue | HTTPException,</pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948162680">
+  <h4>File <cite class="filename">"/home/pi/metar/lib/python3.13/site-packages/flask/app.py"</cite>,
+      line <em class="line">917</em>,
+      in <code class="function">full_dispatch_request</code></h4>
+  <div class="source library"><pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>try:</pre>
+<pre class="line before"><span class="ws">            </span>request_started.send(self, _async_wrapper=self.ensure_sync)</pre>
+<pre class="line before"><span class="ws">            </span>rv = self.preprocess_request()</pre>
+<pre class="line before"><span class="ws">            </span>if rv is None:</pre>
+<pre class="line current"><span class="ws">                </span>rv = self.dispatch_request()
+<span class="ws">                </span>     ^^^^^^^^^^^^^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws">        </span>except Exception as e:</pre>
+<pre class="line after"><span class="ws">            </span>rv = self.handle_user_exception(e)</pre>
+<pre class="line after"><span class="ws">        </span>return self.finalize_request(rv)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def finalize_request(</pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948162600">
+  <h4>File <cite class="filename">"/home/pi/metar/lib/python3.13/site-packages/flask/app.py"</cite>,
+      line <em class="line">902</em>,
+      in <code class="function">dispatch_request</code></h4>
+  <div class="source library"><pre class="line before"><span class="ws">            </span>and req.method == "OPTIONS"</pre>
+<pre class="line before"><span class="ws">        </span>):</pre>
+<pre class="line before"><span class="ws">            </span>return self.make_default_options_response()</pre>
+<pre class="line before"><span class="ws">        </span># otherwise dispatch to the handler for that endpoint</pre>
+<pre class="line before"><span class="ws">        </span>view_args: dict[str, t.Any] = req.view_args  # type: ignore[assignment]</pre>
+<pre class="line current"><span class="ws">        </span>return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+<span class="ws">        </span>       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def full_dispatch_request(self) -&gt; Response:</pre>
+<pre class="line after"><span class="ws">        </span>"""Dispatches the request and on top of that performs request</pre>
+<pre class="line after"><span class="ws">        </span>pre and postprocessing as well as HTTP exception catching and</pre>
+<pre class="line after"><span class="ws">        </span>error handling.</pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948162440">
+  <h4>File <cite class="filename">"/home/pi/settings_v2.py"</cite>,
+      line <em class="line">310</em>,
+      in <code class="function">edit_settings</code></h4>
+  <div class="source"><pre class="line before"><span class="ws">        </span>'selected_city': config.get('SELECTED_CITY'),</pre>
+<pre class="line before"><span class="ws">        </span>'cities': config.get('CITIES', []),</pre>
+<pre class="line before"><span class="ws">        </span>'show_save_button': True</pre>
+<pre class="line before"><span class="ws">    </span>})</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line current"><span class="ws">    </span>return render_template('settings_v2.html', **context)
+<span class="ws">    </span>       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws"></span># ... (Include other routes like restart_metar, scan_networks, etc. - copying them as is)</pre>
+<pre class="line after"><span class="ws"></span># For brevity, I'll assume I need to copy the rest of the functions too.</pre>
+<pre class="line after"><span class="ws"></span># I will add them in a second pass or just include them here if I can fit them.</pre>
+<pre class="line after"><span class="ws"></span> </pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948162200">
+  <h4>File <cite class="filename">"/home/pi/metar/lib/python3.13/site-packages/flask/templating.py"</cite>,
+      line <em class="line">150</em>,
+      in <code class="function">render_template</code></h4>
+  <div class="source library"><pre class="line before"><span class="ws">        </span>a list is given, the first name to exist will be rendered.</pre>
+<pre class="line before"><span class="ws">    </span>:param context: The variables to make available in the template.</pre>
+<pre class="line before"><span class="ws">    </span>"""</pre>
+<pre class="line before"><span class="ws">    </span>app = current_app._get_current_object()  # type: ignore[attr-defined]</pre>
+<pre class="line before"><span class="ws">    </span>template = app.jinja_env.get_or_select_template(template_name_or_list)</pre>
+<pre class="line current"><span class="ws">    </span>return _render(app, template, context)
+<span class="ws">    </span>       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws"></span>def render_template_string(source: str, **context: t.Any) -&gt; str:</pre>
+<pre class="line after"><span class="ws">    </span>"""Render a template from the given source string with the given</pre>
+<pre class="line after"><span class="ws">    </span>context.</pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948162280">
+  <h4>File <cite class="filename">"/home/pi/metar/lib/python3.13/site-packages/flask/templating.py"</cite>,
+      line <em class="line">131</em>,
+      in <code class="function">_render</code></h4>
+  <div class="source library"><pre class="line before"><span class="ws"></span>def _render(app: Flask, template: Template, context: dict[str, t.Any]) -&gt; str:</pre>
+<pre class="line before"><span class="ws">    </span>app.update_template_context(context)</pre>
+<pre class="line before"><span class="ws">    </span>before_render_template.send(</pre>
+<pre class="line before"><span class="ws">        </span>app, _async_wrapper=app.ensure_sync, template=template, context=context</pre>
+<pre class="line before"><span class="ws">    </span>)</pre>
+<pre class="line current"><span class="ws">    </span>rv = template.render(context)
+<span class="ws">    </span>     ^^^^^^^^^^^^^^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws">    </span>template_rendered.send(</pre>
+<pre class="line after"><span class="ws">        </span>app, _async_wrapper=app.ensure_sync, template=template, context=context</pre>
+<pre class="line after"><span class="ws">    </span>)</pre>
+<pre class="line after"><span class="ws">    </span>return rv</pre>
+<pre class="line after"><span class="ws"></span> </pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948162120">
+  <h4>File <cite class="filename">"/usr/lib/python3/dist-packages/jinja2/environment.py"</cite>,
+      line <em class="line">1295</em>,
+      in <code class="function">render</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span>ctx = self.new_context(dict(*args, **kwargs))</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">        </span>try:</pre>
+<pre class="line before"><span class="ws">            </span>return self.environment.concat(self.root_render_func(ctx))  # type: ignore</pre>
+<pre class="line before"><span class="ws">        </span>except Exception:</pre>
+<pre class="line current"><span class="ws">            </span>self.environment.handle_exception()
+<span class="ws">            </span>^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>async def render_async(self, *args: t.Any, **kwargs: t.Any) -&gt; str:</pre>
+<pre class="line after"><span class="ws">        </span>"""This works similar to :meth:`render` but returns a coroutine</pre>
+<pre class="line after"><span class="ws">        </span>that when awaited returns the entire rendered template string.  This</pre>
+<pre class="line after"><span class="ws">        </span>requires the async feature to be enabled.</pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948161960">
+  <h4>File <cite class="filename">"/usr/lib/python3/dist-packages/jinja2/environment.py"</cite>,
+      line <em class="line">942</em>,
+      in <code class="function">handle_exception</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">        </span>"""Exception handling helper.  This is used internally to either raise</pre>
+<pre class="line before"><span class="ws">        </span>rewritten exceptions or return a rendered traceback for the template.</pre>
+<pre class="line before"><span class="ws">        </span>"""</pre>
+<pre class="line before"><span class="ws">        </span>from .debug import rewrite_traceback_stack</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line current"><span class="ws">        </span>raise rewrite_traceback_stack(source=source)
+<span class="ws">        </span>^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def join_path(self, template: str, parent: str) -&gt; str:</pre>
+<pre class="line after"><span class="ws">        </span>"""Join a template with the parent.  By default all the lookups are</pre>
+<pre class="line after"><span class="ws">        </span>relative to the loader root so this method returns the `template`</pre>
+<pre class="line after"><span class="ws">        </span>parameter unchanged, but if the paths should be relative to the</pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948162040">
+  <h4>File <cite class="filename">"/home/pi/templates/settings_v2.html"</cite>,
+      line <em class="line">884</em>,
+      in <code class="function">top-level template code</code></h4>
+  <div class="source "><pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws"></span>&lt;script&gt;</pre>
+<pre class="line before"><span class="ws">    </span>// Add constants</pre>
+<pre class="line before"><span class="ws">    </span>const WEATHER_UPDATE_THRESHOLD = {{ weather_update_threshold }};</pre>
+<pre class="line before"><span class="ws">    </span>const NUM_PIXELS = {{ config.NUM_PIXELS }};</pre>
+<pre class="line current"><span class="ws">    </span>const ANIMATION_ORDER = {{ animation_order | tojson }};</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>// Call initially and set interval</pre>
+<pre class="line after"><span class="ws">    </span>updateWeatherStatus();</pre>
+<pre class="line after"><span class="ws">    </span>setInterval(updateWeatherStatus, 30000); // Update every 30 seconds</pre>
+<pre class="line after"><span class="ws"></span>&lt;/script&gt;</pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948163960">
+  <h4>File <cite class="filename">"/usr/lib/python3/dist-packages/jinja2/filters.py"</cite>,
+      line <em class="line">1721</em>,
+      in <code class="function">do_tojson</code></h4>
+  <div class="source "><pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">    </span>if indent is not None:</pre>
+<pre class="line before"><span class="ws">        </span>kwargs = kwargs.copy()</pre>
+<pre class="line before"><span class="ws">        </span>kwargs["indent"] = indent</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line current"><span class="ws">    </span>return htmlsafe_json_dumps(value, dumps=dumps, **kwargs)
+<span class="ws">    </span>       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws"></span>def prepare_map(</pre>
+<pre class="line after"><span class="ws">    </span>context: "Context", args: t.Tuple[t.Any, ...], kwargs: t.Dict[str, t.Any]</pre>
+<pre class="line after"><span class="ws"></span>) -&gt; t.Callable[[t.Any], t.Any]:</pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948201000">
+  <h4>File <cite class="filename">"/usr/lib/python3/dist-packages/jinja2/utils.py"</cite>,
+      line <em class="line">672</em>,
+      in <code class="function">htmlsafe_json_dumps</code></h4>
+  <div class="source "><pre class="line before"><span class="ws">    </span>"""</pre>
+<pre class="line before"><span class="ws">    </span>if dumps is None:</pre>
+<pre class="line before"><span class="ws">        </span>dumps = json.dumps</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">    </span>return markupsafe.Markup(</pre>
+<pre class="line current"><span class="ws">        </span>dumps(obj, **kwargs)
+<span class="ws">        </span>^^^^^^^^^^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws">        </span>.replace("&lt;", "\\u003c")</pre>
+<pre class="line after"><span class="ws">        </span>.replace("&gt;", "\\u003e")</pre>
+<pre class="line after"><span class="ws">        </span>.replace("&amp;", "\\u0026")</pre>
+<pre class="line after"><span class="ws">        </span>.replace("'", "\\u0027")</pre>
+<pre class="line after"><span class="ws">    </span>)</pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948201080">
+  <h4>File <cite class="filename">"/home/pi/metar/lib/python3.13/site-packages/flask/json/provider.py"</cite>,
+      line <em class="line">179</em>,
+      in <code class="function">dumps</code></h4>
+  <div class="source library"><pre class="line before"><span class="ws">        </span>:param kwargs: Passed to :func:`json.dumps`.</pre>
+<pre class="line before"><span class="ws">        </span>"""</pre>
+<pre class="line before"><span class="ws">        </span>kwargs.setdefault("default", self.default)</pre>
+<pre class="line before"><span class="ws">        </span>kwargs.setdefault("ensure_ascii", self.ensure_ascii)</pre>
+<pre class="line before"><span class="ws">        </span>kwargs.setdefault("sort_keys", self.sort_keys)</pre>
+<pre class="line current"><span class="ws">        </span>return json.dumps(obj, **kwargs)
+<span class="ws">        </span>       ^^^^^^^^^^^^^^^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def loads(self, s: str | bytes, **kwargs: t.Any) -&gt; t.Any:</pre>
+<pre class="line after"><span class="ws">        </span>"""Deserialize data as JSON from a string or bytes.</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">        </span>:param s: Text or UTF-8 bytes.</pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948201160">
+  <h4>File <cite class="filename">"/usr/lib/python3.13/json/__init__.py"</cite>,
+      line <em class="line">238</em>,
+      in <code class="function">dumps</code></h4>
+  <div class="source library"><pre class="line before"><span class="ws">        </span>cls = JSONEncoder</pre>
+<pre class="line before"><span class="ws">    </span>return cls(</pre>
+<pre class="line before"><span class="ws">        </span>skipkeys=skipkeys, ensure_ascii=ensure_ascii,</pre>
+<pre class="line before"><span class="ws">        </span>check_circular=check_circular, allow_nan=allow_nan, indent=indent,</pre>
+<pre class="line before"><span class="ws">        </span>separators=separators, default=default, sort_keys=sort_keys,</pre>
+<pre class="line current"><span class="ws">        </span>**kw).encode(obj)
+<span class="ws">        </span>      ^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws"></span>_default_decoder = JSONDecoder(object_hook=None, object_pairs_hook=None)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws"></span> </pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948201240">
+  <h4>File <cite class="filename">"/usr/lib/python3.13/json/encoder.py"</cite>,
+      line <em class="line">200</em>,
+      in <code class="function">encode</code></h4>
+  <div class="source library"><pre class="line before"><span class="ws">            </span>else:</pre>
+<pre class="line before"><span class="ws">                </span>return encode_basestring(o)</pre>
+<pre class="line before"><span class="ws">        </span># This doesn't pass the iterator directly to ''.join() because the</pre>
+<pre class="line before"><span class="ws">        </span># exceptions aren't as detailed.  The list call should be roughly</pre>
+<pre class="line before"><span class="ws">        </span># equivalent to the PySequence_Fast that ''.join() would do.</pre>
+<pre class="line current"><span class="ws">        </span>chunks = self.iterencode(o, _one_shot=True)
+<span class="ws">        </span>         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws">        </span>if not isinstance(chunks, (list, tuple)):</pre>
+<pre class="line after"><span class="ws">            </span>chunks = list(chunks)</pre>
+<pre class="line after"><span class="ws">        </span>return ''.join(chunks)</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws">    </span>def iterencode(self, o, _one_shot=False):</pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948201400">
+  <h4>File <cite class="filename">"/usr/lib/python3.13/json/encoder.py"</cite>,
+      line <em class="line">261</em>,
+      in <code class="function">iterencode</code></h4>
+  <div class="source library"><pre class="line before"><span class="ws">        </span>else:</pre>
+<pre class="line before"><span class="ws">            </span>_iterencode = _make_iterencode(</pre>
+<pre class="line before"><span class="ws">                </span>markers, self.default, _encoder, indent, floatstr,</pre>
+<pre class="line before"><span class="ws">                </span>self.key_separator, self.item_separator, self.sort_keys,</pre>
+<pre class="line before"><span class="ws">                </span>self.skipkeys, _one_shot)</pre>
+<pre class="line current"><span class="ws">        </span>return _iterencode(o, 0)
+<span class="ws">        </span>       ^^^^^^^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws"></span>def _make_iterencode(markers, _default, _encoder, _indent, _floatstr,</pre>
+<pre class="line after"><span class="ws">        </span>_key_separator, _item_separator, _sort_keys, _skipkeys, _one_shot,</pre>
+<pre class="line after"><span class="ws">        </span>## HACK: hand-optimized bytecode; turn globals into locals</pre>
+<pre class="line after"><span class="ws">        </span>ValueError=ValueError,</pre></div>
+</div>
+
+</li><li><div class="frame" id="frame-1948201480">
+  <h4>File <cite class="filename">"/home/pi/metar/lib/python3.13/site-packages/flask/json/provider.py"</cite>,
+      line <em class="line">121</em>,
+      in <code class="function">_default</code></h4>
+  <div class="source library"><pre class="line before"><span class="ws">        </span>return dataclasses.asdict(o)  # type: ignore[arg-type]</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line before"><span class="ws">    </span>if hasattr(o, "__html__"):</pre>
+<pre class="line before"><span class="ws">        </span>return str(o.__html__())</pre>
+<pre class="line before"><span class="ws"></span> </pre>
+<pre class="line current"><span class="ws">    </span>raise TypeError(f"Object of type {type(o).__name__} is not JSON serializable")
+<span class="ws">    </span>^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws"></span> </pre>
+<pre class="line after"><span class="ws"></span>class DefaultJSONProvider(JSONProvider):</pre>
+<pre class="line after"><span class="ws">    </span>"""Provide JSON operations using Python's built-in :mod:`json`</pre>
+<pre class="line after"><span class="ws">    </span>library. Serializes the following additional data types:</pre></div>
+</div>
+</li></ul>
+  <blockquote>TypeError: Object of type Undefined is not JSON serializable
+</blockquote>
+</div>
+
+<div class="plain hidden">
+    <p>
+      This is the Copy/Paste friendly version of the traceback.
+    </p>
+    <pre>Traceback (most recent call last):
+  File "/home/pi/metar/lib/python3.13/site-packages/flask/app.py", line 1536, in __call__
+    return self.wsgi_app(environ, start_response)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/pi/metar/lib/python3.13/site-packages/flask/app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "/home/pi/metar/lib/python3.13/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/pi/metar/lib/python3.13/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/pi/metar/lib/python3.13/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/pi/metar/lib/python3.13/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/pi/settings_v2.py", line 310, in edit_settings
+    return render_template('settings_v2.html', **context)
+  File "/home/pi/metar/lib/python3.13/site-packages/flask/templating.py", line 150, in render_template
+    return _render(app, template, context)
+  File "/home/pi/metar/lib/python3.13/site-packages/flask/templating.py", line 131, in _render
+    rv = template.render(context)
+  File "/usr/lib/python3/dist-packages/jinja2/environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3/dist-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/home/pi/templates/settings_v2.html", line 884, in top-level template code
+    const ANIMATION_ORDER = {{ animation_order | tojson }};
+    ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/jinja2/filters.py", line 1721, in do_tojson
+    return htmlsafe_json_dumps(value, dumps=dumps, **kwargs)
+  File "/usr/lib/python3/dist-packages/jinja2/utils.py", line 672, in htmlsafe_json_dumps
+    dumps(obj, **kwargs)
+    ~~~~~^^^^^^^^^^^^^^^
+  File "/home/pi/metar/lib/python3.13/site-packages/flask/json/provider.py", line 179, in dumps
+    return json.dumps(obj, **kwargs)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/json/__init__.py", line 238, in dumps
+    **kw).encode(obj)
+          ~~~~~~^^^^^
+  File "/usr/lib/python3.13/json/encoder.py", line 200, in encode
+    chunks = self.iterencode(o, _one_shot=True)
+  File "/usr/lib/python3.13/json/encoder.py", line 261, in iterencode
+    return _iterencode(o, 0)
+  File "/home/pi/metar/lib/python3.13/site-packages/flask/json/provider.py", line 121, in _default
+    raise TypeError(f"Object of type {type(o).__name__} is not JSON serializable")
+TypeError: Object of type Undefined is not JSON serializable
+</pre>
+</div>
+<div class="explanation">
+  The debugger caught an exception in your WSGI application.  You can now
+  look at the traceback which led to the error.  <span class=""><p>To switch between the interactive traceback and the plaintext one, you can click on the "Traceback" headline. From the text traceback you can also create a paste of it. </p></span>
+</div>
+      <div class="footer">
+        Brought to you by <strong class="arthur">DON'T PANIC</strong>, your
+        friendly Werkzeug powered traceback interpreter.
+      </div>
+    </div>
+
+    <div class="pin-prompt">
+      <div class="inner">
+        <h3>Console Locked</h3>
+        <p>
+          The console is locked and needs to be unlocked by entering the PIN.
+          You can find the PIN printed out on the standard output of your
+          shell that runs the server.
+        </p><form>
+          <p>PIN:
+            <input type="text" name="pin" size="14">
+            <input type="submit" name="btn" value="Confirm Pin">
+        </p></form>
+      </div>
+    </div>
+  
+
+
+
+</body></html>

@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>METARMap Settings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings_v2.css') }}">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="{{ url_for('static', filename='js/settings_v2.js') }}"></script>
+</head>
+<body>
+
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle btn" onclick="document.querySelector('.sidebar').classList.toggle('open')">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h1>METARMap</h1>
+                <div class="status-indicator mt-4">
+                    <span class="dot {{ 'active' if config.get('ENABLE_HTTPS') else 'inactive' }}"></span>
+                    <span>System Online</span>
+                </div>
+            </div>
+            <ul class="nav-links">
+                <li class="nav-item"><a href="#led-control" class="nav-link"><i class="fas fa-lightbulb"></i> LED Control</a></li>
+                <li class="nav-item"><a href="#colors" class="nav-link"><i class="fas fa-palette"></i> Colors</a></li>
+                <li class="nav-item"><a href="#animations" class="nav-link"><i class="fas fa-wind"></i> Animations</a></li>
+                <li class="nav-item"><a href="#time-settings" class="nav-link"><i class="fas fa-clock"></i> Time & Sun</a></li>
+                <li class="nav-item"><a href="#airports" class="nav-link"><i class="fas fa-plane"></i> Airports</a></li>
+                <li class="nav-item"><a href="#network" class="nav-link"><i class="fas fa-wifi"></i> Network</a></li>
+                <li class="nav-item"><a href="#system" class="nav-link"><i class="fas fa-cogs"></i> System</a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="settings-card" style="border-left: 4px solid var(--{{ category }}-color);">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('edit_settings') }}">
+                
+                <!-- LED Control Section -->
+                <section id="led-control" class="settings-card">
+                    <h2><i class="fas fa-lightbulb"></i> LED Control</h2>
+                    
+                    <div class="form-group">
+                        <label>Master Brightness: <span id="brightness-val">{{ (config.BRIGHTNESS * 100)|int }}%</span></label>
+                        <input type="range" name="brightness" min="0" max="1" step="0.01" value="{{ config.BRIGHTNESS }}" 
+                               oninput="document.getElementById('brightness-val').textContent = Math.round(this.value * 100) + '%'">
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Dim Brightness</label>
+                            <input type="number" step="0.01" class="form-control" name="dim_brightness" value="{{ config.DIM_BRIGHTNESS }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Daytime Dim Brightness</label>
+                            <input type="number" step="0.01" class="form-control" name="daytime_dim_brightness" value="{{ config.DAYTIME_DIM_BRIGHTNESS }}">
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                         <div class="form-group">
+                            <label>GPIO Pin</label>
+                            <input type="number" class="form-control" name="pixel_pin" value="{{ config.PIXEL_PIN }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Number of LEDs</label>
+                            <input type="number" class="form-control" name="num_pixels" value="{{ config.NUM_PIXELS }}">
+                        </div>
+                    </div>
+
+                     <div class="form-group">
+                        <label>LED Color Order</label>
+                        <select name="led_color_order" class="form-control">
+                            <option value="RGB" {{ 'selected' if config.LED_COLOR_ORDER == 'RGB' else '' }}>RGB</option>
+                            <option value="GRB" {{ 'selected' if config.LED_COLOR_ORDER == 'GRB' else '' }}>GRB</option>
+                        </select>
+                    </div>
+
+                    <label class="toggle-wrapper">
+                        <span class="toggle-label">Daytime Dimming</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" class="toggle-input" name="daytime_dimming" {{ 'checked' if config.DAYTIME_DIMMING else '' }}>
+                            <span class="slider"></span>
+                        </div>
+                    </label>
+
+                    <label class="toggle-wrapper">
+                        <span class="toggle-label">Show Legend</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" class="toggle-input" id="legend" name="legend" {{ 'checked' if config.LEGEND else '' }}>
+                            <span class="slider"></span>
+                        </div>
+                    </label>
+
+                    <!-- Legend Items (Collapsible) -->
+                    <div class="legend-items-section {{ 'collapsed' if not config.LEGEND else '' }}" style="margin-left: 20px; border-left: 2px solid var(--accent-color); padding-left: 20px;">
+                        <div class="toggle-grid">
+                            <label class="toggle-wrapper">
+                                <span class="toggle-label">VFR</span>
+                                <input type="checkbox" class="toggle-input" name="legend_vfr" {{ 'checked' if config.LEGEND_VFR else '' }}>
+                                <div class="toggle-switch"><span class="slider"></span></div>
+                            </label>
+                            <label class="toggle-wrapper">
+                                <span class="toggle-label">MVFR</span>
+                                <input type="checkbox" class="toggle-input" name="legend_mvfr" {{ 'checked' if config.LEGEND_MVFR else '' }}>
+                                <div class="toggle-switch"><span class="slider"></span></div>
+                            </label>
+                            <label class="toggle-wrapper">
+                                <span class="toggle-label">IFR</span>
+                                <input type="checkbox" class="toggle-input" name="legend_ifr" {{ 'checked' if config.LEGEND_IFR else '' }}>
+                                <div class="toggle-switch"><span class="slider"></span></div>
+                            </label>
+                            <label class="toggle-wrapper">
+                                <span class="toggle-label">LIFR</span>
+                                <input type="checkbox" class="toggle-input" name="legend_lifr" {{ 'checked' if config.LEGEND_LIFR else '' }}>
+                                <div class="toggle-switch"><span class="slider"></span></div>
+                            </label>
+                             <label class="toggle-wrapper">
+                                <span class="toggle-label">Snowy</span>
+                                <input type="checkbox" class="toggle-input" name="legend_snowy" {{ 'checked' if config.LEGEND_SNOWY else '' }}>
+                                <div class="toggle-switch"><span class="slider"></span></div>
+                            </label>
+                            <label class="toggle-wrapper">
+                                <span class="toggle-label">Lightning</span>
+                                <input type="checkbox" class="toggle-input" name="legend_lightning" {{ 'checked' if config.LEGEND_LIGHTNING else '' }}>
+                                <div class="toggle-switch"><span class="slider"></span></div>
+                            </label>
+                             <label class="toggle-wrapper">
+                                <span class="toggle-label">Windy</span>
+                                <input type="checkbox" class="toggle-input" name="legend_windy" {{ 'checked' if config.LEGEND_WINDY else '' }}>
+                                <div class="toggle-switch"><span class="slider"></span></div>
+                            </label>
+                             <label class="toggle-wrapper">
+                                <span class="toggle-label">Missing</span>
+                                <input type="checkbox" class="toggle-input" name="legend_missing" {{ 'checked' if config.LEGEND_MISSING else '' }}>
+                                <div class="toggle-switch"><span class="slider"></span></div>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Colors Section -->
+                <section id="colors" class="settings-card">
+                    <h2><i class="fas fa-palette"></i> Color Configuration</h2>
+                    <div class="color-grid">
+                        <div class="color-item">
+                            <label>VFR</label>
+                            <input type="color" name="vfr_color" value="{{ vfr_color }}">
+                        </div>
+                        <div class="color-item">
+                            <label>MVFR</label>
+                            <input type="color" name="mvfr_color" value="{{ mvfr_color }}">
+                        </div>
+                        <div class="color-item">
+                            <label>IFR</label>
+                            <input type="color" name="ifr_color" value="{{ ifr_color }}">
+                        </div>
+                        <div class="color-item">
+                            <label>LIFR</label>
+                            <input type="color" name="lifr_color" value="{{ lifr_color }}">
+                        </div>
+                        <div class="color-item">
+                            <label>Lightning</label>
+                            <input type="color" name="lightening_color" value="{{ lightening_color }}">
+                        </div>
+                        <div class="color-item">
+                            <label>Snow</label>
+                            <input type="color" name="snowy_color" value="{{ snowy_color }}">
+                        </div>
+                        <div class="color-item">
+                            <label>Missing</label>
+                            <input type="color" name="missing_color" value="{{ missing_color }}">
+                        </div>
+                         <div class="color-item">
+                            <label>Stale Data</label>
+                            <input type="color" name="stale_data_color" value="{{ stale_data_color }}">
+                        </div>
+                         <div class="color-item">
+                            <label>WiFi Disconnected</label>
+                            <input type="color" name="wifi_disconnected_color" value="{{ wifi_disconnected_color }}">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Animations Section -->
+                <section id="animations" class="settings-card">
+                    <h2><i class="fas fa-wind"></i> Animations</h2>
+                    
+                    <label class="toggle-wrapper">
+                        <span class="toggle-label">Wind Animation</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" class="toggle-input" name="wind_animation" {{ 'checked' if config.WIND_ANIMATION else '' }}>
+                            <span class="slider"></span>
+                        </div>
+                    </label>
+                    
+                    <label class="toggle-wrapper">
+                        <span class="toggle-label">Lightning Animation</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" class="toggle-input" name="lightening_animation" {{ 'checked' if config.LIGHTENING_ANIMATION else '' }}>
+                            <span class="slider"></span>
+                        </div>
+                    </label>
+
+                    <label class="toggle-wrapper">
+                        <span class="toggle-label">Snow Animation</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" class="toggle-input" name="snowy_animation" {{ 'checked' if config.SNOWY_ANIMATION else '' }}>
+                            <span class="slider"></span>
+                        </div>
+                    </label>
+
+                    <div class="grid-3">
+                        <div class="form-group">
+                            <label>Wind Threshold (kts)</label>
+                            <input type="number" class="form-control" name="wind_threshold" value="{{ config.WIND_THRESHOLD }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Wind Fade Time (s)</label>
+                            <input type="number" step="0.1" class="form-control" name="wind_fade_time" value="{{ config.WIND_FADE_TIME }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Wind Pause (s)</label>
+                            <input type="number" step="0.1" class="form-control" name="wind_pause" value="{{ config.WIND_PAUSE }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Animation Pause (s)</label>
+                            <input type="number" class="form-control" name="animation_pause" value="{{ config.ANIMATION_PAUSE }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Lightning Flash Count</label>
+                            <input type="number" class="form-control" name="lightning_flash_count" value="{{ config.LIGHTNING_FLASH_COUNT }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Snow Blink Count</label>
+                            <input type="number" class="form-control" name="snow_blink_count" value="{{ config.SNOW_BLINK_COUNT }}">
+                        </div>
+                         <div class="form-group">
+                            <label>Snow Blink Pause (s)</label>
+                            <input type="number" step="0.1" class="form-control" name="snow_blink_pause" value="{{ config.SNOW_BLINK_PAUSE }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Animation Steps</label>
+                            <input type="number" class="form-control" name="num_steps" value="{{ config.NUM_STEPS }}">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Animation Order (comma separated: WINDY, LIGHTNING, SNOWY)</label>
+                        <input type="text" class="form-control" name="animation_sequence" value="{{ ','.join(animation_order) }}">
+                    </div>
+                </section>
+
+                <!-- Time & Sun Section -->
+                <section id="time-settings" class="settings-card">
+                    <h2><i class="fas fa-clock"></i> Time & Sun</h2>
+                    
+                    <label class="toggle-wrapper">
+                        <span class="toggle-label">Use Sunrise/Sunset</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" class="toggle-input" name="use_sunrise_sunset" {{ 'checked' if config.USE_SUNRISE_SUNSET else '' }}>
+                            <span class="slider"></span>
+                        </div>
+                    </label>
+
+                    <div class="form-group">
+                        <label>City for Sun Times</label>
+                        <select name="selected_city" class="form-control">
+                            {% for city in cities %}
+                                <option value="{{ city.name }}" {{ 'selected' if city.name == selected_city else '' }}>{{ city.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Lights On Time</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="number" class="form-control" name="lights_on_time_hour" value="{{ lights_on_time_hour }}" min="0" max="23">
+                                <input type="number" class="form-control" name="lights_on_time_minute" value="{{ lights_on_time_minute }}" min="0" max="59">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Lights Off Time</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="number" class="form-control" name="lights_off_time_hour" value="{{ lights_off_time_hour }}" min="0" max="23">
+                                <input type="number" class="form-control" name="lights_off_time_minute" value="{{ lights_off_time_minute }}" min="0" max="59">
+                            </div>
+                        </div>
+                    </div>
+
+                     <label class="toggle-wrapper">
+                        <span class="toggle-label">Enable Lights Off Schedule</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" class="toggle-input" name="enable_lights_off" {{ 'checked' if config.ENABLE_LIGHTS_OFF else '' }}>
+                            <span class="slider"></span>
+                        </div>
+                    </label>
+                </section>
+
+                <!-- Airports Section -->
+                <section id="airports" class="settings-card">
+                    <h2><i class="fas fa-plane"></i> Airports</h2>
+                    <div class="form-group">
+                        <label>Airport Codes (one per line)</label>
+                        <textarea name="airports" class="form-control" rows="10" style="font-family: monospace;">{{ airports }}</textarea>
+                    </div>
+                </section>
+
+                <!-- Network Section -->
+                <section id="network" class="settings-card">
+                    <h2><i class="fas fa-wifi"></i> Network</h2>
+                    <label class="toggle-wrapper">
+                        <span class="toggle-label">Enable HTTPS</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" class="toggle-input" name="enable_https" {{ 'checked' if config.ENABLE_HTTPS else '' }}>
+                            <span class="slider"></span>
+                        </div>
+                    </label>
+                     <label class="toggle-wrapper">
+                        <span class="toggle-label">WiFi Indication</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" class="toggle-input" name="wifi_indication" {{ 'checked' if config.WIFI_INDICATION else '' }}>
+                            <span class="slider"></span>
+                        </div>
+                    </label>
+                    <div class="form-group">
+                        <label>Local IP: {{ local_ip }}</label>
+                    </div>
+                </section>
+
+                <!-- System & Service Controls Section -->
+                <section id="system" class="settings-card">
+                    <h2><i class="fas fa-cogs"></i> System & Services</h2>
+                    
+                     <label class="toggle-wrapper">
+                        <span class="toggle-label">Update Weather</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" class="toggle-input" name="update_weather" {{ 'checked' if config.UPDATE_WEATHER else '' }}>
+                            <span class="slider"></span>
+                        </div>
+                    </label>
+
+                    <label class="toggle-wrapper">
+                        <span class="toggle-label">Stale Data Indication</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" class="toggle-input" name="stale_indication" {{ 'checked' if config.STALE_INDICATION else '' }}>
+                            <span class="slider"></span>
+                        </div>
+                    </label>
+
+                    <!-- Manual Weather Update -->
+                    <div class="mt-4 mb-4" style="border-top: 1px solid var(--card-border); padding-top: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 1.1em;">Manual Weather Update</h3>
+                                <p style="margin: 5px 0 0 0; font-size: 0.9em; color: #888;">
+                                    <span id="weather-status-display" class="{{ 'stale' if weather_update_threshold and (weather_last_modified == 'Never' or (weather_last_modified != 'Weather data not available' and (now - weather_last_modified_dt).total_seconds() > weather_update_threshold)) else '' }}">
+                                        Last Updated: {{ weather_last_modified }}
+                                    </span>
+                                </p>
+                            </div>
+                            <button type="button" id="update-weather-btn" class="btn btn-primary" onclick="updateWeatherManually()">
+                                <i class="fas fa-cloud-download-alt"></i> Update Now
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- METAR Service -->
+                    <div class="service-control-panel mt-4" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
+                        <h3 style="margin-top: 0; color: var(--accent-color);">METAR Service</h3>
+                        <div id="metar-service-status" class="status-indicator mb-4">
+                            <span class="dot unknown"></span>
+                            <span class="status-text">Checking...</span>
+                        </div>
+                        <div class="grid-2" style="grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                            <button type="button" class="btn btn-primary" onclick="startMetarWithCleanup()">Start</button>
+                            <button type="button" class="btn btn-primary" onclick="controlService('metar', 'stop')">Stop</button>
+                            <button type="button" class="btn btn-primary" onclick="controlService('metar', 'restart')">Restart</button>
+                            <button type="button" class="btn btn-primary" onclick="toggleLogs('metar')">Logs</button>
+                        </div>
+                        <div class="service-logs" id="metar-service-logs" style="display: none; margin-top: 10px; background: #000; padding: 10px; border-radius: 4px; max-height: 200px; overflow-y: auto;">
+                            <pre class="logs-content" style="white-space: pre-wrap; font-family: monospace; font-size: 0.8em; color: #ccc;"></pre>
+                        </div>
+                    </div>
+
+                    <!-- Settings Service -->
+                    <div class="service-control-panel mt-4" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
+                        <h3 style="margin-top: 0; color: var(--accent-color);">Settings Service</h3>
+                        <div id="settings-service-status" class="status-indicator mb-4">
+                            <span class="dot unknown"></span>
+                            <span class="status-text">Checking...</span>
+                        </div>
+                        <div class="grid-2" style="grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                            <button type="button" class="btn btn-primary" onclick="controlService('settings', 'start')">Start</button>
+                            <button type="button" class="btn btn-primary" onclick="confirmSettingsStop()">Stop</button>
+                            <button type="button" class="btn btn-primary" onclick="controlService('settings', 'restart')">Restart</button>
+                            <button type="button" class="btn btn-primary" onclick="toggleLogs('settings')">Logs</button>
+                        </div>
+                        <div class="service-logs" id="settings-service-logs" style="display: none; margin-top: 10px; background: #000; padding: 10px; border-radius: 4px; max-height: 200px; overflow-y: auto;">
+                            <pre class="logs-content" style="white-space: pre-wrap; font-family: monospace; font-size: 0.8em; color: #ccc;"></pre>
+                        </div>
+                    </div>
+
+                    <!-- Scheduler Service -->
+                    <div class="service-control-panel mt-4" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
+                        <h3 style="margin-top: 0; color: var(--accent-color);">Scheduler Service</h3>
+                        <div id="scheduler-service-status" class="status-indicator mb-4">
+                            <span class="dot unknown"></span>
+                            <span class="status-text">Checking...</span>
+                        </div>
+                        <div class="grid-2" style="grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                            <button type="button" class="btn btn-primary" onclick="controlService('scheduler', 'start')">Start</button>
+                            <button type="button" class="btn btn-primary" onclick="controlService('scheduler', 'stop')">Stop</button>
+                            <button type="button" class="btn btn-primary" onclick="controlService('scheduler', 'restart')">Restart</button>
+                            <button type="button" class="btn btn-primary" onclick="toggleLogs('scheduler')">Logs</button>
+                        </div>
+                        <div class="service-logs" id="scheduler-service-logs" style="display: none; margin-top: 10px; background: #000; padding: 10px; border-radius: 4px; max-height: 200px; overflow-y: auto;">
+                            <pre class="logs-content" style="white-space: pre-wrap; font-family: monospace; font-size: 0.8em; color: #ccc;"></pre>
+                        </div>
+                    </div>
+
+                    <!-- Power Controls -->
+                    <div class="mt-4" style="border-top: 1px solid var(--card-border); padding-top: 20px;">
+                        <div class="grid-2">
+                            <button type="button" class="btn btn-warning" style="width: 100%;" onclick="confirmRestart()">
+                                <i class="fas fa-sync"></i> Reboot System
+                            </button>
+                            <button type="button" class="btn btn-danger" style="width: 100%;" onclick="confirmShutdown()">
+                                <i class="fas fa-power-off"></i> Shutdown System
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+            </form>
+        </main>
+    </div>
+
+    <!-- Floating Save Button -->
+    <button class="floating-save-btn" onclick="document.querySelector('form').submit()">
+        <i class="fas fa-save"></i> Save Changes
+    </button>
+
+    <script>
+        // Initialize everything when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeFloatingSaveButton();
+            initializeLegendCollapsing();
+            updateAllServiceStatuses();
+            
+            // Mobile menu toggle
+            const sidebar = document.querySelector('.sidebar');
+            const toggleBtn = document.querySelector('.mobile-menu-toggle');
+            
+            // Close sidebar when clicking outside on mobile
+            document.addEventListener('click', function(event) {
+                if (window.innerWidth <= 768) {
+                    if (!sidebar.contains(event.target) && !toggleBtn.contains(event.target)) {
+                        sidebar.classList.remove('open');
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
