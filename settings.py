@@ -29,6 +29,102 @@ from update_manager import (
     parse_config_file, # Added for robust config handling
     write_config_file  # Added for robust config handling
 )
+import ast
+from typing import Dict
+
+def parse_config_file(config_path: str) -> Dict:
+    """Parse a config.py file and extract all variable assignments."""
+    try:
+        with open(config_path, 'r') as f:
+            content = f.read()
+
+        # Parse the Python code
+        tree = ast.parse(content)
+
+        config_dict = {}
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        # Convert the value to a string representation
+                        try:
+                            # For simple values, we can evaluate them
+                            if isinstance(node.value, (ast.Constant, ast.Num, ast.Str)):
+                                config_dict[target.id] = ast.literal_eval(node.value)
+                            elif isinstance(node.value, ast.Tuple):
+                                config_dict[target.id] = ast.literal_eval(node.value)
+                            elif isinstance(node.value, ast.List):
+                                config_dict[target.id] = ast.literal_eval(node.value)
+                            elif isinstance(node.value, ast.Dict):
+                                config_dict[target.id] = ast.literal_eval(node.value)
+                            elif isinstance(node.value, ast.NameConstant):  # True, False, None
+                                config_dict[target.id] = ast.literal_eval(node.value)
+                            else:
+                                # For complex expressions, store as string
+                                config_dict[target.id] = ast.unparse(node.value)
+                        except:
+                            # If we can't evaluate, store as string
+                            config_dict[target.id] = ast.unparse(node.value)
+
+        # Validate that we got some config
+        if not config_dict:
+            raise Exception("No configuration variables found in file")
+
+        return config_dict
+
+    except Exception as e:
+        print(f"Error parsing config file: {e}")
+        raise Exception(f"Failed to parse config file: {str(e)}")
+
+def write_config_file(config_dict: Dict, config_path: str):
+    """Write a config dictionary back to a config.py file."""
+    try:
+        # Read the original file to preserve imports and comments
+        with open(config_path, 'r') as f:
+            original_content = f.read()
+
+        # Parse to get the structure
+        tree = ast.parse(original_content)
+
+        # Create new content
+        new_lines = []
+
+        # Add imports first
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                try:
+                    new_lines.append(ast.unparse(node))
+                except AttributeError:
+                    # Fallback for older Python versions
+                    new_lines.append(ast.dump(node))
+
+        if new_lines:
+            new_lines.append('')  # Add blank line after imports
+
+        # Add variables in the order they appear in the new config
+        for key, value in config_dict.items():
+            # Heuristic to differentiate between a code snippet (like 'datetime.time(...)')
+            # and a literal string value (like 'airports.txt').
+            if isinstance(value, str) and '(' in value and ')' in value:
+                # Assume it's a complex expression that should not be quoted.
+                new_lines.append(f"{key} = {value}")
+            else:
+                # It's a simple value (int, bool, tuple, or a literal string).
+                # Use repr() to get the correct Python representation (e.g., adds quotes to strings).
+                new_lines.append(f"{key} = {repr(value)}")
+
+        # Write the new config file
+        with open(config_path, 'w') as f:
+            f.write('\n'.join(new_lines))
+
+    except Exception as e:
+        print(f"Error writing config file: {e}")
+        # Fallback: write simple format
+        with open(config_path, 'w') as f:
+            f.write('# METARMap Configuration\n\n')
+            for key, value in config_dict.items():
+                f.write(f'{key} = {repr(value)}\n')
 
 def after_this_response(func):
     @functools.wraps(func)
@@ -145,281 +241,113 @@ def get_led_status():
 def edit_settings():
     if request.method == 'POST':
         try:
-            # Create a dictionary for updates
-            config_updates = {}
+            # Parse the current config.py to get a dictionary
+            current_config = parse_config_file('/home/pi/config.py')
 
-            # Extract and validate time settings
+            # Extract and validate form data, updating the dictionary
             try:
-                config_updates["PIXEL_PIN"] = int(request.form.get('pixel_pin', ''))
-                config_updates["LEGEND"] = 'legend' in request.form
-                config_updates["ENABLE_LIGHTS_OFF"] = 'enable_lights_off' in request.form
-                config_updates["DAYTIME_DIMMING"] = 'daytime_dimming' in request.form
-                config_updates["WIND_ANIMATION"] = 'wind_animation' in request.form
-                config_updates["LIGHTENING_ANIMATION"] = 'lightening_animation' in request.form
-                config_updates["SNOWY_ANIMATION"] = 'snowy_animation' in request.form
-                config_updates["ENABLE_HTTPS"] = 'enable_https' in request.form
-                config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form
-                config_updates["STALE_INDICATION"] = 'stale_indication' in request.form
+                current_config["PIXEL_PIN"] = int(request.form.get('pixel_pin', current_config.get("PIXEL_PIN")))
+                current_config["LEGEND"] = 'legend' in request.form
+                current_config["ENABLE_LIGHTS_OFF"] = 'enable_lights_off' in request.form
+                current_config["DAYTIME_DIMMING"] = 'daytime_dimming' in request.form
+                current_config["WIND_ANIMATION"] = 'wind_animation' in request.form
+                current_config["LIGHTENING_ANIMATION"] = 'lightening_animation' in request.form
+                current_config["SNOWY_ANIMATION"] = 'snowy_animation' in request.form
+                current_config["ENABLE_HTTPS"] = 'enable_https' in request.form
+                current_config["UPDATE_WEATHER"] = 'update_weather' in request.form
+                current_config["STALE_INDICATION"] = 'stale_indication' in request.form
                 
                 # Legend item visibility settings
-                config_updates["LEGEND_VFR"] = 'legend_vfr' in request.form
-                config_updates["LEGEND_MVFR"] = 'legend_mvfr' in request.form
-                config_updates["LEGEND_IFR"] = 'legend_ifr' in request.form
-                config_updates["LEGEND_LIFR"] = 'legend_lifr' in request.form
-                config_updates["LEGEND_SNOWY"] = 'legend_snowy' in request.form
-                config_updates["LEGEND_LIGHTNING"] = 'legend_lightning' in request.form
-                config_updates["LEGEND_WINDY"] = 'legend_windy' in request.form
-                config_updates["LEGEND_MISSING"] = 'legend_missing' in request.form
-            # Float or Integer Settings
-                config_updates["BRIGHTNESS"] = float(request.form.get('brightness', 0))
-                config_updates["DIM_BRIGHTNESS"] = float(request.form.get('dim_brightness', 0))
-                config_updates["DAYTIME_DIM_BRIGHTNESS"] = float(request.form.get('daytime_dim_brightness', 0))
-                config_updates["WIND_THRESHOLD"] = int(request.form.get('wind_threshold', 0))
-                config_updates["WIND_FADE_TIME"] = float(request.form.get('wind_fade_time', 0))
-                config_updates["WIND_PAUSE"] = float(request.form.get('wind_pause', 0))
-                config_updates["ANIMATION_PAUSE"] = int(request.form.get('animation_pause', 0))
-                config_updates["LIGHTNING_FLASH_COUNT"] = int(request.form.get('lightning_flash_count', 0))
-                config_updates["SNOW_BLINK_COUNT"] = int(request.form.get('snow_blink_count', 0))
-                config_updates["SNOW_BLINK_PAUSE"] = float(request.form.get('snow_blink_pause', 0))
-                config_updates["SNOWY_ANIMATION_DURATION"] = float(request.form.get('snowy_animation_duration', 5.0))
-                config_updates["SNOW_CYCLE_MIN_DURATION"] = float(request.form.get('snow_cycle_min_duration', 2.0))
-                config_updates["SNOW_CYCLE_MAX_DURATION"] = float(request.form.get('snow_cycle_max_duration', 4.0))
-                config_updates["SNOW_START_OFFSET_MAX"] = float(request.form.get('snow_start_offset_max', 1.0))
-                config_updates["SNOW_MIN_BRIGHTNESS"] = float(request.form.get('snow_min_brightness', 0.05))
-                config_updates["NUM_STEPS"] = int(request.form.get('num_steps', 0))
-                config_updates["NUM_PIXELS"] = int(request.form.get('num_pixels', 0))
-                config_updates["WEATHER_UPDATE_INTERVAL"] = int(request.form.get('weather_update_interval', 5))
-                config_updates["LED_COLOR_ORDER"] = request.form.get('led_color_order', 'GRB')
+                current_config["LEGEND_VFR"] = 'legend_vfr' in request.form
+                current_config["LEGEND_MVFR"] = 'legend_mvfr' in request.form
+                current_config["LEGEND_IFR"] = 'legend_ifr' in request.form
+                current_config["LEGEND_LIFR"] = 'legend_lifr' in request.form
+                current_config["LEGEND_SNOWY"] = 'legend_snowy' in request.form
+                current_config["LEGEND_LIGHTNING"] = 'legend_lightning' in request.form
+                current_config["LEGEND_WINDY"] = 'legend_windy' in request.form
+                current_config["LEGEND_MISSING"] = 'legend_missing' in request.form
 
-                # Time Settings (convert from form input)
-                config_updates["BRIGHT_TIME_START"] = f"datetime.time({request.form.get('bright_time_start_hour', 0)}, {request.form.get('bright_time_start_minute', 0)})"
-                config_updates["DIM_TIME_START"] = f"datetime.time({request.form.get('dim_time_start_hour', 0)}, {request.form.get('dim_time_start_minute', 0)})"
-                config_updates["LIGHTS_OFF_TIME"] = f"datetime.time({request.form.get('lights_off_time_hour', 0)}, {request.form.get('lights_off_time_minute', 0)})"
-                config_updates["LIGHTS_ON_TIME"] = f"datetime.time({request.form.get('lights_on_time_hour', 0)}, {request.form.get('lights_on_time_minute', 0)})"
+                # Float or Integer Settings
+                current_config["BRIGHTNESS"] = float(request.form.get('brightness', current_config.get("BRIGHTNESS")))
+                current_config["DIM_BRIGHTNESS"] = float(request.form.get('dim_brightness', current_config.get("DIM_BRIGHTNESS")))
+                current_config["DAYTIME_DIM_BRIGHTNESS"] = float(request.form.get('daytime_dim_brightness', current_config.get("DAYTIME_DIM_BRIGHTNESS")))
+                current_config["WIND_THRESHOLD"] = int(request.form.get('wind_threshold', current_config.get("WIND_THRESHOLD")))
+                current_config["WIND_FADE_TIME"] = float(request.form.get('wind_fade_time', current_config.get("WIND_FADE_TIME")))
+                current_config["WIND_PAUSE"] = float(request.form.get('wind_pause', current_config.get("WIND_PAUSE")))
+                current_config["ANIMATION_PAUSE"] = int(request.form.get('animation_pause', current_config.get("ANIMATION_PAUSE")))
+                current_config["LIGHTNING_FLASH_COUNT"] = int(request.form.get('lightning_flash_count', current_config.get("LIGHTNING_FLASH_COUNT")))
+                current_config["SNOW_BLINK_COUNT"] = int(request.form.get('snow_blink_count', current_config.get("SNOW_BLINK_COUNT")))
+                current_config["SNOW_BLINK_PAUSE"] = float(request.form.get('snow_blink_pause', current_config.get("SNOW_BLINK_PAUSE")))
+                current_config["SNOWY_ANIMATION_DURATION"] = float(request.form.get('snowy_animation_duration', current_config.get("SNOWY_ANIMATION_DURATION")))
+                current_config["SNOW_CYCLE_MIN_DURATION"] = float(request.form.get('snow_cycle_min_duration', current_config.get("SNOW_CYCLE_MIN_DURATION")))
+                current_config["SNOW_CYCLE_MAX_DURATION"] = float(request.form.get('snow_cycle_max_duration', current_config.get("SNOW_CYCLE_MAX_DURATION")))
+                current_config["SNOW_START_OFFSET_MAX"] = float(request.form.get('snow_start_offset_max', current_config.get("SNOW_START_OFFSET_MAX")))
+                current_config["SNOW_MIN_BRIGHTNESS"] = float(request.form.get('snow_min_brightness', current_config.get("SNOW_MIN_BRIGHTNESS")))
+                current_config["NUM_STEPS"] = int(request.form.get('num_steps', current_config.get("NUM_STEPS")))
+                current_config["NUM_PIXELS"] = int(request.form.get('num_pixels', current_config.get("NUM_PIXELS")))
+                current_config["LED_COLOR_ORDER"] = request.form.get('led_color_order', current_config.get("LED_COLOR_ORDER"))
 
-                # Convert minutes to seconds for storage
+                # Time Settings
+                current_config["BRIGHT_TIME_START"] = f"datetime.time({request.form.get('bright_time_start_hour')}, {request.form.get('bright_time_start_minute')})"
+                current_config["DIM_TIME_START"] = f"datetime.time({request.form.get('dim_time_start_hour')}, {request.form.get('dim_time_start_minute')})"
+                current_config["LIGHTS_OFF_TIME"] = f"datetime.time({request.form.get('lights_off_time_hour')}, {request.form.get('lights_off_time_minute')})"
+                current_config["LIGHTS_ON_TIME"] = f"datetime.time({request.form.get('lights_on_time_hour')}, {request.form.get('lights_on_time_minute')})"
+
+                # Weather update interval
                 minutes = float(request.form.get('weather_update_interval', 5))
-                config_updates["WEATHER_UPDATE_INTERVAL"] = int(minutes * 60)
+                current_config["WEATHER_UPDATE_INTERVAL"] = int(minutes * 60)
 
-            except ValueError:
-                raise ValueError("Could not update time settings: Please enter valid numbers for hours and minutes.")
+            except (ValueError, TypeError) as e:
+                raise ValueError(f"Invalid input for a setting: {e}")
 
-            # Get the selected color order (no color conversion needed)
-            led_color_order = request.form.get('led_color_order', 'GRB')
-            config_updates['LED_COLOR_ORDER'] = led_color_order
-
-            # Color fields mapping
+            # Color fields
             color_fields = {
-                'vfr_color': 'VFR_COLOR',
-                'mvfr_color': 'MVFR_COLOR',
-                'ifr_color': 'IFR_COLOR',
-                'lifr_color': 'LIFR_COLOR',
-                'missing_color': 'MISSING_COLOR',
-                'lightening_color': 'LIGHTENING_COLOR',
-                'snowy_color': 'SNOWY_COLOR',
-                'stale_data_color': 'STALE_DATA_COLOR',
-                'wifi_disconnected_color': 'WIFI_DISCONNECTED_COLOR'
+                'vfr_color': 'VFR_COLOR', 'mvfr_color': 'MVFR_COLOR', 'ifr_color': 'IFR_COLOR',
+                'lifr_color': 'LIFR_COLOR', 'missing_color': 'MISSING_COLOR', 'lightening_color': 'LIGHTENING_COLOR',
+                'snowy_color': 'SNOWY_COLOR', 'stale_data_color': 'STALE_DATA_COLOR', 'wifi_disconnected_color': 'WIFI_DISCONNECTED_COLOR'
             }
-
             for form_key, config_key in color_fields.items():
                 if form_key in request.form:
-                    # Get the RGB color from the form and store it directly (no conversion needed)
-                    rgb_color = request.form[form_key].lstrip('#')
-                    r = int(rgb_color[0:2], 16)
-                    g = int(rgb_color[2:4], 16)
-                    b = int(rgb_color[4:6], 16)
-                    # Store in RGB format
-                    config_updates[config_key] = (r, g, b)
-
-            # Define individual settings updates and catch specific errors
-            try:
-                config_updates["LIGHTNING_FLASH_COUNT"] = float(request.form['lightning_flash_count'])
-            except ValueError:
-                raise ValueError("Could not update Lightning Flash Count: Please enter a valid number.")
-            try:
-                config_updates["BRIGHTNESS"] = float(request.form['brightness'])
-            except ValueError:
-                raise ValueError("Could not update Brightness: Please enter a valid number.")
-            try:
-                config_updates["DIM_BRIGHTNESS"] = float(request.form['dim_brightness'])
-            except ValueError:
-                raise ValueError("Could not update Dim Brightness: Please enter a valid number.")
-            try:
-                config_updates["WIND_THRESHOLD"] = int(request.form['wind_threshold'])
-            except ValueError:
-                raise ValueError("Could not update Wind Threshold: Please enter a valid integer.")
-            try:
-                config_updates["WIND_FADE_TIME"] = float(request.form['wind_fade_time'])
-            except ValueError:
-                raise ValueError("Could not update Wind Fade Time: Please enter a valid number.")
-            try:
-                config_updates["WIND_PAUSE"] = float(request.form['wind_pause'])
-            except ValueError:
-                raise ValueError("Could not update Wind Pause: Please enter a valid number.")
-            try:
-                config_updates["ANIMATION_PAUSE"] = int(request.form['animation_pause'])
-            except ValueError:
-                raise ValueError("Could not update Animation Pause: Please enter a valid integer.")
-            try:
-                config_updates["NUM_STEPS"] = int(request.form['num_steps'])
-            except ValueError:
-                raise ValueError("Could not update Number of Steps: Please enter a valid integer.")
-            try:
-                config_updates["SNOW_BLINK_COUNT"] = int(request.form.get('snow_blink_count', 0))
-            except ValueError:
-                raise ValueError("Could not update Snow Blink Count: Please enter a valid integer.")
-            try:
-                config_updates["SNOW_BLINK_PAUSE"] = float(request.form.get('snow_blink_pause', 0))
-            except ValueError:
-                raise ValueError("Could not update Snow Blink Pause: Please enter a valid number.")
-            try:
-                config_updates["SNOWY_ANIMATION_DURATION"] = float(request.form.get('snowy_animation_duration', 5.0))
-                if config_updates["SNOWY_ANIMATION_DURATION"] < 1.0 or config_updates["SNOWY_ANIMATION_DURATION"] > 30.0:
-                    raise ValueError("Snowy Animation Duration must be between 1.0 and 30.0 seconds.")
-            except ValueError as e:
-                if "between" in str(e):
-                    raise e
-                else:
-                    raise ValueError("Could not update Snowy Animation Duration: Please enter a valid number.")
-            try:
-                config_updates["SNOW_CYCLE_MIN_DURATION"] = float(request.form.get('snow_cycle_min_duration', 2.0))
-                if config_updates["SNOW_CYCLE_MIN_DURATION"] < 0.5 or config_updates["SNOW_CYCLE_MIN_DURATION"] > 10.0:
-                    raise ValueError("Snow Cycle Min Duration must be between 0.5 and 10.0 seconds.")
-            except ValueError as e:
-                if "between" in str(e):
-                    raise e
-                else:
-                    raise ValueError("Could not update Snow Cycle Min Duration: Please enter a valid number.")
-            try:
-                config_updates["SNOW_CYCLE_MAX_DURATION"] = float(request.form.get('snow_cycle_max_duration', 4.0))
-                if config_updates["SNOW_CYCLE_MAX_DURATION"] < 1.0 or config_updates["SNOW_CYCLE_MAX_DURATION"] > 15.0:
-                    raise ValueError("Snow Cycle Max Duration must be between 1.0 and 15.0 seconds.")
-            except ValueError as e:
-                if "between" in str(e):
-                    raise e
-                else:
-                    raise ValueError("Could not update Snow Cycle Max Duration: Please enter a valid number.")
-            try:
-                config_updates["SNOW_START_OFFSET_MAX"] = float(request.form.get('snow_start_offset_max', 1.0))
-                if config_updates["SNOW_START_OFFSET_MAX"] < 0.1 or config_updates["SNOW_START_OFFSET_MAX"] > 5.0:
-                    raise ValueError("Snow Start Offset Max must be between 0.1 and 5.0 seconds.")
-            except ValueError as e:
-                if "between" in str(e):
-                    raise e
-                else:
-                    raise ValueError("Could not update Snow Start Offset Max: Please enter a valid number.")
-            try:
-                config_updates["SNOW_MIN_BRIGHTNESS"] = float(request.form.get('snow_min_brightness', 0.05))
-                if config_updates["SNOW_MIN_BRIGHTNESS"] < 0.01 or config_updates["SNOW_MIN_BRIGHTNESS"] > 0.5:
-                    raise ValueError("Snow Min Brightness must be between 0.01 and 0.5.")
-            except ValueError as e:
-                if "between" in str(e):
-                    raise e
-                else:
-                    raise ValueError("Could not update Snow Min Brightness: Please enter a valid number.")
+                    rgb_hex = request.form[form_key].lstrip('#')
+                    current_config[config_key] = tuple(int(rgb_hex[i:i+2], 16) for i in (0, 2, 4))
             
-            # Validate that min duration is less than max duration
-            if config_updates["SNOW_CYCLE_MIN_DURATION"] >= config_updates["SNOW_CYCLE_MAX_DURATION"]:
-                raise ValueError("Snow Cycle Min Duration must be less than Snow Cycle Max Duration.")
-            try:
-                config_updates["DAYTIME_DIM_BRIGHTNESS"] = float(request.form['daytime_dim_brightness'])
-            except ValueError:
-                raise ValueError("Could not update Daytime Dim Brightness: Please enter a valid number.")
-            try:
-                config_updates["NUM_PIXELS"] = float(request.form['num_pixels'])
-            except ValueError:
-                raise ValueError("Could not update Pixel Count: Please enter a valid number.")
-            try:
-                config_updates["PIXEL_PIN"] = int(request.form.get('pixel_pin', ''))
-            except ValueError:
-                raise ValueError("Could not update PIXEL_PIN: Please enter a valid integer.")
-            try:
-                # Convert minutes to seconds for storage
-                minutes = float(request.form.get('weather_update_interval', 5))
-                config_updates["WEATHER_UPDATE_INTERVAL"] = int(minutes * 60)  # Store as seconds in config
-            except ValueError:
-                raise ValueError("Could not update Weather Update Interval: Please enter a valid number.")
-
-
-            # Boolean values for checkbox-based settings
-            config_updates["WIND_ANIMATION"] = 'wind_animation' in request.form
-            config_updates["LIGHTENING_ANIMATION"] = 'lightening_animation' in request.form
-            config_updates["SNOWY_ANIMATION"] = 'snowy_animation' in request.form
-            config_updates["DAYTIME_DIMMING"] = 'daytime_dimming' in request.form
-            config_updates["ENABLE_LIGHTS_OFF"] = 'enable_lights_off' in request.form
-            config_updates["LEGEND"] = 'legend' in request.form
-            config_updates["ENABLE_HTTPS"] = 'enable_https' in request.form
-            config_updates["UPDATE_WEATHER"] = 'update_weather' in request.form
-            config_updates["STALE_INDICATION"] = 'stale_indication' in request.form
-            
-            # Animation sequence settings
+            # Animation sequence
             if 'animation_sequence' in request.form:
-                animation_sequence = request.form['animation_sequence']
-                if animation_sequence:
-                    # Convert comma-separated string to list format for config.py
-                    # Convert comma-separated string to list format for config.py
-                    sequence_list = animation_sequence.split(',')
-                    formatted_sequence = "', '".join(sequence_list)
-                    config_updates["ANIMATION_ORDER"] = f"['{formatted_sequence}']"
+                sequence_list = request.form['animation_sequence'].split(',')
+                current_config["ANIMATION_ORDER"] = [item.strip() for item in sequence_list]
 
             # Sunrise/sunset settings
-            config_updates["USE_SUNRISE_SUNSET"] = 'use_sunrise_sunset' in request.form
+            current_config["USE_SUNRISE_SUNSET"] = 'use_sunrise_sunset' in request.form
             if 'selected_city' in request.form and request.form['selected_city']:
-                config_updates["SELECTED_CITY"] = f"'{request.form['selected_city']}'"
-                
-                # If using sunrise/sunset, calculate and update the times
-                if 'use_sunrise_sunset' in request.form:
+                selected_city = request.form['selected_city']
+                current_config["SELECTED_CITY"] = selected_city
+                if current_config["USE_SUNRISE_SUNSET"]:
                     try:
-                        sunrise, sunset = calculate_sun_times(request.form['selected_city'])
+                        sunrise, sunset = calculate_sun_times(selected_city)
                         if sunrise and sunset:
-                            config_updates["BRIGHT_TIME_START"] = f"datetime.time({sunrise.hour}, {sunrise.minute})"
-                            config_updates["DIM_TIME_START"] = f"datetime.time({sunset.hour}, {sunset.minute})"
+                            current_config["BRIGHT_TIME_START"] = f"datetime.time({sunrise.hour}, {sunrise.minute})"
+                            current_config["DIM_TIME_START"] = f"datetime.time({sunset.hour}, {sunset.minute})"
                     except Exception as e:
                         flash(f'Error calculating sun times: {str(e)}', 'warning')
 
-            # Update the config.py file
-            with open('/home/pi/config.py', 'r') as f:
-                config_lines = f.readlines()
-
-            with open('/home/pi/config.py', 'w') as f:
-                for line in config_lines:
-                    updated = False
-                    for key, value in config_updates.items():
-                        # Use exact matching to prevent LEGEND from matching LEGEND_VFR
-                        if line.strip().startswith(f"{key} =") or line.strip().startswith(f"{key}="):
-                            if isinstance(value, float) and value.is_integer():
-                                value = int(value)
-                            # Only add quotes for specific string values
-                            if key == 'LED_COLOR_ORDER':
-                                f.write(f"{key} = '{value}'\n")
-                            elif key in ['LIGHTS_ON_TIME', 'LIGHTS_OFF_TIME', 'BRIGHT_TIME_START', 'DIM_TIME_START']:
-                                # Time values should be written without quotes
-                                f.write(f"{key} = {value}\n")
-                            else:
-                                f.write(f"{key} = {value}\n")
-                            updated = True
-                            break
-                    if not updated:
-                        f.write(line)
+            # Write the updated dictionary back to config.py
+            write_config_file(current_config, '/home/pi/config.py')
 
             # Reload the configuration to reflect the changes
             reload_config()
-            updated_airports = request.form.get("airports")
 
-            # Write the updated list to airports.txt
-            if updated_airports is not None:
-                with open('/home/pi/airports.txt', 'w') as f:  # Replace with actual path to airports.txt
-                    f.write(updated_airports)
+            # Update airports.txt
+            if "airports" in request.form:
+                with open('/home/pi/airports.txt', 'w') as f:
+                    f.write(request.form["airports"])
 
-            # Configuration updated successfully
             flash('Configuration updated successfully!', 'success')
 
         except ValueError as e:
-            flash(str(e), 'danger')  # Show specific error messages
+            flash(str(e), 'danger')
         except Exception as e:
-            flash(f'An unexpected error occurred: {str(e)}', 'danger')  # Catch all other errors
+            flash(f'An unexpected error occurred: {str(e)}', 'danger')
 
-        # Redirect to refresh the form with updated values
         return redirect(url_for('edit_settings'))
 
     # After reloading, get the updated values for display

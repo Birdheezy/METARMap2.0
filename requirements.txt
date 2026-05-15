@@ -1,0 +1,4 @@
+adafruit-circuitpython-neopixel
+flask
+requests
+schedule

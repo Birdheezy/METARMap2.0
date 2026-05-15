@@ -5,6 +5,7 @@ import json
 import re
 import datetime
 import os
+import time
 
 # Configure logging
 logging.basicConfig(
@@ -42,61 +43,66 @@ def fetch_metar():
         'ids': ','.join(airport_ids),
         'format': 'geojson'
     }
-
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
     }
 
-    logging.info(f"Sending request with User-Agent: {headers['User-Agent']}")
+    max_retries = 3
+    backoff_factor = 2
 
-    try:
-        # Construct the full URL for debugging
-        full_url = f"{base_url}?ids={','.join(airport_ids)}&format=geojson"
-        logging.info(f"Making API request to {base_url} with {len(airport_ids)} airports")
-        logging.info(f"Full URL: {full_url}")
-        logging.info(f"Request parameters: {params}")
-        
-        start_time = datetime.datetime.now()
-        # Pass the 'headers' dictionary to the request
-        response = requests.get(base_url, params=params, headers=headers)
-        elapsed_time = (datetime.datetime.now() - start_time).total_seconds()
-        
-        logging.info(f"API response received in {elapsed_time:.2f} seconds. Status code: {response.status_code}")
-        
-        # Log response headers to check for rate limiting
-        important_headers = ['content-type', 'content-length', 'date', 'x-rate-limit', 'retry-after']
-        header_info = {k: v for k, v in response.headers.items() if k.lower() in important_headers}
-        logging.info(f"Response headers: {header_info}")
-        
-        # Handle new API response codes
-        if response.status_code == 204:
-            logging.warning("API returned 204 No Content - no data available for requested airports")
-            return None
-        
-        response.raise_for_status()
-        
-        # Check if we got valid JSON
-        data = response.json()
-        if 'features' in data:
-            airport_count = len(data['features'])
-            logging.info(f"Successfully retrieved data for {airport_count} airports")
-            if airport_count == 0:
-                logging.warning("API returned 0 airports - response may be empty despite 200 status")
-        else:
-            logging.warning(f"Response is missing 'features' key. Raw response preview: {str(response.text)[:200]}...")
+    for attempt in range(max_retries):
+        try:
+            logging.info(f"Sending request with User-Agent: {headers['User-Agent']}")
+            full_url = f"{base_url}?ids={','.join(airport_ids)}&format=geojson"
+            logging.info(f"Making API request to {base_url} with {len(airport_ids)} airports (Attempt {attempt + 1}/{max_retries})")
+            logging.info(f"Full URL: {full_url}")
+            logging.info(f"Request parameters: {params}")
+
+            start_time = datetime.datetime.now()
+            response = requests.get(base_url, params=params, headers=headers)
+            elapsed_time = (datetime.datetime.now() - start_time).total_seconds()
+
+            logging.info(f"API response received in {elapsed_time:.2f} seconds. Status code: {response.status_code}")
             
-        return data
+            important_headers = ['content-type', 'content-length', 'date', 'x-rate-limit', 'retry-after']
+            header_info = {k: v for k, v in response.headers.items() if k.lower() in important_headers}
+            logging.info(f"Response headers: {header_info}")
+
+            if response.status_code == 204:
+                logging.warning("API returned 204 No Content - no data available for requested airports")
+                return None
+
+            response.raise_for_status()
+
+            data = response.json()
+            if 'features' in data:
+                airport_count = len(data['features'])
+                logging.info(f"Successfully retrieved data for {airport_count} airports")
+                if airport_count == 0:
+                    logging.warning("API returned 0 airports - response may be empty despite 200 status")
+            else:
+                logging.warning(f"Response is missing 'features' key. Raw response preview: {str(response.text)[:200]}...")
+
+            return data
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Failed to fetch METAR data: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                logging.error(f"Error response status: {e.response.status_code}")
+                logging.error(f"Error response body: {e.response.text[:500]}")
+
+            if attempt < max_retries - 1:
+                sleep_time = backoff_factor ** attempt
+                logging.info(f"Retrying in {sleep_time} seconds...")
+                time.sleep(sleep_time)
+            else:
+                logging.error("Max retries reached. Failed to fetch METAR data.")
+                return None
         
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Failed to fetch METAR data: {e}")
-        if hasattr(e, 'response') and e.response is not None:
-            logging.error(f"Error response status: {e.response.status_code}")
-            logging.error(f"Error response body: {e.response.text[:500]}")
-        return None
-    except ValueError as e:
-        logging.error(f"Failed to parse JSON response: {e}")
-        logging.error(f"Raw response preview: {response.text[:500]}")
-        return None
+        except ValueError as e:
+            logging.error(f"Failed to parse JSON response: {e}")
+            logging.error(f"Raw response preview: {response.text[:500]}")
+            return None
 
 def read_weather_data():
     """Read and return the weather data from weather.json."""
